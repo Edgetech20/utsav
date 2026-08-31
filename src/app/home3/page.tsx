@@ -35,7 +35,7 @@ function useCountdown() {
   return t;
 }
 
-export default function Home() {
+export default function Home3() {
   const [attended, setAttended] = useState(false);
   const [attendCount, setAttendCount] = useState<number | null>(null);
   const t = useCountdown();
@@ -77,6 +77,13 @@ export default function Home() {
           50%       { opacity: 1;    transform: scaleX(1); }
         }
         .pulse-bar { animation: pulse-bar 2s ease-in-out infinite; }
+        @keyframes tick-flip {
+          0%  { transform: translateY(0);    opacity: 1; }
+          45% { transform: translateY(-4px); opacity: 0; }
+          55% { transform: translateY(4px);  opacity: 0; }
+          100%{ transform: translateY(0);    opacity: 1; }
+        }
+        .tick { animation: tick-flip 1s ease-in-out; }
       `}</style>
 
       {/* ── Hero ── */}
@@ -173,6 +180,7 @@ export default function Home() {
       {/* ── Map ── */}
       <div className="w-full" style={{ background: "#0E0E0E" }}>
         <div className="mx-5 mb-6 rounded-2xl overflow-hidden border" style={{ borderColor: "rgba(201,169,110,0.25)" }}>
+          {/* Map label bar */}
           <div className="flex items-center gap-2 px-4 py-2.5" style={{ background: "#1A1A1A", borderBottom: "1px solid rgba(201,169,110,0.15)" }}>
             <MapPin className="w-3.5 h-3.5" style={{ color: "#C9A96E" }} />
             <span className="text-xs tracking-wide" style={{ color: "#C9A96E", opacity: 0.65 }}>Venue Location</span>
@@ -185,7 +193,7 @@ export default function Home() {
             allowFullScreen
             loading="lazy"
             referrerPolicy="no-referrer-when-downgrade"
-            title="Venue Location"
+            title="Satsang Ashram Location"
           />
         </div>
       </div>
@@ -234,10 +242,11 @@ export default function Home() {
           className="rounded-2xl px-6 py-6 flex flex-col items-center gap-3 border"
           style={{ background: "#141414", borderColor: "rgba(201,169,110,0.18)" }}
         >
+          {/* Pulsing bar */}
           <div className="w-full flex items-center gap-2">
-            <div className="flex-1 h-px" style={{ background: "#C9A96E" }} />
+            <div className="flex-1 h-px" style={{ background: "#C9A96E", transformOrigin: "left" }} />
             <div className="pulse-bar flex-1 h-0.5 rounded-full" style={{ background: "linear-gradient(90deg, #9A7840, #E8D5B0, #9A7840)" }} />
-            <div className="flex-1 h-px" style={{ background: "#C9A96E" }} />
+            <div className="flex-1 h-px" style={{ background: "#C9A96E", transformOrigin: "right" }} />
           </div>
 
           <div className="text-center">
@@ -247,12 +256,16 @@ export default function Home() {
             </p>
           </div>
 
+          {/* Three pulsing dots */}
           <div className="flex items-center gap-2">
             {[0, 1, 2].map((i) => (
               <span
                 key={i}
                 className="w-1.5 h-1.5 rounded-full"
-                style={{ background: "#C9A96E", animation: `pulse-bar 1.4s ease-in-out ${i * 0.2}s infinite` }}
+                style={{
+                  background: "#C9A96E",
+                  animation: `pulse-bar 1.4s ease-in-out ${i * 0.2}s infinite`,
+                }}
               />
             ))}
           </div>
