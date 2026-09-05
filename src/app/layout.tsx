@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
-import { Geist } from "next/font/google";
+import { Geist, Galada } from "next/font/google";
 import "./globals.css";
 
 const geist = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
+const galada = Galada({ variable: "--font-galada", subsets: ["bengali"], weight: "400" });
 
 export const metadata: Metadata = {
   title: "প্ৰিয়বোধী মহোৎসব | Galsi, Purba Bardhaman",
@@ -35,7 +36,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className={geist.variable}>
+    <html lang="en" className={`${geist.variable} ${galada.variable}`}>
       <body className="antialiased">{children}</body>
     </html>
   );

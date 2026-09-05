@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { MapPin, Calendar, Navigation, CheckCircle, ChevronDown, Stethoscope, UtensilsCrossed, Footprints, BookOpen, Camera, BedDouble, ShoppingBag, Music, Mic, Palette, Theater, Sparkles } from "lucide-react";
 
 const EVENT = {
@@ -40,6 +40,35 @@ export default function Home() {
   const [attended, setAttended] = useState(false);
   const [attendCount, setAttendCount] = useState<number | null>(null);
   const [expanded, setExpanded] = useState<number | null>(null);
+  const [mounted, setMounted] = useState(false);
+  const [entered, setEntered] = useState(false);
+  const [playing, setPlaying] = useState(false);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  useEffect(() => {
+    setMounted(true);
+    fetch("/music.mp3", { method: "HEAD" }).then((res) => {
+      if (!res.ok) return;
+      const audio = new Audio("/music.mp3");
+      audio.loop = true;
+      audio.volume = 0.35;
+      audioRef.current = audio;
+    }).catch(() => {});
+    return () => { audioRef.current?.pause(); };
+  }, []);
+
+  function handleEnter() {
+    setEntered(true);
+    const audio = audioRef.current;
+    if (audio) audio.play().then(() => setPlaying(true)).catch(() => {});
+  }
+
+  function toggleMusic() {
+    const audio = audioRef.current;
+    if (!audio) return;
+    if (playing) { audio.pause(); setPlaying(false); }
+    else { audio.play(); setPlaying(true); }
+  }
   const t = useCountdown();
 
   useEffect(() => {
@@ -97,6 +126,52 @@ export default function Home() {
           50%       { opacity: 1;    transform: scaleX(1); }
         }
         .pulse-bar { animation: pulse-bar 2s ease-in-out infinite; }
+        @keyframes title-entrance {
+          0%   { opacity: 0; transform: scale(0.82) translateY(20px); filter: blur(12px); }
+          100% { opacity: 1; transform: scale(1)    translateY(0);    filter: blur(0);   }
+        }
+        @keyframes title-float {
+          0%, 100% { transform: translateY(0px); }
+          50%       { transform: translateY(-8px); }
+        }
+        @keyframes bloom-breathe {
+          0%, 100% { opacity: 0.25; transform: scale(0.9); }
+          50%       { opacity: 0.6;  transform: scale(1.1); }
+        }
+        @keyframes shimmer-gold {
+          0%   { background-position: -300% center; }
+          100% { background-position:  300% center; }
+        }
+        .event-title-wrap {
+          animation: title-entrance 6s cubic-bezier(0.16,1,0.3,1) 0.3s both,
+                     title-float    5s    ease-in-out              6.5s infinite;
+        }
+        .event-title {
+          font-family: var(--font-galada), serif;
+          background: linear-gradient(90deg,
+            #3D2500 0%, #9A7840 20%, #C9A96E 35%,
+            #F5EDD0 50%,
+            #C9A96E 65%, #9A7840 80%, #3D2500 100%);
+          background-size: 300% auto;
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+          background-clip: text;
+          animation: shimmer-gold 6s linear infinite;
+        }
+        @keyframes splash-fade-out {
+          0%   { opacity: 1; }
+          100% { opacity: 0; pointer-events: none; }
+        }
+        .splash-out { animation: splash-fade-out 1.2s ease forwards; }
+        @keyframes tap-pulse {
+          0%, 100% { transform: scale(1);    opacity: 1; }
+          50%       { transform: scale(1.08); opacity: 0.7; }
+        }
+        @keyframes spin-slow {
+          from { transform: rotate(0deg); }
+          to   { transform: rotate(360deg); }
+        }
+        .music-disc { animation: spin-slow 4s linear infinite; }
         [data-reveal] {
           opacity: 0;
           transform: translateX(-48px);
@@ -115,6 +190,44 @@ export default function Home() {
           transform: scaleX(1);
         }
       `}</style>
+
+      {/* ── Splash Overlay ── */}
+      {mounted ? (
+        <div
+          className={entered ? "splash-out" : ""}
+          onClick={handleEnter}
+          style={{
+            position: "fixed", inset: 0, zIndex: 100,
+            background: "radial-gradient(ellipse 80% 80% at 50% 40%, #2C1A00 0%, #0E0E0E 70%)",
+            display: entered ? "flex" : "flex",
+            flexDirection: "column", alignItems: "center", justifyContent: "center",
+            cursor: "pointer",
+            pointerEvents: entered ? "none" : "auto",
+          }}
+        >
+          <div className="flex items-center gap-3 mb-8">
+            <div className="flex-1 h-px w-16" style={{ background: "linear-gradient(90deg, transparent, #C9A96E)" }} />
+            <span style={{ color: "#C9A96E", fontSize: 20 }}>✦</span>
+            <div className="flex-1 h-px w-16" style={{ background: "linear-gradient(90deg, #C9A96E, transparent)" }} />
+          </div>
+
+          <h1 className="event-title mb-2" style={{ fontSize: "clamp(2.8rem, 12vw, 4.5rem)", letterSpacing: "0.06em", lineHeight: 1.6 }}>
+            প্ৰিয়বোধী
+          </h1>
+          <p className="shimmer-text font-black mb-10" style={{ fontSize: "clamp(1rem, 4vw, 1.4rem)", letterSpacing: "0.1em" }}>
+            মহোৎসব
+          </p>
+
+          <div style={{ animation: "tap-pulse 2s ease-in-out infinite" }}>
+            <div
+              className="flex flex-col items-center gap-2 px-8 py-3 rounded-full border"
+              style={{ borderColor: "rgba(201,169,110,0.45)", background: "rgba(201,169,110,0.06)" }}
+            >
+              <span className="text-xs uppercase tracking-[0.4em]" style={{ color: "#C9A96E", opacity: 0.8 }}>Tap to Enter</span>
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       {/* ── Hero ── */}
       <div
@@ -140,10 +253,22 @@ export default function Home() {
           <span style={{ fontSize: "clamp(0.85rem, 3.5vw, 1.1rem)", whiteSpace: "nowrap" }}>শুভ ১৩৯তম জন্ম মহোৎসব তৎসহ</span>
         </p>
 
-        <div className="flex flex-col items-center gap-0 mb-2 mt-1 py-1">
-          <h1 className="shimmer-text font-black" style={{ fontSize: "clamp(3rem, 13vw, 5rem)", letterSpacing: "0.03em", lineHeight: 1.6 }}>
-            প্ৰিয়বোধী
-          </h1>
+        <div className="flex flex-col items-center gap-0 mb-2 mt-1" style={{ overflow: "visible", padding: "12px 0" }}>
+          {/* Bloom glow + float wrapper */}
+          <div className="event-title-wrap relative flex items-center justify-center" style={{ overflow: "visible", padding: "16px 8px 0 8px" }}>
+            {/* Radial bloom behind the text */}
+            <div
+              className="absolute inset-0 pointer-events-none"
+              style={{
+                background: "radial-gradient(ellipse 80% 60% at 50% 50%, rgba(201,169,110,0.22) 0%, transparent 70%)",
+                filter: "blur(18px)",
+                animation: "bloom-breathe 4s ease-in-out infinite",
+              }}
+            />
+            <h1 className="event-title relative" style={{ fontSize: "clamp(4rem, 18vw, 7rem)", letterSpacing: "0.06em", lineHeight: 1.3, paddingTop: "0.2em" }}>
+              প্ৰিয়বোধী
+            </h1>
+          </div>
           <h2 className="shimmer-text font-black" style={{ fontSize: "clamp(1.4rem, 6vw, 2rem)", letterSpacing: "0.06em", lineHeight: 1.6, opacity: 0.85 }}>
             মহোৎসব
           </h2>
@@ -424,6 +549,31 @@ export default function Home() {
           </div>
         </div>
       </div>
+
+      {/* ── Floating Music Button ── */}
+      {mounted ? (
+        <button
+          onClick={toggleMusic}
+          aria-label={playing ? "Pause music" : "Play music"}
+          className="fixed bottom-6 right-5 z-50 flex items-center justify-center rounded-full shadow-lg"
+          style={{
+            width: "48px", height: "48px",
+            background: "rgba(20,20,20,0.85)",
+            border: "1px solid rgba(201,169,110,0.4)",
+            backdropFilter: "blur(10px)",
+          }}
+        >
+          {playing ? (
+            <svg className="music-disc" width="26" height="26" viewBox="0 0 24 24" fill="none">
+              <circle cx="12" cy="12" r="10" stroke="#C9A96E" strokeWidth="1.2" />
+              <circle cx="12" cy="12" r="3" fill="#C9A96E" />
+              <circle cx="12" cy="12" r="1" fill="#0E0E0E" />
+            </svg>
+          ) : (
+            <Music className="w-5 h-5" style={{ color: "#C9A96E", opacity: 0.6 }} />
+          )}
+        </button>
+      ) : null}
 
     </div>
   );
