@@ -44,6 +44,21 @@ export default function Home() {
   const [entered, setEntered] = useState(false);
   const [playing, setPlaying] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const installPromptRef = useRef<any>(null);
+  const [installable, setInstallable] = useState(false);
+
+  useEffect(() => {
+    const handler = (e: Event) => { e.preventDefault(); installPromptRef.current = e; setInstallable(true); };
+    window.addEventListener("beforeinstallprompt", handler);
+    return () => window.removeEventListener("beforeinstallprompt", handler);
+  }, []);
+
+  function handleInstall() {
+    const prompt = installPromptRef.current;
+    if (!prompt) return;
+    prompt.prompt();
+    prompt.userChoice.then(() => { installPromptRef.current = null; setInstallable(false); });
+  }
 
   useEffect(() => {
     setMounted(true);
@@ -226,6 +241,16 @@ export default function Home() {
               <span className="text-xs uppercase tracking-[0.4em]" style={{ color: "#C9A96E", opacity: 0.8 }}>Tap to Enter</span>
             </div>
           </div>
+
+          {installable ? (
+            <button
+              onClick={(e) => { e.stopPropagation(); handleInstall(); }}
+              className="mt-6 flex items-center gap-2 px-6 py-2.5 rounded-full text-xs font-semibold uppercase tracking-widest"
+              style={{ background: "rgba(201,169,110,0.12)", border: "1px solid rgba(201,169,110,0.3)", color: "#C9A96E" }}
+            >
+              ⬇ Install App
+            </button>
+          ) : null}
         </div>
       ) : null}
 
