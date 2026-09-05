@@ -7,6 +7,7 @@ const geist = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
 const galada = Galada({ variable: "--font-galada", subsets: ["bengali"], weight: "400" });
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://utsav.databind.in"),
   title: "প্ৰিয়বোধী মহোৎসব | Galsi, Purba Bardhaman",
   description:
     "You are cordially invited to Priyabodhi Mahotsav on 20 December 2026 at Galsi, Purba Bardhaman.",
