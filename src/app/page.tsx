@@ -48,6 +48,8 @@ export default function Home() {
   const [installable, setInstallable] = useState(false);
 
   useEffect(() => {
+    const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+    if (!isMobile) return;
     const handler = (e: Event) => { e.preventDefault(); installPromptRef.current = e; setInstallable(true); };
     window.addEventListener("beforeinstallprompt", handler);
     return () => window.removeEventListener("beforeinstallprompt", handler);
