@@ -242,7 +242,7 @@ export default function Home() {
             <div className="flex-1 h-px w-16" style={{ background: "linear-gradient(90deg, #C9A96E, transparent)" }} />
           </div>
 
-          <h1 className="event-title splash-title mb-2" style={{ fontSize: "clamp(2.8rem, 12vw, 4.5rem)", letterSpacing: "0.06em", lineHeight: 1.6 }}>
+          <h1 className="event-title splash-title mb-2" style={{ fontSize: "clamp(5rem, 28vw, 8rem)", letterSpacing: "0.06em", lineHeight: 1.6 }}>
             প্ৰিয়বোধী
           </h1>
           <p className="shimmer-text font-black mb-10" style={{ fontSize: "clamp(1rem, 4vw, 1.4rem)", letterSpacing: "0.1em" }}>
