@@ -16,7 +16,7 @@ export const metadata: Metadata = {
     type: "website",
     images: [
       {
-        url: "/og-image.png",
+        url: "/api/og",
         width: 1200,
         height: 630,
         alt: "প্ৰিয়বোধী মহোৎসব",
@@ -27,7 +27,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "প্ৰিয়বোধী মহোৎসব | 20 December 2026",
     description: "You are cordially invited — Galsi, Purba Bardhaman.",
-    images: ["/og-image.png"],
+    images: ["/api/og"],
   },
 };
 
