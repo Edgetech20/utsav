@@ -128,7 +128,7 @@ export default function Home() {
           <div className="flex-1 h-px" style={{ background: "linear-gradient(90deg, #C9A96E, transparent)" }} />
         </div>
 
-        <p className="text-xs uppercase tracking-[0.4em] mb-4" style={{ color: "#C9A96E", opacity: 0.5 }}>
+        <p className="uppercase tracking-[0.4em] mb-4" style={{ color: "#C9A96E", opacity: 0.5, fontSize: "0.6rem" }}>
           You are cordially invited to
         </p>
 
@@ -241,25 +241,27 @@ export default function Home() {
       {/* ── CTAs ── */}
       <div className="w-full max-w-lg px-5 flex flex-col gap-3 pb-6" style={{ background: "#0E0E0E" }}>
         <a
+          data-reveal
           href={EVENT.mapsUrl}
           target="_blank"
           rel="noopener noreferrer"
           onClick={handleMap}
           className="flex items-center justify-center gap-2 w-full py-4 rounded-2xl font-bold text-sm transition-all hover:brightness-110 active:scale-[0.98]"
-          style={{ background: "linear-gradient(90deg, #9A7840, #C9A96E, #E8D5B0, #C9A96E, #9A7840)", backgroundSize: "200% auto", color: "#0E0E0E" }}
+          style={{ background: "linear-gradient(90deg, #9A7840, #C9A96E, #E8D5B0, #C9A96E, #9A7840)", backgroundSize: "200% auto", color: "#0E0E0E", transitionDelay: "0ms" }}
         >
           <Navigation className="w-4 h-4" />
           Get Directions on Google Maps
         </a>
 
         <button
+          data-reveal
           onClick={handleAttend}
           disabled={attended}
           className="flex items-center justify-center gap-2 w-full py-4 rounded-2xl font-semibold text-sm border transition-all active:scale-[0.98]"
           style={
             attended
-              ? { background: "rgba(34,197,94,0.08)", borderColor: "#22c55e", color: "#4ade80" }
-              : { background: "transparent", borderColor: "rgba(201,169,110,0.35)", color: "#C9A96E" }
+              ? { background: "rgba(34,197,94,0.08)", borderColor: "#22c55e", color: "#4ade80", transitionDelay: "120ms" }
+              : { background: "transparent", borderColor: "rgba(201,169,110,0.35)", color: "#C9A96E", transitionDelay: "120ms" }
           }
         >
           {attended ? (
