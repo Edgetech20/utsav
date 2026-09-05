@@ -169,8 +169,7 @@ export default function Home() {
           100% { background-position:  300% center; }
         }
         .event-title-wrap {
-          animation: title-entrance 6s cubic-bezier(0.16,1,0.3,1) 0.3s both,
-                     title-float    5s    ease-in-out              6.5s infinite;
+          animation: title-float 5s ease-in-out 1s infinite;
         }
         .event-title {
           font-family: var(--font-galada), serif;
@@ -184,6 +183,12 @@ export default function Home() {
           background-clip: text;
           animation: shimmer-gold 6s linear infinite;
         }
+        @keyframes splash-zoom-in {
+          0%   { opacity: 0; transform: scale(0.3); filter: blur(10px); }
+          60%  { opacity: 1; filter: blur(0); }
+          100% { opacity: 1; transform: scale(1); filter: blur(0); }
+        }
+        .splash-title { animation: splash-zoom-in 5s cubic-bezier(0.16,1,0.3,1) 0.2s both; }
         @keyframes splash-fade-out {
           0%   { opacity: 1; }
           100% { opacity: 0; pointer-events: none; }
@@ -237,7 +242,7 @@ export default function Home() {
             <div className="flex-1 h-px w-16" style={{ background: "linear-gradient(90deg, #C9A96E, transparent)" }} />
           </div>
 
-          <h1 className="event-title mb-2" style={{ fontSize: "clamp(2.8rem, 12vw, 4.5rem)", letterSpacing: "0.06em", lineHeight: 1.6 }}>
+          <h1 className="event-title splash-title mb-2" style={{ fontSize: "clamp(2.8rem, 12vw, 4.5rem)", letterSpacing: "0.06em", lineHeight: 1.6 }}>
             প্ৰিয়বোধী
           </h1>
           <p className="shimmer-text font-black mb-10" style={{ fontSize: "clamp(1rem, 4vw, 1.4rem)", letterSpacing: "0.1em" }}>
