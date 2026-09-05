@@ -45,11 +45,13 @@ export default function Home() {
   const [playing, setPlaying] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const installPromptRef = useRef<any>(null);
+  const [isMobile, setIsMobile] = useState(false);
   const [installable, setInstallable] = useState(false);
 
   useEffect(() => {
-    const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-    if (!isMobile) return;
+    const mobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+    setIsMobile(mobile);
+    if (!mobile) return;
     const handler = (e: Event) => { e.preventDefault(); installPromptRef.current = e; setInstallable(true); };
     window.addEventListener("beforeinstallprompt", handler);
     return () => window.removeEventListener("beforeinstallprompt", handler);
@@ -244,11 +246,15 @@ export default function Home() {
             </div>
           </div>
 
-          {installable ? (
+          {isMobile ? (
             <button
-              onClick={(e) => { e.stopPropagation(); handleInstall(); }}
-              className="mt-6 flex items-center gap-2 px-6 py-2.5 rounded-full text-xs font-semibold uppercase tracking-widest"
-              style={{ background: "rgba(201,169,110,0.12)", border: "1px solid rgba(201,169,110,0.3)", color: "#C9A96E" }}
+              onClick={(e) => { e.stopPropagation(); if (installable) handleInstall(); }}
+              className="mt-5 flex items-center gap-2 px-6 py-2.5 rounded-full text-xs font-semibold uppercase tracking-widest"
+              style={{
+                background: "rgba(201,169,110,0.12)",
+                border: "1px solid rgba(201,169,110,0.3)",
+                color: installable ? "#C9A96E" : "rgba(201,169,110,0.4)",
+              }}
             >
               ⬇ Install App
             </button>
