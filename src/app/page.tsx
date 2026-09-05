@@ -46,22 +46,29 @@ export default function Home() {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const installPromptRef = useRef<any>(null);
   const [isMobile, setIsMobile] = useState(false);
+  const [isIOS, setIsIOS] = useState(false);
   const [installable, setInstallable] = useState(false);
+  const [showIOSHint, setShowIOSHint] = useState(false);
 
   useEffect(() => {
-    const mobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-    setIsMobile(mobile);
-    if (!mobile) return;
+    const ios = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+    const android = /Android/i.test(navigator.userAgent);
+    setIsIOS(ios);
+    setIsMobile(ios || android);
+    if (!android) return;
     const handler = (e: Event) => { e.preventDefault(); installPromptRef.current = e; setInstallable(true); };
     window.addEventListener("beforeinstallprompt", handler);
     return () => window.removeEventListener("beforeinstallprompt", handler);
   }, []);
 
-  function handleInstall() {
-    const prompt = installPromptRef.current;
-    if (!prompt) return;
-    prompt.prompt();
-    prompt.userChoice.then(() => { installPromptRef.current = null; setInstallable(false); });
+  function handleInstall(e: React.MouseEvent) {
+    e.stopPropagation();
+    if (installPromptRef.current) {
+      installPromptRef.current.prompt();
+      installPromptRef.current.userChoice.then(() => { installPromptRef.current = null; setInstallable(false); });
+    } else if (isIOS) {
+      setShowIOSHint(true);
+    }
   }
 
   useEffect(() => {
@@ -248,16 +255,58 @@ export default function Home() {
 
           {isMobile ? (
             <button
-              onClick={(e) => { e.stopPropagation(); if (installable) handleInstall(); }}
+              onClick={handleInstall}
               className="mt-5 flex items-center gap-2 px-6 py-2.5 rounded-full text-xs font-semibold uppercase tracking-widest"
               style={{
-                background: "rgba(201,169,110,0.12)",
-                border: "1px solid rgba(201,169,110,0.3)",
-                color: installable ? "#C9A96E" : "rgba(201,169,110,0.4)",
+                background: "rgba(201,169,110,0.15)",
+                border: "1px solid rgba(201,169,110,0.5)",
+                color: "#C9A96E",
               }}
             >
               ⬇ Install App
             </button>
+          ) : null}
+
+          {/* iOS install instructions sheet */}
+          {showIOSHint ? (
+            <div
+              onClick={(e) => e.stopPropagation()}
+              style={{
+                position: "fixed", inset: 0, zIndex: 200,
+                background: "rgba(0,0,0,0.7)",
+                display: "flex", alignItems: "flex-end", justifyContent: "center",
+              }}
+            >
+              <div
+                style={{
+                  width: "100%", maxWidth: 480,
+                  background: "#1A1A1A",
+                  borderRadius: "20px 20px 0 0",
+                  border: "1px solid rgba(201,169,110,0.2)",
+                  padding: "28px 24px 40px",
+                }}
+              >
+                <p className="text-center font-bold mb-4" style={{ color: "#E8D5B0", fontSize: "1rem" }}>
+                  Install on iPhone
+                </p>
+                <div className="flex flex-col gap-3">
+                  {[
+                    "1. Tap the Share button (□↑) at the bottom of Safari",
+                    "2. Scroll down and tap \"Add to Home Screen\"",
+                    "3. Tap \"Add\" in the top right",
+                  ].map((step) => (
+                    <p key={step} className="text-sm" style={{ color: "#C9A96E", opacity: 0.85 }}>{step}</p>
+                  ))}
+                </div>
+                <button
+                  onClick={() => setShowIOSHint(false)}
+                  className="mt-6 w-full py-3 rounded-xl text-sm font-semibold"
+                  style={{ background: "rgba(201,169,110,0.15)", color: "#C9A96E", border: "1px solid rgba(201,169,110,0.3)" }}
+                >
+                  Got it
+                </button>
+              </div>
+            </div>
           ) : null}
         </div>
       ) : null}
