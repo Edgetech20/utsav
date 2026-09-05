@@ -1,17 +1,18 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { MapPin, Calendar, Navigation, CheckCircle } from "lucide-react";
+import { MapPin, Calendar, Navigation, CheckCircle, ChevronDown, Stethoscope, UtensilsCrossed, Footprints, BookOpen, Camera, BedDouble, ShoppingBag, Music, Mic, Palette, Theater, Sparkles } from "lucide-react";
 
 const EVENT = {
   title: "প্ৰিয়বোধী মহোৎসব",
-  date: "20 December 2026",
+  date: "Sunday, 20 December 2026",
   venue: "Galsi, Purba Bardhaman",
   mapsUrl:
     "https://www.google.com/maps/place/Galsi+Mahavidyalaya/@23.3508251,87.6844077,17z/data=!3m1!4b1!4m6!3m5!1s0x39f82d45b3555345:0x3c34436188e7aae6!8m2!3d23.3508251!4d87.6844077",
   embedUrl:
     "https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3667!2d87.6844077!3d23.3508251!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x39f82d45b3555345%3A0x3c34436188e7aae6!2sGalsi%20Mahavidyalaya!5e0!3m2!1sen!2sin!4v1700000000000!5m2!1sen!2sin",
 };
+
 
 const TARGET_DATE = new Date("2026-12-20T00:00:00").getTime();
 
@@ -38,10 +39,29 @@ function useCountdown() {
 export default function Home() {
   const [attended, setAttended] = useState(false);
   const [attendCount, setAttendCount] = useState<number | null>(null);
+  const [expanded, setExpanded] = useState<number | null>(null);
   const t = useCountdown();
 
   useEffect(() => {
     fetch("/api/track?type=view", { method: "POST" }).catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    const els = document.querySelectorAll("[data-reveal]");
+    const io = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((e) => {
+          if (e.isIntersecting) {
+            e.target.classList.add("revealed");
+          } else {
+            e.target.classList.remove("revealed");
+          }
+        });
+      },
+      { threshold: 0.3, rootMargin: "0px 0px -80px 0px" }
+    );
+    els.forEach((el) => io.observe(el));
+    return () => io.disconnect();
   }, []);
 
   function handleMap() {
@@ -77,6 +97,23 @@ export default function Home() {
           50%       { opacity: 1;    transform: scaleX(1); }
         }
         .pulse-bar { animation: pulse-bar 2s ease-in-out infinite; }
+        [data-reveal] {
+          opacity: 0;
+          transform: translateX(-48px);
+          transition: opacity 0.55s cubic-bezier(0.16, 1, 0.3, 1), transform 0.55s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        [data-reveal].revealed {
+          opacity: 1;
+          transform: translateX(0);
+        }
+        [data-reveal] .reveal-bar {
+          transform: scaleX(0);
+          transform-origin: left;
+          transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1) 0.25s;
+        }
+        [data-reveal].revealed .reveal-bar {
+          transform: scaleX(1);
+        }
       `}</style>
 
       {/* ── Hero ── */}
@@ -91,17 +128,28 @@ export default function Home() {
           <div className="flex-1 h-px" style={{ background: "linear-gradient(90deg, #C9A96E, transparent)" }} />
         </div>
 
-        <p className="text-xs uppercase tracking-[0.4em] mb-5" style={{ color: "#C9A96E", opacity: 0.5 }}>
+        <p className="text-xs uppercase tracking-[0.4em] mb-4" style={{ color: "#C9A96E", opacity: 0.5 }}>
           You are cordially invited to
         </p>
 
-        <div className="flex flex-col items-center gap-1 mb-2 mt-4 py-4">
-          <h1 className="shimmer-text font-black" style={{ fontSize: "clamp(2rem, 9vw, 3rem)", letterSpacing: "0.03em", lineHeight: 1.6 }}>
+        <p className="shimmer-text font-semibold text-center leading-relaxed mb-0" style={{ maxWidth: "min(90vw, 480px)" }}>
+          <span style={{ fontSize: "clamp(0.65rem, 2.5vw, 0.8rem)" }}>যুগপুরুষোত্তম পরমপ্রেমময়</span>
+          <br />
+          <span style={{ fontSize: "clamp(1.1rem, 4.5vw, 1.5rem)", whiteSpace: "nowrap" }}>শ্রীশ্রীঠাকুর অনুকূলচন্দ্রের</span>
+          {" "}
+          <span style={{ fontSize: "clamp(0.85rem, 3.5vw, 1.1rem)", whiteSpace: "nowrap" }}>শুভ ১৩৯তম জন্ম মহোৎসব তৎসহ</span>
+        </p>
+
+        <div className="flex flex-col items-center gap-0 mb-2 mt-1 py-1">
+          <h1 className="shimmer-text font-black" style={{ fontSize: "clamp(3rem, 13vw, 5rem)", letterSpacing: "0.03em", lineHeight: 1.6 }}>
             প্ৰিয়বোধী
           </h1>
           <h2 className="shimmer-text font-black" style={{ fontSize: "clamp(1.4rem, 6vw, 2rem)", letterSpacing: "0.06em", lineHeight: 1.6, opacity: 0.85 }}>
             মহোৎসব
           </h2>
+          <p className="shimmer-text font-semibold" style={{ fontSize: "clamp(0.7rem, 2.5vw, 0.95rem)", letterSpacing: "0.08em", lineHeight: 1.6 }}>
+            প্রথম বর্ষ
+          </p>
         </div>
 
         <p className="mt-3 text-sm font-medium tracking-wide" style={{ color: "#C9A96E", opacity: 0.75 }}>
@@ -226,6 +274,122 @@ export default function Home() {
             "Jai Guru — I will Attend"
           )}
         </button>
+      </div>
+
+      {/* ── Attractions ── */}
+      <div className="w-full py-10" style={{ background: "#141414" }}>
+        <div className="flex items-center gap-3 px-5 mb-8">
+          <div className="flex-1 h-px" style={{ background: "linear-gradient(90deg, transparent, #C9A96E)" }} />
+          <span className="text-xs uppercase tracking-[0.3em]" style={{ color: "#C9A96E", opacity: 0.55 }}>Specialties &amp; Attractions</span>
+          <div className="flex-1 h-px" style={{ background: "linear-gradient(90deg, #C9A96E, transparent)" }} />
+        </div>
+        <div className="flex flex-col">
+          {[
+            { label: "Medical Camp",     img: [], Icon: Stethoscope },
+            { label: "Cheap Canteen",    img: [], Icon: UtensilsCrossed },
+            { label: "Jajan Parikrama",  img: [], Icon: Footprints },
+            { label: "Diksha Grahan",    img: [], Icon: BookOpen },
+            { label: "Photo Gallery",    img: [], Icon: Camera },
+            { label: "Accommodation",    img: [], Icon: BedDouble },
+            { label: "Ananda Bazar",     img: [], Icon: ShoppingBag },
+            { label: "Music Event",      img: [], Icon: Music },
+            { label: "Istaprasanga",     img: [], Icon: Mic },
+            { label: "Cultural Events",  img: [], Icon: Palette },
+            { label: "Drama",            img: [], Icon: Theater },
+            { label: "And Many More…",   img: [], Icon: Sparkles },
+          ].map(({ label, img, Icon }, i) => {
+            const open = expanded === i;
+            return (
+              <div
+                key={label}
+                data-reveal
+                style={{ borderBottom: i < 11 ? "1px solid rgba(201,169,110,0.06)" : "none" }}
+              >
+                {/* Row header — clickable */}
+                <button
+                  onClick={() => setExpanded(open ? null : i)}
+                  className="w-full flex items-center gap-5 px-6 py-4 relative text-left"
+                  style={{ background: open ? "rgba(201,169,110,0.04)" : "transparent" }}
+                >
+                  <div
+                    className="reveal-bar absolute left-0 top-0 bottom-0 w-[3px] rounded-r-full"
+                    style={{ background: "linear-gradient(180deg, #C9A96E, #9A7840)" }}
+                  />
+                  <span
+                    className="font-black tabular-nums select-none"
+                    style={{ color: "#C9A96E", opacity: open ? 0.5 : 0.18, fontSize: "clamp(2rem, 7vw, 2.8rem)", lineHeight: 1, minWidth: "2.2ch", transition: "opacity 0.3s" }}
+                  >
+                    {String(i + 1).padStart(2, "0")}
+                  </span>
+                  <span
+                    className="flex-1 font-semibold tracking-wide"
+                    style={{ color: open ? "#C9A96E" : "#E8D5B0", fontSize: "clamp(1rem, 3.8vw, 1.15rem)", transition: "color 0.3s" }}
+                  >
+                    {label}
+                  </span>
+                  <ChevronDown
+                    className="w-4 h-4 flex-shrink-0"
+                    style={{ color: "#C9A96E", opacity: 0.6, transition: "transform 0.35s cubic-bezier(0.16,1,0.3,1)", transform: open ? "rotate(180deg)" : "rotate(0deg)" }}
+                  />
+                </button>
+
+                {/* Expandable image panel */}
+                <div
+                  style={{
+                    maxHeight: open ? "280px" : "0px",
+                    overflow: "hidden",
+                    transition: "max-height 0.45s cubic-bezier(0.16,1,0.3,1)",
+                  }}
+                >
+                  <div className="mx-6 mb-4">
+                    {(Array.isArray(img) ? img : [img]).filter(Boolean).length > 0 ? (
+                      <div className="grid gap-2" style={{ gridTemplateColumns: "1fr 1fr" }}>
+                        {(Array.isArray(img) ? img : [img]).map((src, idx) => (
+                          <div key={idx} className="rounded-xl overflow-hidden aspect-video" style={{ border: "1px solid rgba(201,169,110,0.2)" }}>
+                            <img src={src} alt={`${label} ${idx + 1}`} className="w-full h-full object-cover" loading="lazy" />
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div
+                        className="rounded-xl flex flex-col items-center justify-center gap-2 py-8"
+                        style={{ background: "#1A1A1A", border: "1px solid rgba(201,169,110,0.15)" }}
+                      >
+                        <Icon className="w-8 h-8" style={{ color: "#C9A96E", opacity: 0.35 }} />
+                        <p className="text-xs uppercase tracking-widest" style={{ color: "#C9A96E", opacity: 0.35 }}>
+                          Photo coming soon
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+
+      {/* ── Contact ── */}
+      <div className="w-full px-5 py-8" style={{ background: "#0E0E0E" }}>
+        <div className="flex items-center gap-3 mb-6">
+          <div className="flex-1 h-px" style={{ background: "linear-gradient(90deg, transparent, #C9A96E)" }} />
+          <span className="text-xs uppercase tracking-[0.3em]" style={{ color: "#C9A96E", opacity: 0.55 }}>Contact</span>
+          <div className="flex-1 h-px" style={{ background: "linear-gradient(90deg, #C9A96E, transparent)" }} />
+        </div>
+        <div className="flex flex-col gap-3">
+          {[
+            { label: "Organiser",  value: "Xxxx Xxxxxx" },
+            { label: "Phone",      value: "+91 XXXXX XXXXX" },
+            { label: "WhatsApp",   value: "+91 XXXXX XXXXX" },
+            { label: "Email",      value: "xxxx@xxxx.com" },
+          ].map(({ label, value }) => (
+            <div key={label} className="flex items-center justify-between px-4 py-3 rounded-xl" style={{ background: "#141414", border: "1px solid rgba(201,169,110,0.12)" }}>
+              <span className="text-xs uppercase tracking-widest" style={{ color: "#C9A96E", opacity: 0.55 }}>{label}</span>
+              <span className="text-sm font-medium" style={{ color: "#E8D5B0" }}>{value}</span>
+            </div>
+          ))}
+        </div>
       </div>
 
       {/* ── Coming Soon ── */}
