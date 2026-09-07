@@ -6,11 +6,11 @@ import { MapPin, Calendar, Navigation, CheckCircle, ChevronDown, Stethoscope, Ut
 const EVENT = {
   title: "প্ৰিয়বোধী মহোৎসব",
   date: "Sunday, 20 December 2026",
-  venue: "Galsi, Purba Bardhaman",
+  venue: "M N Academic Trust, BUDBUD NH2 BYPASS, NH2, Grand Trunk Rd, Budbud, West Bengal 713403",
   mapsUrl:
-    "https://www.google.com/maps/place/Galsi+Mahavidyalaya/@23.3508251,87.6844077,17z/data=!3m1!4b1!4m6!3m5!1s0x39f82d45b3555345:0x3c34436188e7aae6!8m2!3d23.3508251!4d87.6844077",
+    "https://www.google.com/maps/search/?api=1&query=M+N+Academic+Trust,+Budbud+NH2+Bypass,+Grand+Trunk+Rd,+Budbud,+West+Bengal+713403",
   embedUrl:
-    "https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3667!2d87.6844077!3d23.3508251!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x39f82d45b3555345%3A0x3c34436188e7aae6!2sGalsi%20Mahavidyalaya!5e0!3m2!1sen!2sin!4v1700000000000!5m2!1sen!2sin",
+    "https://maps.google.com/maps?q=M+N+Academic+Trust,+Budbud+NH2+Bypass,+Grand+Trunk+Rd,+Budbud,+West+Bengal+713403&output=embed",
 };
 
 
