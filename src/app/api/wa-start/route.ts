@@ -1,10 +1,12 @@
 import { NextResponse } from "next/server";
 import { spawn } from "child_process";
-import path from "path";
 
 export async function POST() {
   try {
-    const bot = spawn("node", [path.join(process.cwd(), "whatsapp-bot.js")], {
+    // Build path dynamically — prevents Turbopack static analysis from treating it as a module
+    const cwd = process.cwd();
+    const script = ["whatsapp-bot", "js"].join(".");
+    const bot = spawn("node", [cwd + "/" + script], {
       detached: true,
       stdio: "ignore",
     });
