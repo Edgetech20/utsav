@@ -1,18 +1,8 @@
 import { NextResponse } from "next/server";
-import { spawn } from "child_process";
+import { exec } from "child_process";
 
 export async function POST() {
-  try {
-    // Build path dynamically — prevents Turbopack static analysis from treating it as a module
-    const cwd = process.cwd();
-    const script = ["whatsapp-bot", "js"].join(".");
-    const bot = spawn("node", [cwd + "/" + script], {
-      detached: true,
-      stdio: "ignore",
-    });
-    bot.unref();
-    return NextResponse.json({ ok: true });
-  } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 500 });
-  }
+  // Use PM2 via shell string — Turbopack does not analyze exec string args as module paths
+  exec("pm2 describe wa-bot > /dev/null 2>&1 && pm2 restart wa-bot || pm2 start whatsapp-bot.js --name wa-bot");
+  return NextResponse.json({ ok: true });
 }
