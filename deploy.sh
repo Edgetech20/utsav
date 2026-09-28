@@ -8,7 +8,7 @@ echo "==> Installing dependencies..."
 npm install --production=false
 
 echo "==> Installing WhatsApp bot dependencies..."
-npm install whatsapp-web.js qrcode-terminal qrcode
+npm install whatsapp-web.js qrcode-terminal qrcode nodemailer
 
 echo "==> Building..."
 npm run build
