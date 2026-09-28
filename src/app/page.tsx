@@ -1,16 +1,16 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { MapPin, Calendar, Navigation, CheckCircle, ChevronDown, Stethoscope, UtensilsCrossed, Footprints, BookOpen, Camera, BedDouble, ShoppingBag, Music, Mic, Palette, Theater, Sparkles } from "lucide-react";
+import { MapPin, Calendar, Navigation, CheckCircle, ChevronDown, Stethoscope, UtensilsCrossed, Footprints, BookOpen, Camera, BedDouble, ShoppingBag, Music, Mic, Palette, Theater, Sparkles, ParkingSquare } from "lucide-react";
 
 const EVENT = {
   title: "প্ৰিয়বোধী মহোৎসব",
   date: "Sunday, 20 December 2026",
-  venue: "M N Academic Trust, BUDBUD NH2 BYPASS, NH2, Grand Trunk Rd, Budbud, West Bengal 713403",
+  venue: "Alinagar Playground, Bhatar, West Bengal 713125",
   mapsUrl:
-    "https://www.google.com/maps/search/?api=1&query=M+N+Academic+Trust,+Budbud+NH2+Bypass,+Grand+Trunk+Rd,+Budbud,+West+Bengal+713403",
+    "https://www.google.com/maps/search/?api=1&query=Alinagar+Playground,+Bhatar,+West+Bengal+713125",
   embedUrl:
-    "https://maps.google.com/maps?q=M+N+Academic+Trust,+Budbud+NH2+Bypass,+Grand+Trunk+Rd,+Budbud,+West+Bengal+713403&output=embed",
+    "https://maps.google.com/maps?q=Alinagar+Playground,+Bhatar,+West+Bengal+713125&output=embed",
 };
 
 
@@ -41,6 +41,9 @@ export default function Home() {
   const [attendCount, setAttendCount] = useState<number | null>(null);
   const [expanded, setExpanded] = useState<number | null>(null);
   const [mounted, setMounted] = useState(false);
+  const [rsvpForm, setRsvpForm] = useState({ name: "", whatsapp: "", address: "" });
+  const [rsvpState, setRsvpState] = useState<"idle" | "loading" | "done" | "error">("idle");
+  const [showRsvpModal, setShowRsvpModal] = useState(false);
   const [entered, setEntered] = useState(false);
   const [playing, setPlaying] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -426,7 +429,6 @@ export default function Home() {
             <span className="text-[10px] uppercase tracking-widest" style={{ opacity: 0.55 }}>Place</span>
           </div>
           <p className="text-sm font-semibold leading-snug" style={{ color: "#E8D5B0" }}>{EVENT.venue}</p>
-          <span className="text-[10px] font-bold uppercase tracking-widest mt-0.5 px-1.5 py-0.5 rounded self-start" style={{ background: "rgba(201,169,110,0.15)", color: "#C9A96E" }}>TBD</span>
         </div>
       </div>
 
@@ -467,7 +469,7 @@ export default function Home() {
 
         <button
           data-reveal
-          onClick={handleAttend}
+          onClick={() => { if (!attended) setShowRsvpModal(true); }}
           disabled={attended}
           className="flex items-center justify-center gap-2 w-full py-4 rounded-2xl font-semibold text-sm border transition-all active:scale-[0.98]"
           style={
@@ -510,6 +512,7 @@ export default function Home() {
             { label: "Istaprasanga",     img: [], Icon: Mic },
             { label: "Cultural Events",  img: [], Icon: Palette },
             { label: "Drama",            img: [], Icon: Theater },
+            { label: "Bus & Car Parking", img: [], Icon: ParkingSquare },
             { label: "And Many More…",   img: [], Icon: Sparkles },
           ].map(({ label, img, Icon }, i) => {
             const open = expanded === i;
@@ -517,7 +520,7 @@ export default function Home() {
               <div
                 key={label}
                 data-reveal
-                style={{ borderBottom: i < 11 ? "1px solid rgba(201,169,110,0.06)" : "none" }}
+                style={{ borderBottom: i < 12 ? "1px solid rgba(201,169,110,0.06)" : "none" }}
               >
                 {/* Row header — clickable */}
                 <button
@@ -595,8 +598,8 @@ export default function Home() {
           {[
             { label: "Organiser",  value: "Xxxx Xxxxxx" },
             { label: "Phone",      value: "+91 XXXXX XXXXX" },
-            { label: "WhatsApp",   value: "+91 XXXXX XXXXX" },
-            { label: "Email",      value: "xxxx@xxxx.com" },
+            { label: "WhatsApp",   value: "+91 91535 71828" },
+            { label: "Email",      value: "priyabodhimahotsav@gmail.com" },
           ].map(({ label, value }) => (
             <div key={label} className="flex items-center justify-between px-4 py-3 rounded-xl" style={{ background: "#141414", border: "1px solid rgba(201,169,110,0.12)" }}>
               <span className="text-xs uppercase tracking-widest" style={{ color: "#C9A96E", opacity: 0.55 }}>{label}</span>
@@ -605,6 +608,90 @@ export default function Home() {
           ))}
         </div>
       </div>
+
+      {/* ── RSVP Modal ── */}
+      {showRsvpModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-end justify-center"
+          style={{ background: "rgba(0,0,0,0.75)", backdropFilter: "blur(4px)" }}
+          onClick={(e) => { if (e.target === e.currentTarget) setShowRsvpModal(false); }}
+        >
+          <div
+            className="w-full max-w-lg rounded-t-3xl px-5 pt-6 pb-10 flex flex-col gap-5"
+            style={{ background: "#141414", border: "1px solid rgba(201,169,110,0.2)", borderBottom: "none" }}
+          >
+            {/* Handle + header */}
+            <div className="flex flex-col items-center gap-4">
+              <div className="w-10 h-1 rounded-full" style={{ background: "rgba(201,169,110,0.3)" }} />
+              <p className="font-bold text-base tracking-wide" style={{ color: "#E8D5B0" }}>Confirm Your Attendance</p>
+            </div>
+
+            {rsvpState === "done" ? (
+              <div className="flex flex-col items-center gap-3 py-6 text-center">
+                <CheckCircle className="w-10 h-10" style={{ color: "#C9A96E" }} />
+                <p className="font-bold text-base" style={{ color: "#E8D5B0" }}>Thank you! We'll be in touch.</p>
+                <p className="text-xs" style={{ color: "#C9A96E", opacity: 0.55 }}>Your details have been recorded.</p>
+                <button
+                  onClick={() => setShowRsvpModal(false)}
+                  className="mt-3 px-6 py-2.5 rounded-xl text-xs font-bold uppercase tracking-widest"
+                  style={{ background: "rgba(201,169,110,0.15)", color: "#C9A96E" }}
+                >Close</button>
+              </div>
+            ) : (
+              <form
+                onSubmit={async (e) => {
+                  e.preventDefault();
+                  setRsvpState("loading");
+                  try {
+                    const res = await fetch("/api/rsvp", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(rsvpForm) });
+                    if (res.ok) { setRsvpState("done"); handleAttend(); }
+                    else setRsvpState("error");
+                  } catch { setRsvpState("error"); }
+                }}
+                className="flex flex-col gap-4"
+              >
+                {(["name", "whatsapp", "address"] as const).map((field) => (
+                  <div key={field} className="flex flex-col gap-1.5">
+                    <label className="text-xs uppercase tracking-widest" style={{ color: "#C9A96E", opacity: 0.55 }}>
+                      {field === "name" ? "Full Name" : field === "whatsapp" ? "WhatsApp No." : "Address"}
+                    </label>
+                    {field === "address" ? (
+                      <textarea
+                        rows={3}
+                        required
+                        value={rsvpForm[field]}
+                        onChange={(e) => setRsvpForm(p => ({ ...p, [field]: e.target.value }))}
+                        className="rounded-xl px-4 py-3 text-sm resize-none outline-none"
+                        style={{ background: "#0E0E0E", border: "1px solid rgba(201,169,110,0.2)", color: "#E8D5B0", caretColor: "#C9A96E" }}
+                      />
+                    ) : (
+                      <input
+                        type={field === "whatsapp" ? "tel" : "text"}
+                        required
+                        value={rsvpForm[field]}
+                        onChange={(e) => setRsvpForm(p => ({ ...p, [field]: e.target.value }))}
+                        className="rounded-xl px-4 py-3 text-sm outline-none"
+                        style={{ background: "#0E0E0E", border: "1px solid rgba(201,169,110,0.2)", color: "#E8D5B0", caretColor: "#C9A96E" }}
+                      />
+                    )}
+                  </div>
+                ))}
+                {rsvpState === "error" && (
+                  <p className="text-xs text-center" style={{ color: "#ff6b6b" }}>Something went wrong. Please try again.</p>
+                )}
+                <button
+                  type="submit"
+                  disabled={rsvpState === "loading"}
+                  className="w-full py-3.5 rounded-xl font-bold text-sm tracking-widest uppercase"
+                  style={{ background: "linear-gradient(135deg, #C9A96E, #9A7840)", color: "#0E0E0E", opacity: rsvpState === "loading" ? 0.6 : 1 }}
+                >
+                  {rsvpState === "loading" ? "Submitting…" : "Confirm Attendance"}
+                </button>
+              </form>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* ── Coming Soon ── */}
       <div className="w-full max-w-lg px-5 pb-12" style={{ background: "#0E0E0E" }}>

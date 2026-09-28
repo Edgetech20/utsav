@@ -7,16 +7,34 @@ git pull origin master
 echo "==> Installing dependencies..."
 npm install --production=false
 
+echo "==> Installing WhatsApp bot dependencies..."
+npm install whatsapp-web.js qrcode-terminal qrcode
+
 echo "==> Building..."
 npm run build
 
-echo "==> Restarting app..."
-if command -v pm2 &> /dev/null; then
-  pm2 describe utsav &> /dev/null && pm2 restart utsav || pm2 start npm --name utsav -- start
-else
-  echo "PM2 not found. Install it: npm i -g pm2"
-  echo "Then run: pm2 start npm --name utsav -- start"
-  exit 1
+# ── PM2 ────────────────────────────────────────────────────
+if ! command -v pm2 &> /dev/null; then
+  echo "==> Installing PM2 globally..."
+  npm install -g pm2
 fi
 
-echo "==> Done. App is running via PM2 (name: utsav)"
+echo "==> Starting / restarting Next.js app..."
+pm2 describe utsav &> /dev/null \
+  && pm2 restart utsav \
+  || pm2 start npm --name utsav -- start
+
+echo "==> Starting / restarting WhatsApp bot..."
+pm2 describe wa-bot &> /dev/null \
+  && pm2 restart wa-bot \
+  || pm2 start whatsapp-bot.js --name wa-bot
+
+echo "==> Saving PM2 process list..."
+pm2 save
+
+echo ""
+echo "==> Done."
+echo "    Next.js → pm2 logs utsav"
+echo "    WA Bot  → pm2 logs wa-bot"
+echo ""
+echo "    To auto-start on server reboot: pm2 startup"
