@@ -55,7 +55,7 @@ const executablePath = CHROME_PATHS.find(p => fs2.existsSync(p));
 if (executablePath) console.log("Using Chrome:", executablePath);
 
 const client = new Client({
-  authStrategy: new LocalAuth({ dataPath: ".wwebjs_auth" }),
+  authStrategy: new LocalAuth({ dataPath: "/var/wwebjs_auth" }),
   puppeteer: {
     headless: true,
     ...(executablePath ? { executablePath } : {}),
