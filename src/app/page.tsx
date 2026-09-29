@@ -656,7 +656,7 @@ export default function Home() {
             { label: "WhatsApp",   value: "+91 91535 71828" },
             { label: "Email",      value: "priyabodhimahotsav@gmail.com" },
           ].map(({ label, value }) => (
-            <div key={label} className="flex items-center justify-between px-4 py-3 rounded-xl" style={{ background: "#141414", border: "1px solid rgba(201,169,110,0.12)" }}>
+            <div key={label} className="flex flex-col gap-1 px-4 py-3 rounded-xl" style={{ background: "#141414", border: "1px solid rgba(201,169,110,0.12)" }}>
               <span className="text-xs uppercase tracking-widest" style={{ color: "#C9A96E", opacity: 0.55 }}>{label}</span>
               <span className="text-sm font-medium" style={{ color: "#E8D5B0" }}>{value}</span>
             </div>
