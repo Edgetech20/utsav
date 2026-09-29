@@ -1,31 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
-import { readFileSync, writeFileSync, existsSync, mkdirSync } from "fs";
 import nodemailer from "nodemailer";
-import path from "path";
 import crypto from "crypto";
+import { db } from "@/lib/db";
 
-const OTP_FILE = path.join(process.cwd(), "data", "otp_store.json");
-const ALLOWED  = (process.env.ALLOWED_EMAILS ?? "").split(",").map(e => e.trim().toLowerCase());
-const SECRET   = process.env.ADMIN_SECRET ?? "admin123";
-
-type OtpStore = Record<string, { otp: string; expiresAt: number }>;
-
-function readStore(): OtpStore {
-  if (!existsSync(OTP_FILE)) return {};
-  try { return JSON.parse(readFileSync(OTP_FILE, "utf-8")); } catch { return {}; }
-}
-
-function saveStore(store: OtpStore) {
-  mkdirSync(path.dirname(OTP_FILE), { recursive: true });
-  writeFileSync(OTP_FILE, JSON.stringify(store, null, 2));
-}
+const SECRET = process.env.ADMIN_SECRET ?? "admin123";
 
 async function sendOtpEmail(to: string, otp: string) {
   const transporter = nodemailer.createTransport({
     service: "gmail",
     auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS },
   });
-
   await transporter.sendMail({
     from: `"Priyabodhi Admin" <${process.env.SMTP_USER}>`,
     to,
@@ -51,41 +35,40 @@ export async function POST(req: NextRequest) {
 
   // ── Step 1: request OTP ──
   if (email && !body.otp) {
-    if (!ALLOWED.includes(email))
+    const user = await db.adminUser.findUnique({ where: { email } });
+    if (!user)
       return NextResponse.json({ error: "Email not authorised" }, { status: 403 });
 
-    const store = readStore();
-    const existing = store[email];
-    // Rate limit: block if OTP was issued < 60s ago
-    if (existing && existing.expiresAt - 240000 > Date.now())
+    const existing = await db.otpStore.findUnique({ where: { email } });
+    if (existing && existing.expiresAt.getTime() - 240_000 > Date.now())
       return NextResponse.json({ error: "Please wait before requesting another OTP" }, { status: 429 });
 
     const otp = crypto.randomInt(100000, 999999).toString();
-    store[email] = { otp, expiresAt: Date.now() + 5 * 60 * 1000 };
-    saveStore(store);
+    await db.otpStore.upsert({
+      where: { email },
+      create: { email, otp, expiresAt: new Date(Date.now() + 5 * 60 * 1000) },
+      update: { otp, expiresAt: new Date(Date.now() + 5 * 60 * 1000) },
+    });
 
     try {
       await sendOtpEmail(email, otp);
     } catch (err: any) {
       return NextResponse.json({ error: "Failed to send email: " + err.message }, { status: 500 });
     }
-
     return NextResponse.json({ ok: true });
   }
 
   // ── Step 2: verify OTP ──
   if (email && body.otp) {
-    const store = readStore();
-    const record = store[email];
+    const record = await db.otpStore.findUnique({ where: { email } });
 
-    if (!record || Date.now() > record.expiresAt)
+    if (!record || Date.now() > record.expiresAt.getTime())
       return NextResponse.json({ error: "OTP expired. Request a new one." }, { status: 401 });
 
     if (body.otp.trim() !== record.otp)
       return NextResponse.json({ error: "Incorrect OTP" }, { status: 401 });
 
-    delete store[email];
-    saveStore(store);
+    await db.otpStore.delete({ where: { email } });
 
     const res = NextResponse.json({ ok: true });
     res.cookies.set("admin_auth", SECRET, {

@@ -3,13 +3,15 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { LayoutDashboard, Wifi, Users, ScrollText, LogOut } from "lucide-react";
+import { LayoutDashboard, Wifi, Users, ScrollText, LogOut, Car, BedDouble } from "lucide-react";
 
 const NAV = [
-  { label: "Dashboard",    href: "/admin/dashboard",          icon: LayoutDashboard },
-  { label: "WhatsApp",     href: "/admin/dashboard/whatsapp", icon: Wifi },
-  { label: "RSVP",         href: "/admin/dashboard/rsvp",     icon: Users },
-  { label: "Message Log",  href: "/admin/dashboard/logs",     icon: ScrollText },
+  { label: "Dashboard",      href: "/admin/dashboard",               icon: LayoutDashboard },
+  { label: "WhatsApp",       href: "/admin/dashboard/whatsapp",      icon: Wifi },
+  { label: "RSVP",           href: "/admin/dashboard/rsvp",          icon: Users },
+  { label: "Vehicles",       href: "/admin/dashboard/vehicles",      icon: Car },
+  { label: "Accommodation",  href: "/admin/dashboard/accommodation",  icon: BedDouble },
+  { label: "Message Log",    href: "/admin/dashboard/logs",          icon: ScrollText },
 ];
 
 export default function Sidebar({ children }: { children: React.ReactNode }) {

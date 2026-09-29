@@ -1,39 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { readFileSync, writeFileSync, existsSync, mkdirSync } from "fs";
-import path from "path";
-
-const DATA_FILE = path.join(process.cwd(), "data", "clicks.json");
-
-type Bucket = { ips: string[]; total: number; hits: number };
-type Data = { views: Bucket; attending: Bucket; mapClicks: Bucket };
-
-const empty = (): Data => ({
-  views: { ips: [], total: 0, hits: 0 },
-  attending: { ips: [], total: 0, hits: 0 },
-  mapClicks: { ips: [], total: 0, hits: 0 },
-});
-
-function read(): Data {
-  if (!existsSync(DATA_FILE)) {
-    mkdirSync(path.dirname(DATA_FILE), { recursive: true });
-    return empty();
-  }
-  try {
-    const d = JSON.parse(readFileSync(DATA_FILE, "utf-8"));
-    // back-fill hits for existing data that pre-dates this field
-    d.views.hits ??= d.views.total;
-    d.attending.hits ??= d.attending.total;
-    d.mapClicks ??= { ips: [], total: 0, hits: 0 };
-    d.mapClicks.hits ??= d.mapClicks.total;
-    return d;
-  } catch {
-    return empty();
-  }
-}
-
-function save(data: Data) {
-  writeFileSync(DATA_FILE, JSON.stringify(data, null, 2));
-}
+import { db } from "@/lib/db";
 
 function getIp(req: NextRequest): string {
   return (
@@ -46,29 +12,27 @@ function getIp(req: NextRequest): string {
 export async function POST(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const t = searchParams.get("type");
-  const type = t === "attend" ? "attending" : t === "map" ? "mapClicks" : "views";
+  const type = t === "attend" ? "attend" : t === "map" ? "map" : "view";
   const ip = getIp(req);
 
-  const data = read();
-  const bucket = data[type];
-  const isNew = !bucket.ips.includes(ip);
-  if (isNew) {
-    bucket.ips.push(ip);
-    bucket.total = bucket.ips.length;
-  }
-  bucket.hits += 1;
-  save(data);
+  const existing = await db.clickEvent.findFirst({ where: { type, ip } });
+  await db.clickEvent.create({ data: { type, ip } });
 
-  return NextResponse.json({ unique: bucket.total, hits: bucket.hits, isNew });
+  const [unique, hits] = await Promise.all([
+    db.clickEvent.groupBy({ by: ["ip"], where: { type } }).then(r => r.length),
+    db.clickEvent.count({ where: { type } }),
+  ]);
+
+  return NextResponse.json({ unique, hits, isNew: !existing });
 }
 
 export async function GET() {
-  const data = read();
-  return NextResponse.json({
-    views: data.views.total,
-    viewHits: data.views.hits,
-    attending: data.attending.total,
-    mapClicks: data.mapClicks.total,
-    mapHits: data.mapClicks.hits,
-  });
+  const [views, viewHits, attending, mapClicks, mapHits] = await Promise.all([
+    db.clickEvent.groupBy({ by: ["ip"], where: { type: "view" } }).then(r => r.length),
+    db.clickEvent.count({ where: { type: "view" } }),
+    db.clickEvent.groupBy({ by: ["ip"], where: { type: "attend" } }).then(r => r.length),
+    db.clickEvent.groupBy({ by: ["ip"], where: { type: "map" } }).then(r => r.length),
+    db.clickEvent.count({ where: { type: "map" } }),
+  ]);
+  return NextResponse.json({ views, viewHits, attending, mapClicks, mapHits });
 }

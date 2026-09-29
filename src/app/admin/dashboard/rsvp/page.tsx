@@ -3,46 +3,42 @@
 import { useEffect, useState } from "react";
 import { Trash2, RefreshCw, CheckCircle, Clock } from "lucide-react";
 
-type Entry = { name: string; whatsapp: string; address: string; submittedAt: string };
+type Entry = { id: number; name: string; whatsapp: string; address: string; submittedAt: string; waSent: boolean };
 
 export default function RsvpPage() {
   const [entries, setEntries] = useState<Entry[]>([]);
-  const [sent, setSent] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
-  const [acting, setActing] = useState<string | null>(null);
+  const [acting, setActing] = useState<number | null>(null);
 
   async function load() {
-    const rsvpRes = await fetch("/api/rsvp").then(r => r.json()).catch(() => ({}));
-    setEntries(rsvpRes?.entries ?? []);
-    setSent(rsvpRes?.sent ?? []);
+    const res = await fetch("/api/rsvp").then(r => r.json()).catch(() => ({}));
+    setEntries(res?.entries ?? []);
     setLoading(false);
   }
 
   useEffect(() => { load(); }, []);
 
-  async function handleDelete(key: string) {
+  async function handleDelete(id: number) {
     if (!confirm("Delete this registration?")) return;
-    setActing(key);
-    await fetch("/api/rsvp", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ key }) });
+    setActing(id);
+    await fetch("/api/rsvp", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id }) });
     await load();
     setActing(null);
   }
 
-  async function handleResend(key: string) {
-    setActing(key);
-    await fetch("/api/rsvp/resend", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ key }) });
+  async function handleResend(id: number) {
+    setActing(id);
+    await fetch("/api/rsvp/resend", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id }) });
     await load();
     setActing(null);
   }
 
-  const filtered = [...entries]
-    .reverse()
-    .filter(e =>
-      e.name.toLowerCase().includes(search.toLowerCase()) ||
-      e.whatsapp.includes(search) ||
-      e.address.toLowerCase().includes(search.toLowerCase())
-    );
+  const filtered = entries.filter(e =>
+    e.name.toLowerCase().includes(search.toLowerCase()) ||
+    e.whatsapp.includes(search) ||
+    e.address.toLowerCase().includes(search.toLowerCase())
+  );
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
@@ -50,7 +46,7 @@ export default function RsvpPage() {
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
         <div>
           <h1 style={{ fontSize: 22, fontWeight: 700, color: "#0F172A", margin: 0 }}>RSVP Registrations</h1>
-          <p style={{ fontSize: 13, color: "#94A3B8", marginTop: 4 }}>{entries.length} total · {sent.length} messaged</p>
+          <p style={{ fontSize: 13, color: "#94A3B8", marginTop: 4 }}>{entries.length} total · {entries.filter(e => e.waSent).length} messaged</p>
         </div>
         <span style={{ background: "#0F172A", color: "#fff", borderRadius: 8, padding: "6px 14px", fontSize: 13, fontWeight: 600 }}>
           {entries.length} registered
@@ -89,11 +85,9 @@ export default function RsvpPage() {
             <p style={{ fontSize: 14, color: "#94A3B8" }}>{search ? "No results found" : "No registrations yet"}</p>
           </div>
         ) : filtered.map((e, i) => {
-          const key = `${e.whatsapp}|${e.submittedAt}`;
-          const isSent = sent.includes(key);
-          const isActing = acting === key;
+          const isActing = acting === e.id;
           return (
-            <div key={key} style={{
+            <div key={e.id} style={{
               display: "grid", gridTemplateColumns: "1fr 130px 1fr 80px 100px",
               padding: "13px 20px", borderBottom: i < filtered.length - 1 ? "1px solid #F1F5F9" : "none",
               alignItems: "center", opacity: isActing ? 0.5 : 1, transition: "opacity 0.2s",
@@ -107,7 +101,7 @@ export default function RsvpPage() {
               <p style={{ fontSize: 12, color: "#475569", fontFamily: "monospace" }}>{e.whatsapp}</p>
               <p style={{ fontSize: 12, color: "#64748B" }}>{e.address}</p>
               <div>
-                {isSent ? (
+                {e.waSent ? (
                   <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 11, fontWeight: 600, color: "#10B981", background: "#ECFDF5", padding: "3px 8px", borderRadius: 6 }}>
                     <CheckCircle size={11} /> Sent
                   </span>
@@ -119,7 +113,7 @@ export default function RsvpPage() {
               </div>
               <div style={{ display: "flex", gap: 6 }}>
                 <button
-                  onClick={() => handleResend(key)}
+                  onClick={() => handleResend(e.id)}
                   disabled={isActing}
                   title="Resend message"
                   style={{ padding: "6px", borderRadius: 7, border: "1px solid #E2E8F0", background: "#fff", cursor: "pointer", display: "flex", alignItems: "center", color: "#6366F1" }}
@@ -127,7 +121,7 @@ export default function RsvpPage() {
                   <RefreshCw size={13} />
                 </button>
                 <button
-                  onClick={() => handleDelete(key)}
+                  onClick={() => handleDelete(e.id)}
                   disabled={isActing}
                   title="Delete"
                   style={{ padding: "6px", borderRadius: 7, border: "1px solid #FEE2E2", background: "#FFF5F5", cursor: "pointer", display: "flex", alignItems: "center", color: "#EF4444" }}

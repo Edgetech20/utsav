@@ -8,7 +8,13 @@ echo "==> Installing dependencies..."
 npm install --production=false
 
 echo "==> Installing WhatsApp bot dependencies..."
-npm install whatsapp-web.js qrcode-terminal qrcode nodemailer
+npm install whatsapp-web.js qrcode-terminal qrcode nodemailer mysql2
+
+echo "==> Generating Prisma client..."
+node node_modules/prisma/build/index.js generate
+
+echo "==> Syncing DB schema..."
+node node_modules/prisma/build/index.js db push --accept-data-loss
 
 echo "==> Building..."
 npm run build

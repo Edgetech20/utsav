@@ -8,7 +8,7 @@ const galada = Galada({ variable: "--font-galada", subsets: ["bengali"], weight:
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://utsav.databind.in"),
-  title: "প্ৰিয়বোধী মহোৎসব | Galsi, Purba Bardhaman",
+  title: "প্ৰিয়বোধী",
   description:
     "You are cordially invited to Priyabodhi Mahotsav on 20 December 2026 at Galsi, Purba Bardhaman.",
   openGraph: {

@@ -1,0 +1,90 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model AdminUser {
+  email     String   @id
+  createdAt DateTime @default(now())
+}
+
+model OtpStore {
+  email     String   @id
+  otp       String
+  expiresAt DateTime
+}
+
+model Rsvp {
+  id          Int      @id @default(autoincrement())
+  name        String
+  whatsapp    String
+  address     String
+  submittedAt DateTime @default(now())
+  waSent      Boolean  @default(false)
+}
+
+model ClickEvent {
+  id        Int      @id @default(autoincrement())
+  type      String   // 'view' | 'attend' | 'map'
+  ip        String
+  createdAt DateTime @default(now())
+
+  @@index([type, ip])
+}
+
+model WaLog {
+  id       Int      @id @default(autoincrement())
+  name     String
+  whatsapp String
+  status   String   // 'sent' | 'failed'
+  error    String?
+  sentAt   DateTime @default(now())
+}
+
+model AccommodationRegistration {
+  id                Int      @id @default(autoincrement())
+  primaryName       String
+  mobile            String
+  comingFrom        String
+  totalPersons      Int
+  maleMem           Int      @default(0)
+  femaleMem         Int      @default(0)
+  children          Int      @default(0)
+  seniorCitizens    Int      @default(0)
+  arrivalAt         DateTime
+  departureAt       DateTime
+  needsAssistance   Boolean
+  assistanceDetails String?
+  hasVehicle        Boolean
+  vehicleType       String?
+  vehicleNo         String?
+  additionalInfo    String?
+  submittedAt       DateTime @default(now())
+}
+
+model VehicleRegistration {
+  id              Int      @id @default(autoincrement())
+  contactName     String
+  mobile          String
+  vehicleType     String   // 'car' | 'bus'
+  vehicleNo       String
+  totalPassengers Int
+  comingFrom      String
+  arrivalAt       DateTime
+  departureAt     DateTime
+  remark          String
+  submittedAt     DateTime @default(now())
+}
+
+model WaStatus {
+  id        Int      @id @default(autoincrement())
+  status    String
+  qr        String?  @db.Text
+  message   String?
+  reason    String?
+  updatedAt DateTime @updatedAt
+}
