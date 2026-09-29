@@ -6,11 +6,11 @@ import { MapPin, Calendar, Navigation, CheckCircle, ChevronDown, Stethoscope, Ut
 const EVENT = {
   title: "প্ৰিয়বোধী মহোৎসব",
   date: "Sunday, 20 December 2026",
-  venue: "Alinagar Playground, Bhatar, West Bengal 713125",
+  venue: "Alinagar Playground, Bhatar, Purba Burdwan, West Bengal 713125",
   mapsUrl:
-    "https://www.google.com/maps/search/?api=1&query=Alinagar+Playground,+Bhatar,+West+Bengal+713125",
+    "https://www.google.com/maps/search/?api=1&query=Alinagar+Playground,+Bhatar,+Purba+Burdwan,+West+Bengal+713125",
   embedUrl:
-    "https://maps.google.com/maps?q=Alinagar+Playground,+Bhatar,+West+Bengal+713125&output=embed",
+    "https://maps.google.com/maps?q=Alinagar+Playground,+Bhatar,+Purba+Burdwan,+West+Bengal+713125&output=embed",
 };
 
 
@@ -364,9 +364,9 @@ export default function Home() {
         <p className="shimmer-text font-semibold text-center leading-relaxed mb-0" style={{ maxWidth: "min(90vw, 480px)" }}>
           <span style={{ fontSize: "clamp(0.65rem, 2.5vw, 0.8rem)" }}>যুগপুরুষোত্তম পরমপ্রেমময়</span>
           <br />
-          <span style={{ fontSize: "clamp(1.1rem, 4.5vw, 1.5rem)", whiteSpace: "nowrap" }}>শ্রীশ্রীঠাকুর অনুকূলচন্দ্রের</span>
+          <span style={{ fontSize: "clamp(1.5rem, 6vw, 2.2rem)", whiteSpace: "nowrap" }}>শ্রীশ্রীঠাকুর অনুকূলচন্দ্রের</span>
           {" "}
-          <span style={{ fontSize: "clamp(0.85rem, 3.5vw, 1.1rem)", whiteSpace: "nowrap" }}>শুভ ১৩৯তম জন্ম মহোৎসব তৎসহ</span>
+          {/* <span style={{ fontSize: "clamp(0.85rem, 3.5vw, 1.1rem)", whiteSpace: "nowrap" }}>শুভ ১৩৯তম জন্ম মহোৎসব তৎসহ</span> */}
         </p>
 
         <div className="flex flex-col items-center gap-0 mb-2 mt-1" style={{ overflow: "visible", padding: "12px 0" }}>
@@ -513,7 +513,7 @@ export default function Home() {
               )}
             </>
           ) : (
-            "Jai Guru — I will Attend"
+            "জয় গুরু — আমি উৎসবে উপস্থিত থাকব"
           )}
         </button>
 
@@ -528,18 +528,18 @@ export default function Home() {
         </div>
         <div className="flex flex-col">
           {[
+            { label: "Accommodation",    img: [], Icon: BedDouble },
+            { label: "Bus & Car Parking", img: [], Icon: ParkingSquare },
             { label: "Medical Camp",     img: [], Icon: Stethoscope },
             { label: "Cheap Canteen",    img: [], Icon: UtensilsCrossed },
             { label: "Jajan Parikrama",  img: [], Icon: Footprints },
             { label: "Diksha Grahan",    img: [], Icon: BookOpen },
             { label: "Photo Gallery",    img: [], Icon: Camera },
-            { label: "Accommodation",    img: [], Icon: BedDouble },
             { label: "Ananda Bazar",     img: [], Icon: ShoppingBag },
             { label: "Music Event",      img: [], Icon: Music },
             { label: "Istaprasanga",     img: [], Icon: Mic },
             { label: "Cultural Events",  img: [], Icon: Palette },
             { label: "Drama",            img: [], Icon: Theater },
-            { label: "Bus & Car Parking", img: [], Icon: ParkingSquare },
             { label: "And Many More…",   img: [], Icon: Sparkles },
           ].map(({ label, img, Icon }, i) => {
             const open = expanded === i;
@@ -603,7 +603,7 @@ export default function Home() {
                     ) : label === "Bus & Car Parking" ? (
                       <div className="flex flex-col gap-2">
                         <p className="text-xs leading-relaxed" style={{ color: "#C9A96E", opacity: 0.55 }}>
-                          Pre-register your vehicle for smooth entry and dedicated parking at the venue.
+                          Book your parking slot.
                         </p>
                         <button
                           onClick={() => setShowVehicleModal(true)}
