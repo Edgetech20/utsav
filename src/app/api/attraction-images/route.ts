@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { writeFile } from "fs/promises";
+import { writeFile, mkdir } from "fs/promises";
 import { join } from "path";
 
 export async function POST(req: NextRequest) {
@@ -13,8 +13,10 @@ export async function POST(req: NextRequest) {
 
   const ext = file.name.split(".").pop() ?? "jpg";
   const filename = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+  const dir = join(process.cwd(), "public", "attractions");
+  await mkdir(dir, { recursive: true });
   const buffer = Buffer.from(await file.arrayBuffer());
-  await writeFile(join(process.cwd(), "public", "attractions", filename), buffer);
+  await writeFile(join(dir, filename), buffer);
 
   const row = await db.attractionImage.create({
     data: { attractionId, imageUrl: `/attractions/${filename}` },
