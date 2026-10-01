@@ -69,32 +69,6 @@ export default function Home() {
   const [entered, setEntered] = useState(false);
   const [playing, setPlaying] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
-  const installPromptRef = useRef<any>(null);
-  const [isMobile, setIsMobile] = useState(false);
-  const [isIOS, setIsIOS] = useState(false);
-  const [installable, setInstallable] = useState(false);
-  const [showIOSHint, setShowIOSHint] = useState(false);
-
-  useEffect(() => {
-    const ios = /iPhone|iPad|iPod/i.test(navigator.userAgent);
-    const android = /Android/i.test(navigator.userAgent);
-    setIsIOS(ios);
-    setIsMobile(ios || android);
-    if (!android) return;
-    const handler = (e: Event) => { e.preventDefault(); installPromptRef.current = e; setInstallable(true); };
-    window.addEventListener("beforeinstallprompt", handler);
-    return () => window.removeEventListener("beforeinstallprompt", handler);
-  }, []);
-
-  function handleInstall(e: React.MouseEvent) {
-    e.stopPropagation();
-    if (installPromptRef.current) {
-      installPromptRef.current.prompt();
-      installPromptRef.current.userChoice.then(() => { installPromptRef.current = null; setInstallable(false); });
-    } else if (isIOS) {
-      setShowIOSHint(true);
-    }
-  }
 
   useEffect(() => {
     setMounted(true);
@@ -287,61 +261,6 @@ export default function Home() {
             </div>
           </div>
 
-          {isMobile ? (
-            <button
-              onClick={handleInstall}
-              className="mt-5 flex items-center gap-2 px-6 py-2.5 rounded-full text-xs font-semibold uppercase tracking-widest"
-              style={{
-                background: "rgba(201,169,110,0.15)",
-                border: "1px solid rgba(201,169,110,0.5)",
-                color: "#C9A96E",
-              }}
-            >
-              ⬇ Install App
-            </button>
-          ) : null}
-
-          {/* iOS install instructions sheet */}
-          {showIOSHint ? (
-            <div
-              onClick={(e) => e.stopPropagation()}
-              style={{
-                position: "fixed", inset: 0, zIndex: 200,
-                background: "rgba(0,0,0,0.7)",
-                display: "flex", alignItems: "flex-end", justifyContent: "center",
-              }}
-            >
-              <div
-                style={{
-                  width: "100%", maxWidth: 480,
-                  background: "#1A1A1A",
-                  borderRadius: "20px 20px 0 0",
-                  border: "1px solid rgba(201,169,110,0.2)",
-                  padding: "28px 24px 40px",
-                }}
-              >
-                <p className="text-center font-bold mb-4" style={{ color: "#E8D5B0", fontSize: "1rem" }}>
-                  Install on iPhone
-                </p>
-                <div className="flex flex-col gap-3">
-                  {[
-                    "1. Tap the Share button (□↑) at the bottom of Safari",
-                    "2. Scroll down and tap \"Add to Home Screen\"",
-                    "3. Tap \"Add\" in the top right",
-                  ].map((step) => (
-                    <p key={step} className="text-sm" style={{ color: "#C9A96E", opacity: 0.85 }}>{step}</p>
-                  ))}
-                </div>
-                <button
-                  onClick={() => setShowIOSHint(false)}
-                  className="mt-6 w-full py-3 rounded-xl text-sm font-semibold"
-                  style={{ background: "rgba(201,169,110,0.15)", color: "#C9A96E", border: "1px solid rgba(201,169,110,0.3)" }}
-                >
-                  Got it
-                </button>
-              </div>
-            </div>
-          ) : null}
         </div>
       ) : null}
 
@@ -1267,6 +1186,27 @@ export default function Home() {
           </div>
         </div>
       )}
+
+      {/* ── Feedback ── */}
+      <div className="w-full px-5 pb-8" style={{ background: "#0E0E0E" }}>
+        <div className="flex items-center gap-3 mb-4">
+          <div className="flex-1 h-px" style={{ background: "linear-gradient(90deg, transparent, #C9A96E)" }} />
+          <span className="text-xs uppercase tracking-[0.3em]" style={{ color: "#C9A96E", opacity: 0.55 }}>Your Feedback</span>
+          <div className="flex-1 h-px" style={{ background: "linear-gradient(90deg, #C9A96E, transparent)" }} />
+        </div>
+        <p className="text-xs text-center mb-4" style={{ color: "#C9A96E", opacity: 0.5 }}>
+          Help us make the next Utsab even better — share your suggestions
+        </p>
+        <a
+          href="https://docs.google.com/forms/d/e/1FAIpQLSfSSKFetF2FKloXr-RK34jdHq7og_384WOfYTJsEwsxVQfjQA/viewform"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-center justify-center gap-2 w-full py-4 rounded-2xl font-semibold text-sm border transition-all active:scale-[0.98]"
+          style={{ borderColor: "rgba(201,169,110,0.35)", color: "#C9A96E", background: "transparent" }}
+        >
+          ✦ প্রথম বর্ষ Feedback Form
+        </a>
+      </div>
 
       {/* ── Coming Soon ── */}
       <div className="w-full max-w-lg px-5 pb-12" style={{ background: "#0E0E0E" }}>

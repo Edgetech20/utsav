@@ -80,6 +80,14 @@ model VehicleRegistration {
   submittedAt     DateTime @default(now())
 }
 
+model FeedbackResponse {
+  id          Int      @id @default(autoincrement())
+  name        String
+  mobile      String
+  responses   String   @db.LongText  // JSON blob of all Q&A pairs
+  submittedAt DateTime @default(now())
+}
+
 model WaStatus {
   id        Int      @id @default(autoincrement())
   status    String

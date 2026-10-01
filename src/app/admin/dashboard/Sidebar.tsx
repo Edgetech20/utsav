@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { LayoutDashboard, Wifi, Users, ScrollText, LogOut, Car, BedDouble } from "lucide-react";
+import { LayoutDashboard, Wifi, Users, ScrollText, LogOut, Car, BedDouble, MessageSquare } from "lucide-react";
 
 const NAV = [
   { label: "Dashboard",      href: "/admin/dashboard",               icon: LayoutDashboard },
@@ -11,6 +11,7 @@ const NAV = [
   { label: "RSVP",           href: "/admin/dashboard/rsvp",          icon: Users },
   { label: "Vehicles",       href: "/admin/dashboard/vehicles",      icon: Car },
   { label: "Accommodation",  href: "/admin/dashboard/accommodation",  icon: BedDouble },
+  { label: "Feedback",       href: "/admin/dashboard/feedback",      icon: MessageSquare },
   { label: "Message Log",    href: "/admin/dashboard/logs",          icon: ScrollText },
 ];
 
