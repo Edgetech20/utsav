@@ -72,7 +72,10 @@ export default function Home() {
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => {
-    fetch("/api/attractions").then(r => r.json()).then(setDbAttractions).catch(() => {});
+    fetch("/api/attractions")
+      .then(r => { console.log("[attractions] status:", r.status, r.ok); return r.ok ? r.json() : r.text().then(t => { console.error("[attractions] non-ok body:", t); return Promise.reject(t); }); })
+      .then(data => { console.log("[attractions] data:", data); setDbAttractions(data); })
+      .catch(err => console.error("[attractions] fetch error:", err));
     setMounted(true);
     fetch("/music.mp3", { method: "HEAD" }).then((res) => {
       if (!res.ok) return;
