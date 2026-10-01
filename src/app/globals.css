@@ -128,3 +128,32 @@
     @apply font-sans;
   }
 }
+
+/* Admin scrollbar */
+.admin-scroll,
+.admin-scroll * {
+  scrollbar-width: thin;
+  scrollbar-color: #CBD5E1 transparent;
+}
+
+.admin-scroll::-webkit-scrollbar,
+.admin-scroll *::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+
+.admin-scroll::-webkit-scrollbar-track,
+.admin-scroll *::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.admin-scroll::-webkit-scrollbar-thumb,
+.admin-scroll *::-webkit-scrollbar-thumb {
+  background: #CBD5E1;
+  border-radius: 99px;
+}
+
+.admin-scroll::-webkit-scrollbar-thumb:hover,
+.admin-scroll *::-webkit-scrollbar-thumb:hover {
+  background: #94A3B8;
+}

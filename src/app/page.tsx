@@ -5,7 +5,7 @@ import { MapPin, Calendar, Navigation, CheckCircle, ChevronDown, Stethoscope, Ut
 
 const EVENT = {
   title: "প্ৰিয়বোধী মহোৎসব",
-  date: "Sunday, 20 December 2026",
+  date: "Sunday, 20 December 2026 | ৪ ই পৌষ, ১৪৩৩",
   venue: "Alinagar Playground, Bhatar, Purba Burdwan, West Bengal 713125",
   mapsUrl:
     "https://www.google.com/maps/search/?api=1&query=Alinagar+Playground,+Bhatar,+Purba+Burdwan,+West+Bengal+713125",
@@ -68,9 +68,11 @@ export default function Home() {
 
   const [entered, setEntered] = useState(false);
   const [playing, setPlaying] = useState(false);
+  const [dbAttractions, setDbAttractions] = useState<{ id: number; name: string; url: string | null; navigateToVenue: boolean; images: { id: number; imageUrl: string }[] }[]>([]);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => {
+    fetch("/api/attractions").then(r => r.json()).then(setDbAttractions).catch(() => {});
     setMounted(true);
     fetch("/music.mp3", { method: "HEAD" }).then((res) => {
       if (!res.ok) return;
@@ -446,117 +448,92 @@ export default function Home() {
           <div className="flex-1 h-px" style={{ background: "linear-gradient(90deg, #C9A96E, transparent)" }} />
         </div>
         <div className="flex flex-col">
-          {[
-            { label: "Accommodation",    img: [], Icon: BedDouble },
-            { label: "Bus & Car Parking", img: [], Icon: ParkingSquare },
-            { label: "Medical Camp",     img: [], Icon: Stethoscope },
-            { label: "Cheap Canteen",    img: [], Icon: UtensilsCrossed },
-            { label: "Jajan Parikrama",  img: [], Icon: Footprints },
-            { label: "Diksha Grahan",    img: [], Icon: BookOpen },
-            { label: "Photo Gallery",    img: [], Icon: Camera },
-            { label: "Ananda Bazar",     img: [], Icon: ShoppingBag },
-            { label: "Music Event",      img: [], Icon: Music },
-            { label: "Istaprasanga",     img: [], Icon: Mic },
-            { label: "Cultural Events",  img: [], Icon: Palette },
-            { label: "Drama",            img: [], Icon: Theater },
-            { label: "And Many More…",   img: [], Icon: Sparkles },
-          ].map(({ label, img, Icon }, i) => {
-            const open = expanded === i;
-            return (
-              <div
-                key={label}
-                data-reveal
-                style={{ borderBottom: i < 12 ? "1px solid rgba(201,169,110,0.06)" : "none" }}
-              >
-                {/* Row header — clickable */}
-                <button
-                  onClick={() => setExpanded(open ? null : i)}
-                  className="w-full flex items-center gap-5 px-6 py-4 relative text-left"
-                  style={{ background: open ? "rgba(201,169,110,0.04)" : "transparent" }}
-                >
-                  <div
-                    className="reveal-bar absolute left-0 top-0 bottom-0 w-[3px] rounded-r-full"
-                    style={{ background: "linear-gradient(180deg, #C9A96E, #9A7840)" }}
-                  />
-                  <span
-                    className="font-black tabular-nums select-none"
-                    style={{ color: "#C9A96E", opacity: open ? 0.5 : 0.18, fontSize: "clamp(2rem, 7vw, 2.8rem)", lineHeight: 1, minWidth: "2.2ch", transition: "opacity 0.3s" }}
-                  >
-                    {String(i + 1).padStart(2, "0")}
-                  </span>
-                  <span
-                    className="flex-1 font-semibold tracking-wide"
-                    style={{ color: open ? "#C9A96E" : "#E8D5B0", fontSize: "clamp(1rem, 3.8vw, 1.15rem)", transition: "color 0.3s" }}
-                  >
-                    {label}
-                  </span>
-                  <ChevronDown
-                    className="w-4 h-4 flex-shrink-0"
-                    style={{ color: "#C9A96E", opacity: 0.6, transition: "transform 0.35s cubic-bezier(0.16,1,0.3,1)", transform: open ? "rotate(180deg)" : "rotate(0deg)" }}
-                  />
-                </button>
-
-                {/* Expandable panel */}
+          {(() => {
+            const ICON_MAP: Record<string, React.ElementType> = {
+              "Accommodation": BedDouble, "Bus & Car Parking": ParkingSquare,
+              "Medical Camp": Stethoscope, "Cheap Canteen": UtensilsCrossed,
+              "Jajan Parikrama": Footprints, "Diksha Grahan": BookOpen,
+              "Photo Gallery": Camera, "Ananda Bazar": ShoppingBag,
+              "Music Event": Music, "Istaprasanga": Mic,
+              "Cultural Events": Palette, "Drama": Theater,
+            };
+            const items = dbAttractions;
+            return items.map((a, i) => {
+              const Icon = ICON_MAP[a.name] ?? Sparkles;
+              const imgs = a.images.map(x => x.imageUrl);
+              const open = expanded === a.id;
+              return (
                 <div
-                  style={{
-                    maxHeight: open ? "400px" : "0px",
-                    overflow: "hidden",
-                    transition: "max-height 0.45s cubic-bezier(0.16,1,0.3,1)",
-                  }}
+                  key={a.id}
+                  data-reveal
+                  style={{ borderBottom: i < items.length - 1 ? "1px solid rgba(201,169,110,0.06)" : "none" }}
                 >
-                  <div className="mx-6 mb-4">
-                    {label === "Accommodation" ? (
-                      <div className="flex flex-col gap-2">
-                        <p className="text-xs leading-relaxed" style={{ color: "#C9A96E", opacity: 0.55 }}>
-                          Pre-register for accommodation at the venue. Allotment is subject to availability.
-                        </p>
-                        <button
-                          onClick={() => setShowAccomModal(true)}
-                          className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl font-bold text-sm"
-                          style={{ background: "linear-gradient(135deg, rgba(201,169,110,0.18), rgba(154,120,64,0.12))", border: "1px solid rgba(201,169,110,0.35)", color: "#C9A96E", letterSpacing: "0.04em" }}
-                        >
-                          <BedDouble className="w-4 h-4" />
-                          Register for Accommodation
-                        </button>
-                      </div>
-                    ) : label === "Bus & Car Parking" ? (
-                      <div className="flex flex-col gap-2">
-                        <p className="text-xs leading-relaxed" style={{ color: "#C9A96E", opacity: 0.55 }}>
-                          Book your parking slot.
-                        </p>
-                        <button
-                          onClick={() => setShowVehicleModal(true)}
-                          className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl font-bold text-sm"
-                          style={{ background: "linear-gradient(135deg, rgba(201,169,110,0.18), rgba(154,120,64,0.12))", border: "1px solid rgba(201,169,110,0.35)", color: "#C9A96E", letterSpacing: "0.04em" }}
-                        >
-                          <ParkingSquare className="w-4 h-4" />
-                          Register Your Vehicle
-                        </button>
-                      </div>
-                    ) : (Array.isArray(img) ? img : [img]).filter(Boolean).length > 0 ? (
-                      <div className="grid gap-2" style={{ gridTemplateColumns: "1fr 1fr" }}>
-                        {(Array.isArray(img) ? img : [img]).map((src, idx) => (
-                          <div key={idx} className="rounded-xl overflow-hidden aspect-video" style={{ border: "1px solid rgba(201,169,110,0.2)" }}>
-                            <img src={src} alt={`${label} ${idx + 1}`} className="w-full h-full object-cover" loading="lazy" />
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <div
-                        className="rounded-xl flex flex-col items-center justify-center gap-2 py-8"
-                        style={{ background: "#1A1A1A", border: "1px solid rgba(201,169,110,0.15)" }}
-                      >
-                        <Icon className="w-8 h-8" style={{ color: "#C9A96E", opacity: 0.35 }} />
-                        <p className="text-xs uppercase tracking-widest" style={{ color: "#C9A96E", opacity: 0.35 }}>
-                          Photo coming soon
-                        </p>
-                      </div>
-                    )}
+                  <button
+                    onClick={() => setExpanded(open ? null : a.id)}
+                    className="w-full flex items-center gap-5 px-6 py-4 relative text-left"
+                    style={{ background: open ? "rgba(201,169,110,0.04)" : "transparent" }}
+                  >
+                    <div className="reveal-bar absolute left-0 top-0 bottom-0 w-[3px] rounded-r-full" style={{ background: "linear-gradient(180deg, #C9A96E, #9A7840)" }} />
+                    <span className="font-black tabular-nums select-none" style={{ color: "#C9A96E", opacity: open ? 0.5 : 0.18, fontSize: "clamp(2rem, 7vw, 2.8rem)", lineHeight: 1, minWidth: "2.2ch", transition: "opacity 0.3s" }}>
+                      {String(i + 1).padStart(2, "0")}
+                    </span>
+                    <span className="flex-1 font-semibold tracking-wide" style={{ color: open ? "#C9A96E" : "#E8D5B0", fontSize: "clamp(1rem, 3.8vw, 1.15rem)", transition: "color 0.3s" }}>
+                      {a.name}
+                    </span>
+                    <ChevronDown className="w-4 h-4 flex-shrink-0" style={{ color: "#C9A96E", opacity: 0.6, transition: "transform 0.35s cubic-bezier(0.16,1,0.3,1)", transform: open ? "rotate(180deg)" : "rotate(0deg)" }} />
+                  </button>
+
+                  <div style={{ maxHeight: open ? "500px" : "0px", overflow: "hidden", transition: "max-height 0.45s cubic-bezier(0.16,1,0.3,1)" }}>
+                    <div className="mx-6 mb-4 flex flex-col gap-2">
+                      {a.name === "Accommodation" ? (
+                        <>
+                          <p className="text-xs leading-relaxed" style={{ color: "#C9A96E", opacity: 0.55 }}>Pre-register for accommodation at the venue. Allotment is subject to availability.</p>
+                          <button onClick={() => setShowAccomModal(true)} className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl font-bold text-sm" style={{ background: "linear-gradient(135deg, rgba(201,169,110,0.18), rgba(154,120,64,0.12))", border: "1px solid rgba(201,169,110,0.35)", color: "#C9A96E", letterSpacing: "0.04em" }}>
+                            <BedDouble className="w-4 h-4" /> Register for Accommodation
+                          </button>
+                        </>
+                      ) : a.name === "Bus & Car Parking" ? (
+                        <>
+                          <p className="text-xs leading-relaxed" style={{ color: "#C9A96E", opacity: 0.55 }}>Book your parking slot.</p>
+                          <button onClick={() => setShowVehicleModal(true)} className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl font-bold text-sm" style={{ background: "linear-gradient(135deg, rgba(201,169,110,0.18), rgba(154,120,64,0.12))", border: "1px solid rgba(201,169,110,0.35)", color: "#C9A96E", letterSpacing: "0.04em" }}>
+                            <ParkingSquare className="w-4 h-4" /> Register Your Vehicle
+                          </button>
+                        </>
+                      ) : (
+                        <>
+                          {imgs.length > 0 && (
+                            <div className="grid gap-2 mt-2" style={{ gridTemplateColumns: imgs.length === 1 ? "1fr" : "1fr 1fr" }}>
+                              {imgs.map((src, idx) => (
+                                <div key={idx} className="rounded-xl overflow-hidden aspect-video" style={{ border: "1px solid rgba(201,169,110,0.2)" }}>
+                                  <img src={src} alt={`${a.name} ${idx + 1}`} className="w-full h-full object-cover" loading="lazy" />
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                          {a.url && (
+                            <a href={a.url} target="_blank" rel="noopener noreferrer" className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl font-bold text-sm" style={{ background: "linear-gradient(135deg, rgba(201,169,110,0.18), rgba(154,120,64,0.12))", border: "1px solid rgba(201,169,110,0.35)", color: "#C9A96E", letterSpacing: "0.04em" }}>
+                              <Sparkles className="w-4 h-4" /> Open Link
+                            </a>
+                          )}
+                          {a.navigateToVenue && (
+                            <a href={EVENT.mapsUrl} target="_blank" rel="noopener noreferrer" className="w-full flex items-center justify-center gap-2 py-3 rounded-xl font-semibold text-sm" style={{ background: "linear-gradient(135deg, rgba(201,169,110,0.18), rgba(154,120,64,0.12))", border: "1px solid rgba(201,169,110,0.35)", color: "#C9A96E" }}>
+                              <Navigation className="w-4 h-4" /> Navigate to Venue
+                            </a>
+                          )}
+                          {imgs.length === 0 && !a.url && !a.navigateToVenue && (
+                            <div className="rounded-xl flex flex-col items-center justify-center gap-2 py-8" style={{ background: "#1A1A1A", border: "1px solid rgba(201,169,110,0.15)" }}>
+                              <Icon className="w-8 h-8" style={{ color: "#C9A96E", opacity: 0.35 }} />
+                              <p className="text-xs uppercase tracking-widest" style={{ color: "#C9A96E", opacity: 0.35 }}>Photo coming soon</p>
+                            </div>
+                          )}
+                        </>
+                      )}
+                    </div>
                   </div>
                 </div>
-              </div>
-            );
-          })}
+              );
+            });
+          })()}
         </div>
       </div>
 
@@ -1187,26 +1164,6 @@ export default function Home() {
         </div>
       )}
 
-      {/* ── Feedback ── */}
-      <div className="w-full px-5 pb-8" style={{ background: "#0E0E0E" }}>
-        <div className="flex items-center gap-3 mb-4">
-          <div className="flex-1 h-px" style={{ background: "linear-gradient(90deg, transparent, #C9A96E)" }} />
-          <span className="text-xs uppercase tracking-[0.3em]" style={{ color: "#C9A96E", opacity: 0.55 }}>Your Feedback</span>
-          <div className="flex-1 h-px" style={{ background: "linear-gradient(90deg, #C9A96E, transparent)" }} />
-        </div>
-        <p className="text-xs text-center mb-4" style={{ color: "#C9A96E", opacity: 0.5 }}>
-          Help us make the next Utsab even better — share your suggestions
-        </p>
-        <a
-          href="https://docs.google.com/forms/d/e/1FAIpQLSfSSKFetF2FKloXr-RK34jdHq7og_384WOfYTJsEwsxVQfjQA/viewform"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="flex items-center justify-center gap-2 w-full py-4 rounded-2xl font-semibold text-sm border transition-all active:scale-[0.98]"
-          style={{ borderColor: "rgba(201,169,110,0.35)", color: "#C9A96E", background: "transparent" }}
-        >
-          ✦ প্রথম বর্ষ Feedback Form
-        </a>
-      </div>
 
       {/* ── Coming Soon ── */}
       <div className="w-full max-w-lg px-5 pb-12" style={{ background: "#0E0E0E" }}>

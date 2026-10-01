@@ -88,6 +88,26 @@ model FeedbackResponse {
   submittedAt DateTime @default(now())
 }
 
+model Attraction {
+  id              Int               @id @default(autoincrement())
+  name            String
+  order           Int               @default(0)
+  url             String?
+  navigateToVenue Boolean           @default(false)
+  images          AttractionImage[]
+  createdAt       DateTime          @default(now())
+}
+
+model AttractionImage {
+  id           Int        @id @default(autoincrement())
+  attractionId Int
+  attraction   Attraction @relation(fields: [attractionId], references: [id], onDelete: Cascade)
+  imageUrl     String
+  createdAt    DateTime   @default(now())
+
+  @@index([attractionId])
+}
+
 model WaStatus {
   id        Int      @id @default(autoincrement())
   status    String

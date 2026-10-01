@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { LayoutDashboard, Wifi, Users, ScrollText, LogOut, Car, BedDouble, MessageSquare } from "lucide-react";
+import { LayoutDashboard, Wifi, Users, ScrollText, LogOut, Car, BedDouble, MessageSquare, ImageIcon } from "lucide-react";
 
 const NAV = [
   { label: "Dashboard",      href: "/admin/dashboard",               icon: LayoutDashboard },
@@ -12,6 +12,7 @@ const NAV = [
   { label: "Vehicles",       href: "/admin/dashboard/vehicles",      icon: Car },
   { label: "Accommodation",  href: "/admin/dashboard/accommodation",  icon: BedDouble },
   { label: "Feedback",       href: "/admin/dashboard/feedback",      icon: MessageSquare },
+  { label: "Attractions",    href: "/admin/dashboard/attractions",   icon: ImageIcon },
   { label: "Message Log",    href: "/admin/dashboard/logs",          icon: ScrollText },
 ];
 
@@ -34,7 +35,7 @@ export default function Sidebar({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div style={{ display: "flex", minHeight: "100vh", background: "#F5F7FA", fontFamily: "system-ui, sans-serif" }}>
+    <div className="admin-scroll" style={{ display: "flex", minHeight: "100vh", background: "#F5F7FA", fontFamily: "system-ui, sans-serif" }}>
 
       {desktop && (
         <aside style={{
