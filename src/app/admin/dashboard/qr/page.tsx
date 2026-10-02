@@ -5,7 +5,7 @@ import { QrCode, Plus, Copy, Download, Trash2, Check, ExternalLink, X } from "lu
 import { C, Button, Badge, PageHeader, Card, Input, Empty, Skeleton } from "../ui";
 import { useToast } from "../toast";
 
-type QrEntry = { id: number; name: string; slug: string; targetUrl: string; scans: number; createdAt: string };
+type QrEntry = { id: number; name: string; slug: string; targetUrl: string; scans: number; uniqueScans: number; createdAt: string };
 
 function SkeletonCard() {
   return (
@@ -184,10 +184,15 @@ export default function QrPage() {
                     </a>
                   </div>
 
-                  {/* Scan count */}
-                  <Badge variant="blue" icon={<QrCode size={10} />}>
-                    {entry.scans} scan{entry.scans !== 1 ? "s" : ""}
-                  </Badge>
+                  {/* Scan counts */}
+                  <div style={{ display: "flex", gap: 6 }}>
+                    <Badge variant="blue" icon={<QrCode size={10} />}>
+                      {entry.uniqueScans} unique
+                    </Badge>
+                    <Badge variant="gray">
+                      {entry.scans} total
+                    </Badge>
+                  </div>
 
                   {/* Actions */}
                   <div style={{ display: "flex", gap: 6, paddingTop: 4 }}>
