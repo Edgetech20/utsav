@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Phone, Globe, Save, Calendar, MapPin, Mail, User, Link2, Camera, Play, X } from "lucide-react";
-import { Card, Button, C } from "../ui";
+import { Card, Button, C, useDesktop } from "../ui";
 import { useToast } from "../toast";
 
 type Vals = Record<string, string>;
@@ -86,7 +86,8 @@ function Section({ label, children }: { label: string; children: React.ReactNode
 }
 
 export default function SettingsPage() {
-  const toast = useToast();
+  const toast   = useToast();
+  const desktop = useDesktop();
   const [vals, setVals]     = useState<Vals>({});
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -131,7 +132,7 @@ export default function SettingsPage() {
       {loading ? (
         <div style={{ padding: 40, textAlign: "center", color: C.textMuted, fontSize: 13 }}>Loading…</div>
       ) : (
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20, alignItems: "start" }}>
+        <div style={{ display: "grid", gridTemplateColumns: desktop ? "1fr 1fr" : "1fr", gap: 20, alignItems: "start" }}>
           {/* Left column */}
           <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
             <Section label="Event Details">

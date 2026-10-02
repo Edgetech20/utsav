@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Trash2, Car, Bus } from "lucide-react";
-import { C, Badge, Button, Search, PageHeader, Table, Thead, Th, Tbody, Td, Tr, Skeleton, Empty, Card, Pagination } from "../ui";
+import { C, Badge, Button, Search, PageHeader, Table, Thead, Th, Tbody, Td, Tr, Skeleton, Empty, Card, Pagination, useDesktop } from "../ui";
 import { useToast } from "../toast";
 
 type Entry = {
@@ -41,6 +41,7 @@ export default function VehiclesPage() {
   const [toConfirm, setToConfirm] = useState<number | null>(null);
   const [page, setPage] = useState(1);
   const PER_PAGE = 20;
+  const desktop = useDesktop();
 
   async function load() {
     const res = await fetch("/api/vehicle").then(r => r.json()).catch(() => ({}));
@@ -92,67 +93,58 @@ export default function VehiclesPage() {
         ))}
       </div>
 
-      <Table>
-        <Thead>
-          <Tr>
-            <Th>Vehicle</Th>
-            <Th>Contact</Th>
-            <Th>From</Th>
-            <Th>Pax</Th>
-            <Th>Arrival</Th>
-            <Th>Departure</Th>
-            <Th>Remark</Th>
-            <Th style={{ textAlign: "right" }}>Actions</Th>
-          </Tr>
-        </Thead>
-        <tbody>
-          {loading ? (
-            <SkeletonRows />
-          ) : filtered.length === 0 ? (
-            <Tr>
-              <Td style={{ padding: 0, border: "none" }} colSpan={8}>
-                <Empty icon={<Car size={40} />} title={search ? "No results" : "No registrations yet"} />
-              </Td>
-            </Tr>
-          ) : paginated.map(e => {
-            const busy    = acting === e.id;
-            const confirm = toConfirm === e.id;
-            const isBus   = e.vehicleType === "bus";
+      {desktop ? (
+        <Table>
+          <Thead><Tr><Th>Vehicle</Th><Th>Contact</Th><Th>From</Th><Th>Pax</Th><Th>Arrival</Th><Th>Departure</Th><Th>Remark</Th><Th style={{ textAlign: "right" }}>Actions</Th></Tr></Thead>
+          <tbody>
+            {loading ? <SkeletonRows /> : filtered.length === 0 ? (
+              <Tr><Td style={{ padding: 0, border: "none" }} colSpan={8}><Empty icon={<Car size={40} />} title={search ? "No results" : "No registrations yet"} /></Td></Tr>
+            ) : paginated.map(e => {
+              const busy = acting === e.id; const confirm = toConfirm === e.id; const isBus = e.vehicleType === "bus";
+              return (
+                <Tr key={e.id} style={{ opacity: busy ? 0.5 : 1 }}>
+                  <Td><Badge variant={isBus ? "blue" : "green"} icon={isBus ? <Bus size={11} /> : <Car size={11} />}>{e.vehicleNo}</Badge></Td>
+                  <Td><p style={{ fontWeight: 600, margin: 0 }}>{e.contactName}</p><p style={{ fontSize: 11, color: C.textMuted, margin: "2px 0 0", fontFamily: "monospace" }}>{e.mobile}</p></Td>
+                  <Td style={{ color: C.textSub }}>{e.comingFrom}</Td>
+                  <Td style={{ color: C.textSub, textAlign: "center" }}>{e.totalPassengers}</Td>
+                  <Td style={{ fontSize: 12, color: C.textSub, whiteSpace: "nowrap" }}>{fmt(e.arrivalAt)}</Td>
+                  <Td style={{ fontSize: 12, color: C.textSub, whiteSpace: "nowrap" }}>{fmt(e.departureAt)}</Td>
+                  <Td style={{ maxWidth: 160 }}><span style={{ display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontSize: 12, color: C.textSub }}>{e.remark}</span></Td>
+                  <Td><div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
+                    {confirm ? (<><Button variant="danger" size="sm" loading={busy} onClick={() => handleDelete(e.id)}>Confirm</Button><Button variant="secondary" size="sm" onClick={() => setToConfirm(null)}>Cancel</Button></>) : (<Button variant="ghost" size="sm" icon={<Trash2 size={11} />} onClick={() => setToConfirm(e.id)} style={{ color: C.red }}>Delete</Button>)}
+                  </div></Td>
+                </Tr>
+              );
+            })}
+          </tbody>
+        </Table>
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          {loading ? Array.from({ length: 4 }).map((_, i) => <Card key={i} padding={16}><Skeleton height={80} /></Card>) :
+           filtered.length === 0 ? <Empty icon={<Car size={40} />} title={search ? "No results" : "No registrations yet"} /> :
+           paginated.map(e => {
+            const busy = acting === e.id; const confirm = toConfirm === e.id; const isBus = e.vehicleType === "bus";
             return (
-              <Tr key={e.id} style={{ opacity: busy ? 0.5 : 1 }}>
-                <Td>
-                  <Badge variant={isBus ? "blue" : "green"} icon={isBus ? <Bus size={11} /> : <Car size={11} />}>
-                    {e.vehicleNo}
-                  </Badge>
-                </Td>
-                <Td>
-                  <p style={{ fontWeight: 600, margin: 0, whiteSpace: "nowrap" }}>{e.contactName}</p>
-                  <p style={{ fontSize: 11, color: C.textMuted, margin: "2px 0 0", fontFamily: "monospace" }}>{e.mobile}</p>
-                </Td>
-                <Td style={{ color: C.textSub, whiteSpace: "nowrap" }}>{e.comingFrom}</Td>
-                <Td style={{ color: C.textSub, textAlign: "center" }}>{e.totalPassengers}</Td>
-                <Td style={{ fontSize: 12, color: C.textSub, whiteSpace: "nowrap" }}>{fmt(e.arrivalAt)}</Td>
-                <Td style={{ fontSize: 12, color: C.textSub, whiteSpace: "nowrap" }}>{fmt(e.departureAt)}</Td>
-                <Td style={{ maxWidth: 160 }}>
-                  <span style={{ display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontSize: 12, color: C.textSub }}>{e.remark}</span>
-                </Td>
-                <Td>
-                  <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
-                    {confirm ? (
-                      <>
-                        <Button variant="danger" size="sm" loading={busy} onClick={() => handleDelete(e.id)}>Confirm</Button>
-                        <Button variant="secondary" size="sm" onClick={() => setToConfirm(null)}>Cancel</Button>
-                      </>
-                    ) : (
-                      <Button variant="ghost" size="sm" icon={<Trash2 size={11} />} onClick={() => setToConfirm(e.id)} style={{ color: C.red }}>Delete</Button>
-                    )}
-                  </div>
-                </Td>
-              </Tr>
+              <Card key={e.id} padding={14} style={{ opacity: busy ? 0.5 : 1 }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+                  <Badge variant={isBus ? "blue" : "green"} icon={isBus ? <Bus size={11} /> : <Car size={11} />}>{e.vehicleNo}</Badge>
+                  <span style={{ fontSize: 11, color: C.textMuted }}>{e.totalPassengers} pax · {e.comingFrom}</span>
+                </div>
+                <p style={{ fontWeight: 700, fontSize: 14, color: C.text, margin: "0 0 2px" }}>{e.contactName}</p>
+                <p style={{ fontSize: 12, color: C.textMuted, margin: "0 0 8px", fontFamily: "monospace" }}>{e.mobile}</p>
+                <div style={{ display: "flex", gap: 16, fontSize: 12, color: C.textSub, marginBottom: 10 }}>
+                  <span>↑ {fmt(e.arrivalAt)}</span>
+                  <span>↓ {fmt(e.departureAt)}</span>
+                </div>
+                {e.remark && <p style={{ fontSize: 12, color: C.textSub, margin: "0 0 10px" }}>{e.remark}</p>}
+                <div style={{ display: "flex", justifyContent: "flex-end", gap: 6 }}>
+                  {confirm ? (<><Button variant="danger" size="sm" loading={busy} onClick={() => handleDelete(e.id)}>Confirm</Button><Button variant="secondary" size="sm" onClick={() => setToConfirm(null)}>Cancel</Button></>) : (<Button variant="ghost" size="sm" icon={<Trash2 size={11} />} onClick={() => setToConfirm(e.id)} style={{ color: C.red }}>Delete</Button>)}
+                </div>
+              </Card>
             );
           })}
-        </tbody>
-      </Table>
+        </div>
+      )}
       <Pagination page={page} total={filtered.length} perPage={PER_PAGE} onChange={p => setPage(p)} />
     </div>
   );

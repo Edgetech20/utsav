@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { FileText, Send, Users, Car, BedDouble, X, CheckSquare, Square } from "lucide-react";
-import { C, Button, Badge, PageHeader, Card, Spinner } from "../ui";
+import { C, Button, Badge, PageHeader, Card, Spinner, useDesktop } from "../ui";
 import { useToast } from "../toast";
 
 type Template  = { id: number; key: string; name: string; body: string; enabled: boolean };
@@ -118,6 +118,7 @@ function ComposeModal({
   onClose: () => void;
   onSend: (msg: string, selected: Recipient[]) => Promise<void>;
 }) {
+  const desktop = useDesktop();
   const [group, setGroup]       = useState("rsvp");
   const [recipients, setRecipients] = useState<Recipient[]>([]);
   const [rcLoading, setRcLoading]   = useState(false);
@@ -174,7 +175,9 @@ function ComposeModal({
         }}
       >
         <div style={{
-          background: "#fff", borderRadius: 16, width: "90vw", height: "88vh",
+          background: "#fff", borderRadius: 16,
+          width: desktop ? "90vw" : "100vw", maxWidth: 960,
+          height: desktop ? "88vh" : "95vh",
           boxShadow: "0 12px 60px rgba(0,0,0,0.22)",
           display: "flex", flexDirection: "column",
         }}>
@@ -189,11 +192,11 @@ function ComposeModal({
             </button>
           </div>
 
-          {/* Two-column body */}
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", flex: 1, minHeight: 0 }}>
+          {/* Body — two-col on desktop, stacked on mobile */}
+          <div style={{ display: "flex", flexDirection: desktop ? "row" : "column", flex: 1, minHeight: 0, overflow: desktop ? "hidden" : "auto" }}>
 
             {/* Left — group picker + message + send */}
-            <div style={{ display: "flex", flexDirection: "column", gap: 16, padding: 24, borderRight: `1px solid ${C.border}` }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 16, padding: 20, borderRight: desktop ? `1px solid ${C.border}` : "none", borderBottom: desktop ? "none" : `1px solid ${C.border}`, flex: desktop ? 1 : "none" }}>
               {/* Group picker */}
               <div>
                 <label style={{ fontSize: 11, fontWeight: 600, color: C.textSub, textTransform: "uppercase", letterSpacing: "0.06em", display: "block", marginBottom: 10 }}>
@@ -253,7 +256,7 @@ function ComposeModal({
             </div>
 
             {/* Right — recipient list */}
-            <div style={{ display: "flex", flexDirection: "column", minHeight: 0 }}>
+            <div style={{ display: "flex", flexDirection: "column", minHeight: 0, flex: desktop ? 1 : "none", maxHeight: desktop ? "unset" : 280 }}>
               {/* List header */}
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 20px", borderBottom: `1px solid ${C.border}`, flexShrink: 0 }}>
                 <label style={{ fontSize: 11, fontWeight: 600, color: C.textSub, textTransform: "uppercase", letterSpacing: "0.06em" }}>
@@ -313,6 +316,7 @@ function ComposeModal({
 // ── Page ──────────────────────────────────────────────────────────────────────
 export default function TemplatesPage() {
   const { toast } = useToast();
+  const desktop   = useDesktop();
   const [templates, setTemplates] = useState<Template[]>([]);
   const [loading, setLoading]     = useState(true);
 
@@ -370,7 +374,7 @@ export default function TemplatesPage() {
             <Spinner size={24} color={C.textMuted} />
           </div>
         ) : (
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16 }}>
+          <div style={{ display: "grid", gridTemplateColumns: desktop ? "repeat(3, 1fr)" : "1fr", gap: 16 }}>
             {templates.map(tpl => (
               <TemplateCard key={tpl.key} tpl={tpl} onSave={handleSave} />
             ))}

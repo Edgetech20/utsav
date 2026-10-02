@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Eye, Users, MousePointerClick, MapPin, UserCheck, ClipboardCheck, BedDouble, Car } from "lucide-react";
-import { C, Card, StatCard, Skeleton } from "./ui";
+import { C, Card, StatCard, Skeleton, useDesktop } from "./ui";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 type TrackStats  = { views: number; viewHits: number; attending: number; mapClicks: number; mapHits: number };
@@ -216,6 +216,7 @@ function sectionLabel(s: string) {
 
 // ── Dashboard ─────────────────────────────────────────────────────────────────
 export default function DashboardPage() {
+  const desktop = useDesktop();
   const [track,     setTrack]     = useState<TrackStats | null>(null);
   const [rsvp,      setRsvp]      = useState<Entry[]>([]);
   const [accom,     setAccom]     = useState<Entry[]>([]);
@@ -310,7 +311,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Charts row */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+      <div style={{ display: "grid", gridTemplateColumns: desktop ? "1fr 1fr" : "1fr", gap: 16 }}>
 
         {/* Visitor line chart */}
         <Card>

@@ -1,5 +1,18 @@
 "use client";
-import { ReactNode, ButtonHTMLAttributes, InputHTMLAttributes } from "react";
+import { ReactNode, ButtonHTMLAttributes, InputHTMLAttributes, useEffect, useState } from "react";
+
+// ── Responsive hook ───────────────────────────────────────────────────────────
+export function useDesktop() {
+  const [desktop, setDesktop] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia("(min-width: 768px)");
+    setDesktop(mq.matches);
+    const h = (e: MediaQueryListEvent) => setDesktop(e.matches);
+    mq.addEventListener("change", h);
+    return () => mq.removeEventListener("change", h);
+  }, []);
+  return desktop;
+}
 
 // ── Design tokens ─────────────────────────────────────────────────────────────
 export const C = {

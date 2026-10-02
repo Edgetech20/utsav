@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Trash2, BedDouble, Car, Bus } from "lucide-react";
-import { C, Badge, Button, Search, PageHeader, Table, Thead, Th, Tbody, Td, Tr, Skeleton, Empty, Card, Pagination } from "../ui";
+import { C, Badge, Button, Search, PageHeader, Table, Thead, Th, Tbody, Td, Tr, Skeleton, Empty, Card, Pagination, useDesktop } from "../ui";
 import { useToast } from "../toast";
 
 type Entry = {
@@ -53,6 +53,7 @@ export default function AccommodationPage() {
   const [toConfirm, setToConfirm] = useState<number | null>(null);
   const [page, setPage] = useState(1);
   const PER_PAGE = 20;
+  const desktop = useDesktop();
 
   async function load() {
     const res = await fetch("/api/accommodation").then(r => r.json()).catch(() => ({}));
@@ -103,74 +104,72 @@ export default function AccommodationPage() {
         ))}
       </div>
 
-      <Table>
-        <Thead>
-          <Tr>
-            <Th>Name</Th>
-            <Th>From</Th>
-            <Th>Persons</Th>
-            <Th>Breakdown</Th>
-            <Th>Arrival</Th>
-            <Th>Departure</Th>
-            <Th>Flags</Th>
-            <Th style={{ textAlign: "right" }}>Actions</Th>
-          </Tr>
-        </Thead>
-        <tbody>
-          {loading ? (
-            <SkeletonRows />
-          ) : filtered.length === 0 ? (
-            <Tr>
-              <Td style={{ padding: 0, border: "none" }} colSpan={8}>
-                <Empty icon={<BedDouble size={40} />} title={search ? "No results" : "No registrations yet"} />
-              </Td>
-            </Tr>
-          ) : paginated.map(e => {
-            const busy    = acting === e.id;
-            const confirm = toConfirm === e.id;
-            return (
-              <Tr key={e.id} style={{ opacity: busy ? 0.5 : 1 }}>
-                <Td>
-                  <p style={{ fontWeight: 600, margin: 0, whiteSpace: "nowrap" }}>{e.primaryName}</p>
-                  <p style={{ fontSize: 11, color: C.textMuted, margin: "2px 0 0", fontFamily: "monospace" }}>{e.mobile}</p>
-                </Td>
-                <Td style={{ color: C.textSub, whiteSpace: "nowrap" }}>{e.comingFrom}</Td>
-                <Td>
-                  <Badge variant="blue" icon={<BedDouble size={10} />}>{e.totalPersons}</Badge>
-                </Td>
-                <Td style={{ fontSize: 11, color: C.textMuted, whiteSpace: "nowrap" }}>{breakdown(e) || "—"}</Td>
-                <Td style={{ fontSize: 12, color: C.textSub, whiteSpace: "nowrap" }}>{fmt(e.arrivalAt)}</Td>
-                <Td style={{ fontSize: 12, color: C.textSub, whiteSpace: "nowrap" }}>{fmt(e.departureAt)}</Td>
-                <Td>
-                  <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                    {e.needsAssistance && (
-                      <Badge variant="orange" style={{ fontSize: 10 }}>Assistance</Badge>
-                    )}
-                    {e.hasVehicle && e.vehicleNo && (
-                      <Badge variant="blue" icon={e.vehicleType === "bus" ? <Bus size={10} /> : <Car size={10} />} style={{ fontSize: 10 }}>
-                        {e.vehicleNo}
-                      </Badge>
-                    )}
+      {desktop ? (
+        <Table>
+          <Thead><Tr><Th>Name</Th><Th>From</Th><Th>Persons</Th><Th>Breakdown</Th><Th>Arrival</Th><Th>Departure</Th><Th>Flags</Th><Th style={{ textAlign: "right" }}>Actions</Th></Tr></Thead>
+          <tbody>
+            {loading ? <SkeletonRows /> : filtered.length === 0 ? (
+              <Tr><Td style={{ padding: 0, border: "none" }} colSpan={8}><Empty icon={<BedDouble size={40} />} title={search ? "No results" : "No registrations yet"} /></Td></Tr>
+            ) : paginated.map(e => {
+              const busy = acting === e.id; const confirm = toConfirm === e.id;
+              return (
+                <Tr key={e.id} style={{ opacity: busy ? 0.5 : 1 }}>
+                  <Td><p style={{ fontWeight: 600, margin: 0 }}>{e.primaryName}</p><p style={{ fontSize: 11, color: C.textMuted, margin: "2px 0 0", fontFamily: "monospace" }}>{e.mobile}</p></Td>
+                  <Td style={{ color: C.textSub }}>{e.comingFrom}</Td>
+                  <Td><Badge variant="blue" icon={<BedDouble size={10} />}>{e.totalPersons}</Badge></Td>
+                  <Td style={{ fontSize: 11, color: C.textMuted }}>{breakdown(e) || "—"}</Td>
+                  <Td style={{ fontSize: 12, color: C.textSub, whiteSpace: "nowrap" }}>{fmt(e.arrivalAt)}</Td>
+                  <Td style={{ fontSize: 12, color: C.textSub, whiteSpace: "nowrap" }}>{fmt(e.departureAt)}</Td>
+                  <Td><div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                    {e.needsAssistance && <Badge variant="orange" style={{ fontSize: 10 }}>Assistance</Badge>}
+                    {e.hasVehicle && e.vehicleNo && <Badge variant="blue" icon={e.vehicleType === "bus" ? <Bus size={10} /> : <Car size={10} />} style={{ fontSize: 10 }}>{e.vehicleNo}</Badge>}
                     {!e.needsAssistance && !e.hasVehicle && <span style={{ color: C.textMuted, fontSize: 11 }}>—</span>}
+                  </div></Td>
+                  <Td><div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
+                    {confirm ? (<><Button variant="danger" size="sm" loading={busy} onClick={() => handleDelete(e.id)}>Confirm</Button><Button variant="secondary" size="sm" onClick={() => setToConfirm(null)}>Cancel</Button></>) : (<Button variant="ghost" size="sm" icon={<Trash2 size={11} />} onClick={() => setToConfirm(e.id)} style={{ color: C.red }}>Delete</Button>)}
+                  </div></Td>
+                </Tr>
+              );
+            })}
+          </tbody>
+        </Table>
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          {loading ? Array.from({ length: 4 }).map((_, i) => <Card key={i} padding={16}><Skeleton height={80} /></Card>) :
+           filtered.length === 0 ? <Empty icon={<BedDouble size={40} />} title={search ? "No results" : "No registrations yet"} /> :
+           paginated.map(e => {
+            const busy = acting === e.id; const confirm = toConfirm === e.id;
+            return (
+              <Card key={e.id} padding={14} style={{ opacity: busy ? 0.5 : 1 }}>
+                <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 8 }}>
+                  <div>
+                    <p style={{ fontWeight: 700, fontSize: 14, color: C.text, margin: 0 }}>{e.primaryName}</p>
+                    <p style={{ fontSize: 12, color: C.textMuted, margin: "2px 0 0", fontFamily: "monospace" }}>{e.mobile}</p>
                   </div>
-                </Td>
-                <Td>
-                  <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
-                    {confirm ? (
-                      <>
-                        <Button variant="danger" size="sm" loading={busy} onClick={() => handleDelete(e.id)}>Confirm</Button>
-                        <Button variant="secondary" size="sm" onClick={() => setToConfirm(null)}>Cancel</Button>
-                      </>
-                    ) : (
-                      <Button variant="ghost" size="sm" icon={<Trash2 size={11} />} onClick={() => setToConfirm(e.id)} style={{ color: C.red }}>Delete</Button>
-                    )}
+                  <Badge variant="blue" icon={<BedDouble size={10} />}>{e.totalPersons} persons</Badge>
+                </div>
+                <div style={{ display: "flex", gap: 12, fontSize: 12, color: C.textSub, marginBottom: 8, flexWrap: "wrap" }}>
+                  <span>From: {e.comingFrom}</span>
+                  {breakdown(e) && <span>{breakdown(e)}</span>}
+                </div>
+                <div style={{ display: "flex", gap: 16, fontSize: 12, color: C.textSub, marginBottom: 8 }}>
+                  <span>↑ {fmt(e.arrivalAt)}</span>
+                  <span>↓ {fmt(e.departureAt)}</span>
+                </div>
+                {(e.needsAssistance || (e.hasVehicle && e.vehicleNo)) && (
+                  <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 10 }}>
+                    {e.needsAssistance && <Badge variant="orange" style={{ fontSize: 10 }}>Assistance</Badge>}
+                    {e.hasVehicle && e.vehicleNo && <Badge variant="blue" icon={e.vehicleType === "bus" ? <Bus size={10} /> : <Car size={10} />} style={{ fontSize: 10 }}>{e.vehicleNo}</Badge>}
                   </div>
-                </Td>
-              </Tr>
+                )}
+                <div style={{ display: "flex", justifyContent: "flex-end", gap: 6 }}>
+                  {confirm ? (<><Button variant="danger" size="sm" loading={busy} onClick={() => handleDelete(e.id)}>Confirm</Button><Button variant="secondary" size="sm" onClick={() => setToConfirm(null)}>Cancel</Button></>) : (<Button variant="ghost" size="sm" icon={<Trash2 size={11} />} onClick={() => setToConfirm(e.id)} style={{ color: C.red }}>Delete</Button>)}
+                </div>
+              </Card>
             );
           })}
-        </tbody>
-      </Table>
+        </div>
+      )}
       <Pagination page={page} total={filtered.length} perPage={PER_PAGE} onChange={p => setPage(p)} />
     </div>
   );
