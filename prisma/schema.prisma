@@ -49,6 +49,7 @@ model AccommodationRegistration {
   id                Int      @id @default(autoincrement())
   primaryName       String
   mobile            String
+  waSent            Boolean  @default(false)
   comingFrom        String
   totalPersons      Int
   maleMem           Int      @default(0)
@@ -70,6 +71,7 @@ model VehicleRegistration {
   id              Int      @id @default(autoincrement())
   contactName     String
   mobile          String
+  waSent          Boolean  @default(false)
   vehicleType     String   // 'car' | 'bus'
   vehicleNo       String
   totalPassengers Int
@@ -138,9 +140,10 @@ model QrScan {
 
 model WaTemplate {
   id        Int      @id @default(autoincrement())
-  key       String   @unique  // e.g. "rsvp_auto"
+  key       String   @unique  // rsvp_auto | accommodation_auto | vehicle_auto
   name      String
   body      String   @db.Text
+  enabled   Boolean  @default(true)
   updatedAt DateTime @updatedAt
 }
 

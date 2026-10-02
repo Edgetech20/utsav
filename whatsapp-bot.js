@@ -42,17 +42,24 @@ function toWaId(raw) {
   return num + "@c.us";
 }
 
-const DEFAULT_TEMPLATE =
-  `Namaskar {name} 🙏\n\n` +
-  `We have received your registration for Priyabodhi Mahotsav on 20 December.\n\n` +
-  `Thank you for letting us know. We look forward to your presence.\n\n` +
-  `Jai Guru!`;
+const DEFAULT_TEMPLATES = {
+  rsvp_auto:
+    `Namaskar {name} 🙏\n\nWe have received your registration for Priyabodhi Mahotsav on 20 December.\n\nThank you for letting us know. We look forward to your presence.\n\nJai Guru!`,
+  accommodation_auto:
+    `Namaskar {name} 🙏\n\nYour accommodation registration for Priyabodhi Mahotsav has been received.\n\nWe will confirm your arrangements shortly. Thank you.\n\nJai Guru!`,
+  vehicle_auto:
+    `Namaskar {name} 🙏\n\nYour vehicle registration for Priyabodhi Mahotsav has been received.\n\nParking arrangements will be communicated closer to the event. Thank you.\n\nJai Guru!`,
+};
 
-async function getTemplate() {
+// Returns { body, enabled } for a template key, falling back to defaults
+async function getTemplate(key) {
   try {
-    const [[row]] = await pool.execute("SELECT body FROM WaTemplate WHERE `key` = 'rsvp_auto' LIMIT 1");
-    return row ? row.body : DEFAULT_TEMPLATE;
-  } catch { return DEFAULT_TEMPLATE; }
+    const [[row]] = await pool.execute(
+      "SELECT body, enabled FROM WaTemplate WHERE `key` = ? LIMIT 1", [key]
+    );
+    if (row) return { body: row.body, enabled: !!row.enabled };
+  } catch {}
+  return { body: DEFAULT_TEMPLATES[key] ?? "", enabled: true };
 }
 
 function applyTemplate(body, name) {
@@ -103,19 +110,51 @@ async function sendWithRetry(waId, text, retries = 2) {
 function watch() {
   setInterval(async () => {
     // ── RSVP auto-messages ──────────────────────────────────────────
-    const [rsvpRows] = await pool.execute("SELECT * FROM Rsvp WHERE waSent = 0");
-    if (rsvpRows.length) {
-      const tplBody = await getTemplate();
+    const { body: rsvpBody, enabled: rsvpEnabled } = await getTemplate("rsvp_auto");
+    if (rsvpEnabled) {
+      const [rsvpRows] = await pool.execute("SELECT * FROM Rsvp WHERE waSent = 0");
       for (const entry of rsvpRows) {
         try {
-          await sendWithRetry(toWaId(entry.whatsapp), applyTemplate(tplBody, entry.name));
+          await sendWithRetry(toWaId(entry.whatsapp), applyTemplate(rsvpBody, entry.name));
           await pool.execute("UPDATE Rsvp SET waSent = 1 WHERE id = ?", [entry.id]);
           await appendLog({ name: entry.name, whatsapp: entry.whatsapp, status: "sent" });
-          console.log(`✓ RSVP sent to ${entry.name} (${entry.whatsapp})`);
+          console.log(`✓ RSVP sent to ${entry.name}`);
           await delay(2000);
         } catch (err) {
           await appendLog({ name: entry.name, whatsapp: entry.whatsapp, status: "failed", error: err.message });
           console.error(`✗ RSVP failed for ${entry.name}:`, err.message);
+        }
+      }
+    }
+
+    // ── Accommodation auto-messages ──────────────────────────────────
+    const { body: accBody, enabled: accEnabled } = await getTemplate("accommodation_auto");
+    if (accEnabled) {
+      const [accRows] = await pool.execute("SELECT * FROM AccommodationRegistration WHERE waSent = 0");
+      for (const entry of accRows) {
+        try {
+          await sendWithRetry(toWaId(entry.mobile), applyTemplate(accBody, entry.primaryName));
+          await pool.execute("UPDATE AccommodationRegistration SET waSent = 1 WHERE id = ?", [entry.id]);
+          console.log(`✓ Accommodation sent to ${entry.primaryName}`);
+          await delay(2000);
+        } catch (err) {
+          console.error(`✗ Accommodation failed for ${entry.primaryName}:`, err.message);
+        }
+      }
+    }
+
+    // ── Vehicle auto-messages ────────────────────────────────────────
+    const { body: vehBody, enabled: vehEnabled } = await getTemplate("vehicle_auto");
+    if (vehEnabled) {
+      const [vehRows] = await pool.execute("SELECT * FROM VehicleRegistration WHERE waSent = 0");
+      for (const entry of vehRows) {
+        try {
+          await sendWithRetry(toWaId(entry.mobile), applyTemplate(vehBody, entry.contactName));
+          await pool.execute("UPDATE VehicleRegistration SET waSent = 1 WHERE id = ?", [entry.id]);
+          console.log(`✓ Vehicle sent to ${entry.contactName}`);
+          await delay(2000);
+        } catch (err) {
+          console.error(`✗ Vehicle failed for ${entry.contactName}:`, err.message);
         }
       }
     }
