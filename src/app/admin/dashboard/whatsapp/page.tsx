@@ -190,8 +190,8 @@ export default function WhatsAppPage() {
         }
       />
 
-      {/* ── Connection card — only shown when connected or in-progress ── */}
-      {(isConnected || isQr || isStarting) && (
+      {/* ── Connection card — only shown while connecting/scanning ── */}
+      {(isQr || isStarting) && (
         <Card padding={0} style={{ overflow: "hidden", maxWidth: 520 }}>
           <div style={{
             padding: "12px 20px", borderBottom: `1px solid ${C.border}`,
@@ -216,29 +216,12 @@ export default function WhatsAppPage() {
           </div>
 
           <div style={{ padding: "28px 24px", display: "flex", flexDirection: "column", alignItems: "center", gap: 16, textAlign: "center" }}>
-            {isConnected && (
-              <>
-                <div style={{ width: 56, height: 56, borderRadius: "50%", background: C.greenBg, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                  <Wifi size={24} color={C.green} />
-                </div>
-                <div>
-                  <p style={{ fontSize: 14, fontWeight: 700, color: C.text, margin: 0 }}>WhatsApp Connected</p>
-                  <p style={{ fontSize: 12, color: C.textSub, marginTop: 4, lineHeight: 1.6 }}>
-                    Registrants automatically receive a thank-you message upon RSVP submission.
-                  </p>
-                </div>
-              </>
-            )}
-            {(isQr || isStarting) && (
-              <>
-                <div style={{ width: 56, height: 56, borderRadius: "50%", background: C.orangeBg, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                  <Spinner size={22} color={C.orange} />
-                </div>
-                <p style={{ fontSize: 13, color: C.textSub, margin: 0 }}>
-                  {isStarting ? "Starting — QR code will appear shortly…" : "Waiting for QR scan"}
-                </p>
-              </>
-            )}
+            <div style={{ width: 56, height: 56, borderRadius: "50%", background: C.orangeBg, display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <Spinner size={22} color={C.orange} />
+            </div>
+            <p style={{ fontSize: 13, color: C.textSub, margin: 0 }}>
+              {isStarting ? "Starting — QR code will appear shortly…" : "Waiting for QR scan"}
+            </p>
           </div>
         </Card>
       )}
