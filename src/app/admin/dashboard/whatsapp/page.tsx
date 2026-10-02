@@ -48,12 +48,10 @@ function ConnectModal({ wa, onClose }: { wa: WaStatus; onClose: () => void }) {
   return (
     <div
       style={{ position: "fixed", inset: 0, zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.5)", padding: 16 }}
-      onClick={onClose}
     >
       <Card
         padding={0}
         style={{ width: "100%", maxWidth: 400, boxShadow: "0 24px 64px rgba(0,0,0,0.22)" }}
-        onClick={(e: React.MouseEvent) => e.stopPropagation()}
       >
         {/* Header */}
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 20px", borderBottom: `1px solid ${C.border}` }}>
@@ -68,7 +66,7 @@ function ConnectModal({ wa, onClose }: { wa: WaStatus; onClose: () => void }) {
 
         {/* Body */}
         <div style={{ padding: "32px 24px", display: "flex", flexDirection: "column", alignItems: "center", gap: 20, textAlign: "center" }}>
-          {isStarting && (
+          {!isQr && (
             <>
               <Spinner size={32} color={C.orange} />
               <div>
@@ -97,12 +95,6 @@ function ConnectModal({ wa, onClose }: { wa: WaStatus; onClose: () => void }) {
             </>
           )}
 
-          {!isStarting && !isQr && (
-            <>
-              <Spinner size={24} color={C.textMuted} />
-              <p style={{ fontSize: 13, color: C.textSub }}>Waiting for bot status…</p>
-            </>
-          )}
         </div>
       </Card>
     </div>
