@@ -86,8 +86,8 @@ function Section({ label, children }: { label: string; children: React.ReactNode
 }
 
 export default function SettingsPage() {
-  const toast   = useToast();
-  const desktop = useDesktop();
+  const { toast } = useToast();
+  const desktop   = useDesktop();
   const [vals, setVals]     = useState<Vals>({});
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
