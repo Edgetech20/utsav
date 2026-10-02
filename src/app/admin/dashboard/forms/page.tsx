@@ -148,13 +148,27 @@ function FieldRow({
           </>
         )}
 
-        {/* date / datetime constraints */}
-        {(field.type === "date" || field.type === "datetime") && (
+        {/* date constraints */}
+        {field.type === "date" && (
           <>
-            <input type={field.type === "datetime" ? "datetime-local" : "date"} style={{ ...cell, flex: 1, minWidth: 110 }} value={v.minDate ?? ""}
-              onChange={e => setV({ minDate: e.target.value || undefined })} title="Min" />
-            <input type={field.type === "datetime" ? "datetime-local" : "date"} style={{ ...cell, flex: 1, minWidth: 110 }} value={v.maxDate ?? ""}
-              onChange={e => setV({ maxDate: e.target.value || undefined })} title="Max" />
+            <input type="date" style={{ ...cell, flex: 1, minWidth: 110 }} value={v.minDate ?? ""}
+              onChange={e => setV({ minDate: e.target.value || undefined })} title="Min date" />
+            <input type="date" style={{ ...cell, flex: 1, minWidth: 110 }} value={v.maxDate ?? ""}
+              onChange={e => setV({ maxDate: e.target.value || undefined })} title="Max date" />
+            <label style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 11, color: C.textSub, cursor: "pointer", whiteSpace: "nowrap" }}>
+              <input type="checkbox" checked={!!v.disallowPast} style={{ accentColor: C.primary }}
+                onChange={e => setV({ disallowPast: e.target.checked || undefined })} /> No past
+            </label>
+            <label style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 11, color: C.textSub, cursor: "pointer", whiteSpace: "nowrap" }}>
+              <input type="checkbox" checked={!!v.disallowFuture} style={{ accentColor: C.primary }}
+                onChange={e => setV({ disallowFuture: e.target.checked || undefined })} /> No future
+            </label>
+          </>
+        )}
+
+        {/* datetime constraints — only past/future toggles, no min/max pickers */}
+        {field.type === "datetime" && (
+          <>
             <label style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 11, color: C.textSub, cursor: "pointer", whiteSpace: "nowrap" }}>
               <input type="checkbox" checked={!!v.disallowPast} style={{ accentColor: C.primary }}
                 onChange={e => setV({ disallowPast: e.target.checked || undefined })} /> No past
