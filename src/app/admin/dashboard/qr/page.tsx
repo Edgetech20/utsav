@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { QrCode, Plus, Copy, Download, Trash2, Check, ExternalLink } from "lucide-react";
+import { QrCode, Plus, Copy, Download, Trash2, Check, ExternalLink, X } from "lucide-react";
 import { C, Button, Badge, PageHeader, Card, Input, Empty, Skeleton } from "../ui";
 import { useToast } from "../toast";
 
@@ -28,19 +28,11 @@ function SkeletonCard() {
   );
 }
 
-export default function QrPage() {
-  const { toast }  = useToast();
-  const [list, setList]           = useState<QrEntry[]>([]);
-  const [loading, setLoading]     = useState(true);
+function CreateModal({ onClose, onCreate }: { onClose: () => void; onCreate: (entry: QrEntry) => void }) {
+  const { toast } = useToast();
   const [name, setName]           = useState("");
   const [targetUrl, setTargetUrl] = useState("");
   const [creating, setCreating]   = useState(false);
-  const [copied, setCopied]       = useState<number | null>(null);
-  const [toConfirm, setToConfirm] = useState<number | null>(null);
-
-  useEffect(() => {
-    fetch("/api/qr").then(r => r.json()).then(d => { setList(d); setLoading(false); });
-  }, []);
 
   async function create() {
     if (!name.trim() || !targetUrl.trim()) return;
@@ -50,11 +42,71 @@ export default function QrPage() {
       body: JSON.stringify({ name, targetUrl }),
     });
     const entry = await res.json();
-    setList(prev => [entry, ...prev]);
-    setName(""); setTargetUrl("");
-    setCreating(false);
+    onCreate(entry);
     toast("QR code created", "success");
+    onClose();
   }
+
+  return (
+    <div
+      style={{ position: "fixed", inset: 0, zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.45)", padding: 16 }}
+      onClick={onClose}
+    >
+      <Card
+        padding={0}
+        style={{ width: "100%", maxWidth: 420, boxShadow: "0 24px 64px rgba(0,0,0,0.18)" }}
+        onClick={(e: React.MouseEvent) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 20px", borderBottom: `1px solid ${C.border}` }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <QrCode size={15} color={C.textSub} />
+            <p style={{ fontWeight: 700, fontSize: 14, color: C.text, margin: 0 }}>New QR Code</p>
+          </div>
+          <button onClick={onClose} style={{ border: "none", background: "none", cursor: "pointer", color: C.textMuted, display: "flex", padding: 4 }}>
+            <X size={17} />
+          </button>
+        </div>
+
+        {/* Body */}
+        <div style={{ padding: 20, display: "flex", flexDirection: "column", gap: 14 }}>
+          <Input
+            label="Label"
+            value={name}
+            onChange={e => setName(e.target.value)}
+            placeholder="e.g. Wedding Card, Poster, WhatsApp blast"
+            autoFocus
+          />
+          <Input
+            label="Destination URL"
+            value={targetUrl}
+            onChange={e => setTargetUrl(e.target.value)}
+            onKeyDown={e => e.key === "Enter" && create()}
+            placeholder="https://yourdomain.com"
+          />
+          <div style={{ display: "flex", gap: 8, paddingTop: 4 }}>
+            <Button icon={<Plus size={13} />} disabled={!name.trim() || !targetUrl.trim()} loading={creating} onClick={create} style={{ flex: 1 }}>
+              Create QR
+            </Button>
+            <Button variant="secondary" onClick={onClose}>Cancel</Button>
+          </div>
+        </div>
+      </Card>
+    </div>
+  );
+}
+
+export default function QrPage() {
+  const { toast }  = useToast();
+  const [list, setList]           = useState<QrEntry[]>([]);
+  const [loading, setLoading]     = useState(true);
+  const [showCreate, setShowCreate] = useState(false);
+  const [copied, setCopied]       = useState<number | null>(null);
+  const [toConfirm, setToConfirm] = useState<number | null>(null);
+
+  useEffect(() => {
+    fetch("/api/qr").then(r => r.json()).then(d => { setList(d); setLoading(false); });
+  }, []);
 
   async function del(id: number) {
     setToConfirm(null);
@@ -70,42 +122,25 @@ export default function QrPage() {
     toast("Link copied to clipboard", "info");
   }
 
-  const canCreate = name.trim() && targetUrl.trim() && !creating;
-
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
       <PageHeader
         title="QR Codes"
         sub="Generate trackable QR codes — scans are logged per code"
-        actions={<Badge variant="blue" icon={<QrCode size={11} />}>{list.length} codes</Badge>}
+        actions={
+          <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+            <Badge variant="blue" icon={<QrCode size={11} />}>{list.length} codes</Badge>
+            <Button icon={<Plus size={13} />} size="sm" onClick={() => setShowCreate(true)}>New QR</Button>
+          </div>
+        }
       />
 
-      {/* Create form */}
-      <Card>
-        <p style={{ fontSize: 12, fontWeight: 700, color: C.textSub, textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 14 }}>
-          New QR Code
-        </p>
-        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          <Input
-            label="Label"
-            value={name}
-            onChange={e => setName(e.target.value)}
-            placeholder="e.g. Wedding Card, Poster, WhatsApp blast"
-          />
-          <Input
-            label="Destination URL"
-            value={targetUrl}
-            onChange={e => setTargetUrl(e.target.value)}
-            onKeyDown={e => e.key === "Enter" && create()}
-            placeholder="https://yourdomain.com"
-          />
-          <div>
-            <Button icon={<Plus size={13} />} disabled={!canCreate} loading={creating} onClick={create}>
-              Create QR
-            </Button>
-          </div>
-        </div>
-      </Card>
+      {showCreate && (
+        <CreateModal
+          onClose={() => setShowCreate(false)}
+          onCreate={entry => setList(prev => [entry, ...prev])}
+        />
+      )}
 
       {/* Grid */}
       {loading ? (
@@ -113,7 +148,7 @@ export default function QrPage() {
           {Array.from({ length: 3 }).map((_, i) => <SkeletonCard key={i} />)}
         </div>
       ) : list.length === 0 ? (
-        <Empty icon={<QrCode size={40} />} title="No QR codes yet" sub="Create one above to get started" />
+        <Empty icon={<QrCode size={40} />} title="No QR codes yet" sub='Click "New QR" to get started' />
       ) : (
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(280px,1fr))", gap: 16 }}>
           {list.map(entry => {
