@@ -6,7 +6,8 @@ import { C, Button, PageHeader, Card, Input, Spinner } from "../ui";
 import { useToast } from "../toast";
 
 type AttractionImage = { id: number; imageUrl: string };
-type Attraction = { id: number; name: string; order: number; url: string | null; navigateToVenue: boolean; images: AttractionImage[] };
+type Attraction = { id: number; name: string; order: number; url: string | null; navigateToVenue: boolean; formSlug: string | null; images: AttractionImage[] };
+type FormOption = { id: number; name: string; slug: string };
 
 const DEFAULTS = [
   "Accommodation", "Bus & Car Parking", "Medical Camp", "Cheap Canteen",
@@ -66,12 +67,13 @@ function ImageStrip({ images, onRemove }: { images: AttractionImage[]; onRemove:
 export default function AttractionsPage() {
   const { toast } = useToast();
   const [list, setList]           = useState<Attraction[]>([]);
+  const [forms, setForms]         = useState<FormOption[]>([]);
   const [showAdd, setShowAdd]     = useState(false);
-  const [addForm, setAddForm]     = useState({ name: "", url: "", navigateToVenue: false });
+  const [addForm, setAddForm]     = useState({ name: "", url: "", navigateToVenue: false, formSlug: "" });
   const [addFiles, setAddFiles]   = useState<File[]>([]);
   const addFileRef                = useRef<HTMLInputElement>(null);
   const [editTarget, setEditTarget] = useState<Attraction | null>(null);
-  const [editForm, setEditForm]   = useState({ name: "", url: "", navigateToVenue: false });
+  const [editForm, setEditForm]   = useState({ name: "", url: "", navigateToVenue: false, formSlug: "" });
   const [uploading, setUploading] = useState(false);
   const [seeding, setSeeding]     = useState(false);
   const [dragOver, setDragOver]   = useState<number | null>(null);
@@ -83,7 +85,10 @@ export default function AttractionsPage() {
     const res = await fetch("/api/attractions");
     if (res.ok) setList(await res.json());
   }
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    load();
+    fetch("/api/forms").then(r => r.ok ? r.json() : []).then(data => setForms(Array.isArray(data) ? data : []));
+  }, []);
 
   async function seedDefaults() {
     setSeeding(true);
@@ -102,7 +107,7 @@ export default function AttractionsPage() {
     if (!addForm.name.trim()) return;
     const res = await fetch("/api/attractions", {
       method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...addForm, url: addForm.url || null }),
+      body: JSON.stringify({ ...addForm, url: addForm.url || null, formSlug: addForm.formSlug || null }),
     });
     if (res.ok && addFiles.length) {
       const { id } = await res.json();
@@ -113,7 +118,7 @@ export default function AttractionsPage() {
         await fetch("/api/attraction-images", { method: "POST", body: form });
       }
     }
-    setAddForm({ name: "", url: "", navigateToVenue: false });
+    setAddForm({ name: "", url: "", navigateToVenue: false, formSlug: "" });
     setAddFiles([]);
     setShowAdd(false);
     await load();
@@ -124,7 +129,7 @@ export default function AttractionsPage() {
     if (!editTarget) return;
     await fetch("/api/attractions", {
       method: "PUT", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id: editTarget.id, ...editForm, url: editForm.url || null }),
+      body: JSON.stringify({ id: editTarget.id, ...editForm, url: editForm.url || null, formSlug: editForm.formSlug || null }),
     });
     setEditTarget(null);
     await load();
@@ -191,15 +196,30 @@ export default function AttractionsPage() {
 
   function openEdit(a: Attraction) {
     setEditTarget(a);
-    setEditForm({ name: a.name, url: a.url ?? "", navigateToVenue: a.navigateToVenue });
+    setEditForm({ name: a.name, url: a.url ?? "", navigateToVenue: a.navigateToVenue, formSlug: a.formSlug ?? "" });
   }
 
   // ── Shared form fields ─────────────────────────────────────────────────────
   function FormFields({ form, setForm }: { form: typeof addForm; setForm: (f: typeof addForm) => void }) {
+    const selectStyle: React.CSSProperties = {
+      padding: "9px 12px", border: `1px solid ${C.border}`, borderRadius: 8,
+      fontSize: 13, color: C.text, outline: "none", background: C.surface,
+      width: "100%", boxSizing: "border-box",
+    };
     return (
       <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
         <Input label="Name *" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="e.g. Cultural Events" />
         <Input label="URL (optional)" value={form.url} onChange={e => setForm({ ...form, url: e.target.value })} placeholder="https://…" />
+        <div>
+          <label style={{ fontSize: 11, fontWeight: 600, color: C.textSub, textTransform: "uppercase", letterSpacing: "0.06em", display: "block", marginBottom: 5 }}>
+            Link a Registration Form (optional)
+          </label>
+          <select style={selectStyle} value={form.formSlug} onChange={e => setForm({ ...form, formSlug: e.target.value })}>
+            <option value="">— no form —</option>
+            {forms.map(f => <option key={f.slug} value={f.slug}>{f.name}</option>)}
+          </select>
+          <p style={{ fontSize: 11, color: C.textMuted, marginTop: 4 }}>Shows a Register button inside this attraction on the public page.</p>
+        </div>
         <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: C.textSub, cursor: "pointer" }}>
           <input type="checkbox" checked={form.navigateToVenue} onChange={e => setForm({ ...form, navigateToVenue: e.target.checked })} />
           Show "Navigate to Venue" button

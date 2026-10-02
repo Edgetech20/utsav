@@ -102,9 +102,65 @@ export default function HomeClient({ initialSettings }: { initialSettings: Recor
     additionalInfo: "",
   });
 
+  // dynamic form modal
+  const [dynFormSlug, setDynFormSlug]   = useState<string | null>(null);
+  const [dynFormData, setDynFormData]   = useState<{ id: number; name: string; description: string | null; fields: { id: number; label: string; type: string; placeholder: string | null; options: string | null; validation: string | null; required: boolean }[] } | null>(null);
+  const [dynFormValues, setDynFormValues]   = useState<Record<string, string>>({});
+  const [dynFormErrors, setDynFormErrors]   = useState<Record<string, string>>({});
+  const [dynFormState, setDynFormState]     = useState<"idle" | "loading" | "done" | "error">("idle");
+
+  useEffect(() => {
+    if (!dynFormSlug) { setDynFormData(null); setDynFormValues({}); setDynFormErrors({}); setDynFormState("idle"); return; }
+    fetch(`/api/forms/${dynFormSlug}`)
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (!data) return;
+        setDynFormData(data);
+        const init: Record<string, string> = {};
+        data.fields.forEach((f: { label: string }) => { init[f.label] = ""; });
+        setDynFormValues(init);
+      });
+  }, [dynFormSlug]);
+
+  function dynValidate(): boolean {
+    if (!dynFormData) return false;
+    const errs: Record<string, string> = {};
+    for (const field of dynFormData.fields) {
+      const val = (dynFormValues[field.label] ?? "").trim();
+      if (field.required && !val) { errs[field.label] = `${field.label} is required`; continue; }
+      if (!val) continue;
+      const v = field.validation ? JSON.parse(field.validation) : {};
+      if (field.type === "text") {
+        if (v.format === "email" && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val)) errs[field.label] = "Invalid email address";
+        else if (v.format === "phone" && !/^[6-9]\d{9}$/.test(val.replace(/\D/g, ""))) errs[field.label] = "Enter a valid 10-digit mobile number";
+        else if (v.format === "numeric" && !/^\d+$/.test(val)) errs[field.label] = "Only numbers allowed";
+        else if (v.minLength && val.length < v.minLength) errs[field.label] = `Minimum ${v.minLength} characters`;
+        else if (v.maxLength && val.length > v.maxLength) errs[field.label] = `Maximum ${v.maxLength} characters`;
+      }
+      if (field.type === "date") {
+        const d = new Date(val); const today = new Date(); today.setHours(0,0,0,0);
+        if (isNaN(d.getTime())) errs[field.label] = "Invalid date";
+        else if (v.disallowPast && d < today) errs[field.label] = "Date cannot be in the past";
+        else if (v.disallowFuture && d > today) errs[field.label] = "Date cannot be in the future";
+      }
+    }
+    setDynFormErrors(errs);
+    return Object.keys(errs).length === 0;
+  }
+
+  async function dynSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!dynFormSlug || !dynValidate()) return;
+    setDynFormState("loading");
+    const res = await fetch(`/api/forms/${dynFormSlug}/submit`, {
+      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(dynFormValues),
+    });
+    setDynFormState(res.ok ? "done" : "error");
+  }
+
   const [entered, setEntered] = useState(false);
   const [playing, setPlaying] = useState(false);
-  const [dbAttractions, setDbAttractions] = useState<{ id: number; name: string; url: string | null; navigateToVenue: boolean; images: { id: number; imageUrl: string }[] }[]>([]);
+  const [dbAttractions, setDbAttractions] = useState<{ id: number; name: string; url: string | null; navigateToVenue: boolean; formSlug: string | null; images: { id: number; imageUrl: string }[] }[]>([]);
   const [event] = useState(() => ({
     date:     initialSettings.event_date       || DEFAULT_EVENT.date,
     dateIso:  initialSettings.event_date_iso   || DEFAULT_EVENT.dateIso,
@@ -245,6 +301,9 @@ export default function HomeClient({ initialSettings }: { initialSettings: Recor
         @keyframes spin-slow {
           from { transform: rotate(0deg); }
           to   { transform: rotate(360deg); }
+        }
+        @keyframes spin {
+          to { transform: rotate(360deg); }
         }
         .music-disc { animation: spin-slow 4s linear infinite; }
         .vf-input:focus { border-color: rgba(201,169,110,0.55) !important; box-shadow: 0 0 0 3px rgba(201,169,110,0.07); outline: none; }
@@ -551,6 +610,11 @@ export default function HomeClient({ initialSettings }: { initialSettings: Recor
                               ))}
                             </div>
                           )}
+                          {a.formSlug && (
+                            <button onClick={() => setDynFormSlug(a.formSlug)} className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl font-bold text-sm" style={{ background: "linear-gradient(135deg, rgba(201,169,110,0.22), rgba(154,120,64,0.16))", border: "1px solid rgba(201,169,110,0.45)", color: "#C9A96E", letterSpacing: "0.04em" }}>
+                              <CheckCircle className="w-4 h-4" /> Register
+                            </button>
+                          )}
                           {a.url && (
                             <a href={a.url} target="_blank" rel="noopener noreferrer" className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl font-bold text-sm" style={{ background: "linear-gradient(135deg, rgba(201,169,110,0.18), rgba(154,120,64,0.12))", border: "1px solid rgba(201,169,110,0.35)", color: "#C9A96E", letterSpacing: "0.04em" }}>
                               <Sparkles className="w-4 h-4" /> Open Link
@@ -561,7 +625,7 @@ export default function HomeClient({ initialSettings }: { initialSettings: Recor
                               <Navigation className="w-4 h-4" /> Navigate to Venue
                             </a>
                           )}
-                          {imgs.length === 0 && !a.url && !a.navigateToVenue && (
+                          {imgs.length === 0 && !a.url && !a.formSlug && !a.navigateToVenue && (
                             <div className="rounded-xl flex flex-col items-center justify-center gap-2 py-8" style={{ background: "#1A1A1A", border: "1px solid rgba(201,169,110,0.15)" }}>
                               <Icon className="w-8 h-8" style={{ color: "#C9A96E", opacity: 0.35 }} />
                               <p className="text-xs uppercase tracking-widest" style={{ color: "#C9A96E", opacity: 0.35 }}>Photo coming soon</p>
@@ -1244,6 +1308,115 @@ export default function HomeClient({ initialSettings }: { initialSettings: Recor
         </div>
       )}
 
+
+      {/* ── Dynamic Form Modal ── */}
+      {dynFormSlug && (
+        <div
+          className="fixed inset-0 z-50 flex items-end justify-center"
+          style={{ background: "rgba(0,0,0,0.75)", backdropFilter: "blur(4px)" }}
+          onClick={(e) => { if (e.target === e.currentTarget) setDynFormSlug(null); }}
+        >
+          <div
+            className="no-scrollbar w-full max-w-lg rounded-t-3xl px-5 pt-6 pb-10 flex flex-col gap-4"
+            style={{ background: "#141414", border: "1px solid rgba(201,169,110,0.2)", borderBottom: "none", maxHeight: "90vh", overflowY: "auto" }}
+          >
+            {/* Handle + header */}
+            <div className="flex flex-col items-center gap-3">
+              <div className="w-10 h-1 rounded-full" style={{ background: "rgba(201,169,110,0.3)" }} />
+              <div className="flex items-center gap-2.5">
+                <div className="flex items-center justify-center w-8 h-8 rounded-xl" style={{ background: "rgba(201,169,110,0.12)", border: "1px solid rgba(201,169,110,0.2)" }}>
+                  <CheckCircle className="w-4 h-4" style={{ color: "#C9A96E" }} />
+                </div>
+                <div>
+                  <p className="font-bold text-base leading-tight" style={{ color: "#E8D5B0" }}>{dynFormData?.name ?? "Registration"}</p>
+                  {dynFormData?.description && <p className="text-xs" style={{ color: "#C9A96E", opacity: 0.5 }}>{dynFormData.description}</p>}
+                </div>
+              </div>
+            </div>
+
+            {!dynFormData ? (
+              <div className="flex justify-center py-8">
+                <div style={{ width: 28, height: 28, border: "2.5px solid rgba(201,169,110,0.4)", borderTopColor: "#C9A96E", borderRadius: "50%", animation: "spin 0.7s linear infinite" }} />
+              </div>
+            ) : dynFormState === "done" ? (
+              <div className="flex flex-col items-center gap-3 py-6 text-center">
+                <CheckCircle className="w-10 h-10" style={{ color: "#C9A96E" }} />
+                <p className="font-bold text-base" style={{ color: "#E8D5B0" }}>Submitted!</p>
+                <p className="text-xs" style={{ color: "#C9A96E", opacity: 0.55 }}>Your registration has been received. Thank you!</p>
+                <button onClick={() => setDynFormSlug(null)} className="mt-2 px-6 py-2.5 rounded-xl font-bold text-sm" style={{ background: "rgba(201,169,110,0.15)", border: "1px solid rgba(201,169,110,0.3)", color: "#C9A96E" }}>Close</button>
+              </div>
+            ) : (
+              <form onSubmit={dynSubmit} className="flex flex-col gap-4">
+                {dynFormState === "error" && (
+                  <p className="text-xs text-center py-2 rounded-lg" style={{ background: "rgba(239,68,68,0.1)", color: "#f87171" }}>Something went wrong. Please try again.</p>
+                )}
+                {dynFormData.fields.map(field => {
+                  const err = dynFormErrors[field.label];
+                  const opts: string[] = field.options ? (() => { try { return JSON.parse(field.options!); } catch { return []; } })() : [];
+                  const v = field.validation ? (() => { try { return JSON.parse(field.validation!); } catch { return {}; } })() : {} as Record<string, unknown>;
+                  const inputCls = "w-full rounded-xl px-4 py-3 text-sm outline-none";
+                  const inputStyle: React.CSSProperties = {
+                    background: "#0E0E0E", border: `1px solid ${err ? "rgba(239,68,68,0.5)" : "rgba(201,169,110,0.2)"}`,
+                    color: "#E8D5B0", fontFamily: "inherit",
+                  };
+                  return (
+                    <div key={field.id} className="flex flex-col gap-1.5">
+                      <label className="text-xs uppercase tracking-widest" style={{ color: "#C9A96E", opacity: 0.5 }}>
+                        {field.label}{field.required && <span style={{ color: "#f87171" }}> *</span>}
+                      </label>
+                      {field.type === "text" && (
+                        <input
+                          type={v.format === "email" ? "email" : v.format === "numeric" ? "number" : "text"}
+                          className={inputCls} style={inputStyle}
+                          placeholder={field.placeholder ?? ""}
+                          value={dynFormValues[field.label] ?? ""}
+                          onChange={e => { setDynFormValues(p => ({ ...p, [field.label]: e.target.value })); setDynFormErrors(p => { const n = { ...p }; delete n[field.label]; return n; }); }}
+                        />
+                      )}
+                      {field.type === "textarea" && (
+                        <textarea
+                          className={inputCls} style={{ ...inputStyle, height: 90, resize: "vertical" }}
+                          placeholder={field.placeholder ?? ""}
+                          value={dynFormValues[field.label] ?? ""}
+                          onChange={e => { setDynFormValues(p => ({ ...p, [field.label]: e.target.value })); setDynFormErrors(p => { const n = { ...p }; delete n[field.label]; return n; }); }}
+                        />
+                      )}
+                      {field.type === "date" && (
+                        <input
+                          type="date" className={inputCls} style={{ ...inputStyle, colorScheme: "dark" }}
+                          min={v.disallowPast ? new Date().toISOString().slice(0,10) : (v.minDate as string | undefined)}
+                          max={v.disallowFuture ? new Date().toISOString().slice(0,10) : (v.maxDate as string | undefined)}
+                          value={dynFormValues[field.label] ?? ""}
+                          onChange={e => { setDynFormValues(p => ({ ...p, [field.label]: e.target.value })); setDynFormErrors(p => { const n = { ...p }; delete n[field.label]; return n; }); }}
+                        />
+                      )}
+                      {field.type === "select" && (
+                        <select
+                          className={inputCls} style={{ ...inputStyle, cursor: "pointer" }}
+                          value={dynFormValues[field.label] ?? ""}
+                          onChange={e => { setDynFormValues(p => ({ ...p, [field.label]: e.target.value })); setDynFormErrors(p => { const n = { ...p }; delete n[field.label]; return n; }); }}
+                        >
+                          <option value="">— select —</option>
+                          {opts.filter((o: string) => o.trim()).map((o: string) => <option key={o} value={o}>{o}</option>)}
+                        </select>
+                      )}
+                      {err && <p className="text-xs" style={{ color: "#f87171" }}>{err}</p>}
+                    </div>
+                  );
+                })}
+                <button
+                  type="submit" disabled={dynFormState === "loading"}
+                  className="w-full py-4 rounded-2xl font-black text-sm tracking-wider flex items-center justify-center gap-2"
+                  style={{ background: dynFormState === "loading" ? "rgba(201,169,110,0.1)" : "linear-gradient(135deg, rgba(201,169,110,0.25), rgba(154,120,64,0.2))", border: "1px solid rgba(201,169,110,0.4)", color: "#C9A96E", cursor: dynFormState === "loading" ? "not-allowed" : "pointer" }}
+                >
+                  {dynFormState === "loading" && <span style={{ width: 14, height: 14, border: "2px solid rgba(201,169,110,0.3)", borderTopColor: "#C9A96E", borderRadius: "50%", animation: "spin 0.7s linear infinite" }} />}
+                  {dynFormState === "loading" ? "Submitting…" : "Submit"}
+                </button>
+              </form>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* ── Coming Soon ── */}
       <div className="w-full max-w-lg px-5 pb-12" style={{ background: "#0E0E0E" }}>

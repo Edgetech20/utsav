@@ -97,6 +97,7 @@ model Attraction {
   order           Int               @default(0)
   url             String?
   navigateToVenue Boolean           @default(false)
+  formSlug        String?           // link to a DynamicForm slug
   images          AttractionImage[]
   createdAt       DateTime          @default(now())
 }
@@ -163,4 +164,45 @@ model WaQueue {
   error         String?   @db.Text
   createdAt     DateTime  @default(now())
   sentAt        DateTime?
+}
+
+model DynamicForm {
+  id           Int                   @id @default(autoincrement())
+  name         String
+  slug         String                @unique
+  description  String?               @db.Text
+  enabled      Boolean               @default(true)
+  waEnabled    Boolean               @default(false)
+  waTemplate   String?               @db.Text   // message body, supports {name} {FieldLabel}
+  waNameField  String?               // label of the name field for WA recipient name
+  waPhoneField String?               // label of the phone field for WA delivery
+  fields       DynamicFormField[]
+  responses    DynamicFormResponse[]
+  createdAt    DateTime              @default(now())
+  updatedAt    DateTime              @updatedAt
+}
+
+model DynamicFormField {
+  id          Int         @id @default(autoincrement())
+  formId      Int
+  form        DynamicForm @relation(fields: [formId], references: [id], onDelete: Cascade)
+  label       String
+  type        String      // text | date | textarea | select
+  placeholder String?
+  options     String?     @db.Text  // JSON string[] — only for select
+  validation  String?     @db.Text  // JSON FieldValidation object
+  required    Boolean     @default(true)
+  order       Int         @default(0)
+
+  @@index([formId])
+}
+
+model DynamicFormResponse {
+  id          Int         @id @default(autoincrement())
+  formId      Int
+  form        DynamicForm @relation(fields: [formId], references: [id], onDelete: Cascade)
+  data        String      @db.LongText  // JSON { fieldLabel: value }
+  submittedAt DateTime    @default(now())
+
+  @@index([formId])
 }
