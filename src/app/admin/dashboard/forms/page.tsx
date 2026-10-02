@@ -151,10 +151,6 @@ function FieldRow({
         {/* date constraints */}
         {field.type === "date" && (
           <>
-            <input type="date" style={{ ...cell, flex: 1, minWidth: 110 }} value={v.minDate ?? ""}
-              onChange={e => setV({ minDate: e.target.value || undefined })} title="Min date" />
-            <input type="date" style={{ ...cell, flex: 1, minWidth: 110 }} value={v.maxDate ?? ""}
-              onChange={e => setV({ maxDate: e.target.value || undefined })} title="Max date" />
             <label style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 11, color: C.textSub, cursor: "pointer", whiteSpace: "nowrap" }}>
               <input type="checkbox" checked={!!v.disallowPast} style={{ accentColor: C.primary }}
                 onChange={e => setV({ disallowPast: e.target.checked || undefined })} /> No past
