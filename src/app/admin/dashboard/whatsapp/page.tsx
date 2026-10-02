@@ -1,21 +1,75 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Wifi, WifiOff, QrCode } from "lucide-react";
-import { C, Button, Badge, PageHeader, Card, Spinner } from "../ui";
+import { Wifi, WifiOff, QrCode, CheckCircle, XCircle, Clock, RefreshCw, ScrollText } from "lucide-react";
+import { C, Button, Badge, PageHeader, Card, Spinner, Table, Thead, Th, Tbody, Td, Tr, Skeleton, Empty } from "../ui";
 
-type WaStatus = { status: string; qr?: string; updatedAt?: string };
+type WaStatus  = { status: string; qr?: string; updatedAt?: string };
+type Entry     = { name: string; whatsapp: string; submittedAt: string };
+type LogEntry  = { name: string; whatsapp: string; status: "sent" | "failed"; sentAt: string; error?: string };
+type Row       = { name: string; whatsapp: string; submittedAt: string; status: "sent" | "failed" | "pending"; sentAt?: string; error?: string };
+
+const STATUS_CFG = {
+  sent:    { icon: CheckCircle, variant: "green"  as const, label: "Sent"    },
+  failed:  { icon: XCircle,     variant: "red"    as const, label: "Failed"  },
+  pending: { icon: Clock,       variant: "orange" as const, label: "Pending" },
+} as const;
+
+function SkeletonRows() {
+  return (
+    <>{Array.from({ length: 5 }).map((_, i) => (
+      <Tr key={i}>
+        <Td><Skeleton width={60} height={22} radius={20} /></Td>
+        <Td><Skeleton width={120} height={13} /></Td>
+        <Td><Skeleton width={100} height={13} /></Td>
+        <Td><Skeleton width={90} height={13} /></Td>
+        <Td><Skeleton width={90} height={13} /></Td>
+      </Tr>
+    ))}</>
+  );
+}
+
+function fmtDate(iso?: string) {
+  if (!iso) return "—";
+  return new Date(iso).toLocaleString("en-IN", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+}
 
 export default function WhatsAppPage() {
-  const [wa, setWa]           = useState<WaStatus>({ status: "not_started" });
+  const [wa, setWa]             = useState<WaStatus>({ status: "not_started" });
   const [starting, setStarting] = useState(false);
+  const [rows, setRows]         = useState<Row[]>([]);
+  const [logLoading, setLogLoading] = useState(true);
 
+  // Poll WA status every 3 s
   useEffect(() => {
     const tick = () => fetch("/api/wa-status").then(r => r.json()).then(setWa);
     tick();
     const id = setInterval(tick, 3000);
     return () => clearInterval(id);
   }, []);
+
+  async function loadLog() {
+    setLogLoading(true);
+    const [rsvpRes, logs]: [{ entries: Entry[]; sent: string[] }, LogEntry[]] = await Promise.all([
+      fetch("/api/rsvp").then(r => r.json()),
+      fetch("/api/wa-log").then(r => r.json()),
+    ]);
+    const entries = rsvpRes?.entries ?? [];
+    const sent    = rsvpRes?.sent    ?? [];
+    const logMap  = new Map(logs.map(l => [l.whatsapp, l]));
+    setRows([...entries].reverse().map(e => {
+      const isSent = sent.includes(`${e.whatsapp}|${e.submittedAt}`);
+      const log    = logMap.get(e.whatsapp);
+      return {
+        name: e.name, whatsapp: e.whatsapp, submittedAt: e.submittedAt,
+        status: isSent ? "sent" : log?.status === "failed" ? "failed" : "pending",
+        sentAt: log?.sentAt, error: log?.error,
+      };
+    }));
+    setLogLoading(false);
+  }
+
+  useEffect(() => { loadLog(); }, []);
 
   async function startBot() {
     setStarting(true);
@@ -29,26 +83,25 @@ export default function WhatsAppPage() {
   const isStarting  = wa.status === "starting";
   const needsStart  = !isConnected && !isQr && !isStarting;
 
-  const statusLabel = isConnected ? "Connected"
-    : isQr       ? "Waiting for scan"
-    : isStarting ? "Starting…"
-    : "Not running";
+  const statusLabel   = isConnected ? "Connected" : isQr ? "Waiting for scan" : isStarting ? "Starting…" : "Not running";
+  const statusVariant = isConnected ? "green" as const : isQr || isStarting ? "orange" as const : "gray" as const;
 
-  const statusVariant = isConnected ? "green" as const
-    : isQr || isStarting ? "orange" as const
-    : "gray" as const;
+  const counts = {
+    sent:    rows.filter(r => r.status === "sent").length,
+    failed:  rows.filter(r => r.status === "failed").length,
+    pending: rows.filter(r => r.status === "pending").length,
+  };
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 20, maxWidth: 520 }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
       <PageHeader
         title="WhatsApp"
-        sub="Auto-send thank-you messages to registrants"
+        sub="Bot connection and message delivery log"
         actions={<Badge variant={statusVariant} dot>{statusLabel}</Badge>}
       />
 
-      {/* Main status card */}
-      <Card padding={0} style={{ overflow: "hidden" }}>
-        {/* Top bar */}
+      {/* ── Connection card ── */}
+      <Card padding={0} style={{ overflow: "hidden", maxWidth: 520 }}>
         <div style={{
           padding: "12px 20px", borderBottom: `1px solid ${C.border}`,
           display: "flex", alignItems: "center", justifyContent: "space-between",
@@ -72,8 +125,6 @@ export default function WhatsAppPage() {
         </div>
 
         <div style={{ padding: "32px 24px", display: "flex", flexDirection: "column", alignItems: "center", gap: 20, textAlign: "center" }}>
-
-          {/* Connected */}
           {isConnected && (
             <>
               <div style={{ width: 64, height: 64, borderRadius: "50%", background: C.greenBg, display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -88,7 +139,6 @@ export default function WhatsAppPage() {
             </>
           )}
 
-          {/* QR scan */}
           {isQr && (
             <>
               <div style={{ background: C.borderLight, borderRadius: 14, padding: 12, border: `1px solid ${C.border}` }}>
@@ -108,7 +158,6 @@ export default function WhatsAppPage() {
             </>
           )}
 
-          {/* Starting */}
           {isStarting && (
             <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 12, padding: "16px 0" }}>
               <Spinner size={24} color={C.orange} />
@@ -116,7 +165,6 @@ export default function WhatsAppPage() {
             </div>
           )}
 
-          {/* Not started */}
           {needsStart && (
             <>
               <div style={{ width: 64, height: 64, borderRadius: "50%", background: C.borderLight, display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -134,14 +182,73 @@ export default function WhatsAppPage() {
         </div>
       </Card>
 
-      {/* Info box */}
-      <div style={{
-        background: C.goldBg, borderRadius: 10, padding: "13px 16px",
-        border: `1px solid ${C.goldBorder}`, fontSize: 12, color: C.textSub, lineHeight: 1.7,
-      }}>
-        <strong style={{ color: C.text }}>How it works:</strong> When someone submits the RSVP form,
-        they automatically receive a personalised thank-you message on WhatsApp.
-        The session is saved — QR scan is only required once.
+      {/* ── Message log ── */}
+      <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <p style={{ fontSize: 13, fontWeight: 700, color: C.textSub, textTransform: "uppercase", letterSpacing: "0.07em", margin: 0 }}>
+            Message Log
+          </p>
+          <Button variant="secondary" size="sm" icon={<RefreshCw size={13} />} onClick={loadLog}>Refresh</Button>
+        </div>
+
+        {/* Stat pills */}
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+          {(["sent", "pending", "failed"] as const).map(s => {
+            const { icon: Icon, variant, label } = STATUS_CFG[s];
+            return (
+              <Card key={s} padding="10px 18px" style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <Icon size={18} color={variant === "green" ? C.green : variant === "orange" ? C.orange : C.red} />
+                <div>
+                  <p style={{ fontSize: 18, fontWeight: 800, color: C.text, margin: 0, lineHeight: 1 }}>{counts[s]}</p>
+                  <p style={{ fontSize: 11, color: C.textMuted, margin: "2px 0 0" }}>{label}</p>
+                </div>
+              </Card>
+            );
+          })}
+          <Card padding="10px 18px" style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <div>
+              <p style={{ fontSize: 18, fontWeight: 800, color: C.text, margin: 0, lineHeight: 1 }}>{rows.length}</p>
+              <p style={{ fontSize: 11, color: C.textMuted, margin: "2px 0 0" }}>Total</p>
+            </div>
+          </Card>
+        </div>
+
+        <Table>
+          <Thead>
+            <Tr>
+              <Th>Status</Th>
+              <Th>Name</Th>
+              <Th>Phone</Th>
+              <Th>Registered</Th>
+              <Th>Message Sent</Th>
+            </Tr>
+          </Thead>
+          <Tbody>
+            {logLoading ? (
+              <SkeletonRows />
+            ) : rows.length === 0 ? (
+              <Tr>
+                <Td style={{ padding: 0, border: "none" }} colSpan={5}>
+                  <Empty icon={<ScrollText size={40} />} title="No registrations yet" />
+                </Td>
+              </Tr>
+            ) : rows.map((r, i) => {
+              const { icon: Icon, variant, label } = STATUS_CFG[r.status];
+              return (
+                <Tr key={i}>
+                  <Td><Badge variant={variant} icon={<Icon size={10} />}>{label}</Badge></Td>
+                  <Td style={{ fontWeight: 600, whiteSpace: "nowrap" }}>{r.name}</Td>
+                  <Td>
+                    <span style={{ fontFamily: "monospace", fontSize: 12, color: C.textSub }}>{r.whatsapp}</span>
+                    {r.error && <p style={{ fontSize: 11, color: C.red, margin: "2px 0 0" }}>{r.error}</p>}
+                  </Td>
+                  <Td style={{ fontSize: 12, color: C.textMuted, whiteSpace: "nowrap" }}>{fmtDate(r.submittedAt)}</Td>
+                  <Td style={{ fontSize: 12, color: C.textMuted, whiteSpace: "nowrap" }}>{fmtDate(r.sentAt)}</Td>
+                </Tr>
+              );
+            })}
+          </Tbody>
+        </Table>
       </div>
     </div>
   );
