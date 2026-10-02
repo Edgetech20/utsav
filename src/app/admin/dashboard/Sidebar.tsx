@@ -5,7 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import {
   LayoutDashboard, Wifi, Users, LogOut,
-  Car, BedDouble, MessageSquare, ImageIcon, Menu, X, QrCode, FileText, Settings, ClipboardList,
+  MessageSquare, ImageIcon, Menu, X, QrCode, FileText, Settings, ClipboardList,
 } from "lucide-react";
 import { ToastProvider } from "./toast";
 import { C } from "./ui";
@@ -22,8 +22,6 @@ const NAV_GROUPS = [
     label: "Registrations",
     items: [
       { label: "RSVP",          href: "/admin/dashboard/rsvp",          icon: Users },
-      { label: "Vehicles",      href: "/admin/dashboard/vehicles",      icon: Car },
-      { label: "Accommodation", href: "/admin/dashboard/accommodation",  icon: BedDouble },
     ],
   },
   {

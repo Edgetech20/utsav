@@ -14,8 +14,6 @@ const DEFAULTS = [
   "Jajan Parikrama", "Diksha Grahan", "Photo Gallery", "Ananda Bazar",
   "Music Event", "Istaprasanga", "Cultural Events", "Drama", "Suggestions", "And Many More…",
 ];
-const PROTECTED = ["Accommodation", "Bus & Car Parking"];
-
 // ── Modal shell ───────────────────────────────────────────────────────────────
 function Modal({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
   return (
@@ -289,9 +287,6 @@ export default function AttractionsPage() {
                   </td>
                   <td style={{ padding: "11px 14px", fontSize: 13, fontWeight: 600, color: C.text }}>
                     {a.name}
-                    {PROTECTED.includes(a.name) && (
-                      <span style={{ marginLeft: 7, fontSize: 10, color: C.textMuted, fontWeight: 400, background: C.borderLight, borderRadius: 4, padding: "1px 6px" }}>protected</span>
-                    )}
                   </td>
                   <td style={{ padding: "11px 14px", textAlign: "center" }}>
                     {a.url ? <ExternalLink size={14} color={C.green} /> : <span style={{ color: C.border }}>—</span>}
@@ -324,9 +319,7 @@ export default function AttractionsPage() {
                       ) : (
                         <>
                           <Button variant="secondary" size="sm" icon={<Pencil size={12} />} onClick={() => openEdit(a)} />
-                          {!PROTECTED.includes(a.name) && (
-                            <Button variant="ghost" size="sm" icon={<Trash2 size={12} />} onClick={() => setToConfirm(a.id)} style={{ color: C.red }} />
-                          )}
+                          <Button variant="ghost" size="sm" icon={<Trash2 size={12} />} onClick={() => setToConfirm(a.id)} style={{ color: C.red }} />
                         </>
                       )}
                     </div>
