@@ -160,7 +160,7 @@ export default function HomeClient({ initialSettings }: { initialSettings: Recor
 
   const [entered, setEntered] = useState(false);
   const [playing, setPlaying] = useState(false);
-  const [dbAttractions, setDbAttractions] = useState<{ id: number; name: string; url: string | null; navigateToVenue: boolean; formSlug: string | null; images: { id: number; imageUrl: string }[] }[]>([]);
+  const [dbAttractions, setDbAttractions] = useState<{ id: number; name: string; description: string | null; url: string | null; navigateToVenue: boolean; formSlug: string | null; images: { id: number; imageUrl: string }[] }[]>([]);
   const [event] = useState(() => ({
     date:     initialSettings.event_date       || DEFAULT_EVENT.date,
     dateIso:  initialSettings.event_date_iso   || DEFAULT_EVENT.dateIso,
@@ -587,20 +587,21 @@ export default function HomeClient({ initialSettings }: { initialSettings: Recor
                     <div className="mx-6 mb-4 flex flex-col gap-2">
                       {a.name === "Accommodation" ? (
                         <>
-                          <p className="text-xs leading-relaxed" style={{ color: "#C9A96E", opacity: 0.55 }}>Pre-register for accommodation at the venue. Allotment is subject to availability.</p>
+                          <p className="text-xs leading-relaxed" style={{ color: "#C9A96E", opacity: 0.55 }}>{a.description || "Pre-register for accommodation at the venue. Allotment is subject to availability."}</p>
                           <button onClick={() => setShowAccomModal(true)} className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl font-bold text-sm" style={{ background: "linear-gradient(135deg, rgba(201,169,110,0.18), rgba(154,120,64,0.12))", border: "1px solid rgba(201,169,110,0.35)", color: "#C9A96E", letterSpacing: "0.04em" }}>
                             <BedDouble className="w-4 h-4" /> Register for Accommodation
                           </button>
                         </>
                       ) : a.name === "Bus & Car Parking" ? (
                         <>
-                          <p className="text-xs leading-relaxed" style={{ color: "#C9A96E", opacity: 0.55 }}>Book your parking slot.</p>
+                          <p className="text-xs leading-relaxed" style={{ color: "#C9A96E", opacity: 0.55 }}>{a.description || "Book your parking slot."}</p>
                           <button onClick={() => setShowVehicleModal(true)} className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl font-bold text-sm" style={{ background: "linear-gradient(135deg, rgba(201,169,110,0.18), rgba(154,120,64,0.12))", border: "1px solid rgba(201,169,110,0.35)", color: "#C9A96E", letterSpacing: "0.04em" }}>
                             <ParkingSquare className="w-4 h-4" /> Register Your Vehicle
                           </button>
                         </>
                       ) : (
                         <>
+                          {a.description && <p className="text-xs leading-relaxed" style={{ color: "#C9A96E", opacity: 0.55 }}>{a.description}</p>}
                           {imgs.length > 0 && (
                             <div className="grid gap-2 mt-2" style={{ gridTemplateColumns: imgs.length === 1 ? "1fr" : "1fr 1fr" }}>
                               {imgs.map((src, idx) => (

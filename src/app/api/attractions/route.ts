@@ -12,11 +12,11 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   const deny = requireAdmin(req); if (deny) return deny;
-  const { name, url, navigateToVenue, formSlug } = await req.json();
+  const { name, description, url, navigateToVenue, formSlug } = await req.json();
   if (!name?.trim()) return NextResponse.json({ error: "name required" }, { status: 400 });
   const last = await db.attraction.findFirst({ orderBy: { order: "desc" } });
   const row = await db.attraction.create({
-    data: { name: name.trim(), url: url || null, navigateToVenue: !!navigateToVenue, formSlug: formSlug || null, order: (last?.order ?? -1) + 1 },
+    data: { name: name.trim(), description: description?.trim() || null, url: url || null, navigateToVenue: !!navigateToVenue, formSlug: formSlug || null, order: (last?.order ?? -1) + 1 },
     include: { images: true },
   });
   return NextResponse.json(row);
@@ -33,10 +33,10 @@ export async function PUT(req: NextRequest) {
     return NextResponse.json({ ok: true });
   }
   // update single
-  const { id, name, url, navigateToVenue, formSlug } = body;
+  const { id, name, description, url, navigateToVenue, formSlug } = body;
   const row = await db.attraction.update({
     where: { id },
-    data: { name: name?.trim(), url: url || null, navigateToVenue: !!navigateToVenue, formSlug: formSlug || null },
+    data: { name: name?.trim(), description: description?.trim() || null, url: url || null, navigateToVenue: !!navigateToVenue, formSlug: formSlug || null },
     include: { images: true },
   });
   return NextResponse.json(row);

@@ -6,7 +6,7 @@ import { C, Button, PageHeader, Card, Input, Spinner } from "../ui";
 import { useToast } from "../toast";
 
 type AttractionImage = { id: number; imageUrl: string };
-type Attraction = { id: number; name: string; order: number; url: string | null; navigateToVenue: boolean; formSlug: string | null; images: AttractionImage[] };
+type Attraction = { id: number; name: string; description: string | null; order: number; url: string | null; navigateToVenue: boolean; formSlug: string | null; images: AttractionImage[] };
 type FormOption = { id: number; name: string; slug: string };
 
 const DEFAULTS = [
@@ -64,7 +64,7 @@ function ImageStrip({ images, onRemove }: { images: AttractionImage[]; onRemove:
 }
 
 // ── Shared form fields ────────────────────────────────────────────────────────
-type AttractionForm = { name: string; url: string; navigateToVenue: boolean; formSlug: string };
+type AttractionForm = { name: string; description: string; url: string; navigateToVenue: boolean; formSlug: string };
 
 function FormFields({ form, setForm, forms }: { form: AttractionForm; setForm: (f: AttractionForm) => void; forms: FormOption[] }) {
   const selectStyle: React.CSSProperties = {
@@ -75,6 +75,7 @@ function FormFields({ form, setForm, forms }: { form: AttractionForm; setForm: (
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
       <Input label="Name *" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="e.g. Cultural Events" />
+      <Input label="Subtext (optional)" value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} placeholder="e.g. Book your parking slot." />
       <Input label="URL (optional)" value={form.url} onChange={e => setForm({ ...form, url: e.target.value })} placeholder="https://…" />
       <div>
         <label style={{ fontSize: 11, fontWeight: 600, color: C.textSub, textTransform: "uppercase", letterSpacing: "0.06em", display: "block", marginBottom: 5 }}>
@@ -100,11 +101,11 @@ export default function AttractionsPage() {
   const [list, setList]           = useState<Attraction[]>([]);
   const [forms, setForms]         = useState<FormOption[]>([]);
   const [showAdd, setShowAdd]     = useState(false);
-  const [addForm, setAddForm]     = useState({ name: "", url: "", navigateToVenue: false, formSlug: "" });
+  const [addForm, setAddForm]     = useState({ name: "", description: "", url: "", navigateToVenue: false, formSlug: "" });
   const [addFiles, setAddFiles]   = useState<File[]>([]);
   const addFileRef                = useRef<HTMLInputElement>(null);
   const [editTarget, setEditTarget] = useState<Attraction | null>(null);
-  const [editForm, setEditForm]   = useState({ name: "", url: "", navigateToVenue: false, formSlug: "" });
+  const [editForm, setEditForm]   = useState({ name: "", description: "", url: "", navigateToVenue: false, formSlug: "" });
   const [uploading, setUploading] = useState(false);
   const [seeding, setSeeding]     = useState(false);
   const [dragOver, setDragOver]   = useState<number | null>(null);
@@ -149,7 +150,7 @@ export default function AttractionsPage() {
         await fetch("/api/attraction-images", { method: "POST", body: form });
       }
     }
-    setAddForm({ name: "", url: "", navigateToVenue: false, formSlug: "" });
+    setAddForm({ name: "", description: "", url: "", navigateToVenue: false, formSlug: "" });
     setAddFiles([]);
     setShowAdd(false);
     await load();
@@ -227,7 +228,7 @@ export default function AttractionsPage() {
 
   function openEdit(a: Attraction) {
     setEditTarget(a);
-    setEditForm({ name: a.name, url: a.url ?? "", navigateToVenue: a.navigateToVenue, formSlug: a.formSlug ?? "" });
+    setEditForm({ name: a.name, description: a.description ?? "", url: a.url ?? "", navigateToVenue: a.navigateToVenue, formSlug: a.formSlug ?? "" });
   }
 
   return (

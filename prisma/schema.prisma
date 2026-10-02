@@ -94,6 +94,7 @@ model FeedbackResponse {
 model Attraction {
   id              Int               @id @default(autoincrement())
   name            String
+  description     String?
   order           Int               @default(0)
   url             String?
   navigateToVenue Boolean           @default(false)
