@@ -108,6 +108,10 @@ export default function HomeClient({ initialSettings }: { initialSettings: Recor
         if (field.required && dynFormValues[field.label] !== "true") errs[field.label] = "You must confirm this";
         continue;
       }
+      if (field.type === "file") {
+        if (field.required && !dynFormValues[field.label]) errs[field.label] = "Please upload a file";
+        continue;
+      }
       const val = (dynFormValues[field.label] ?? "").trim();
       if (field.required && !val) { errs[field.label] = `${field.label} is required`; continue; }
       if (!val) continue;
@@ -134,8 +138,9 @@ export default function HomeClient({ initialSettings }: { initialSettings: Recor
     e.preventDefault();
     if (!dynFormSlug || !dynValidate()) return;
     setDynFormState("loading");
+    const payload = Object.fromEntries(Object.entries(dynFormValues).filter(([k]) => !k.startsWith("__")));
     const res = await fetch(`/api/forms/${dynFormSlug}/submit`, {
-      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(dynFormValues),
+      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload),
     });
     setDynFormState(res.ok ? "done" : "error");
   }
@@ -808,7 +813,7 @@ export default function HomeClient({ initialSettings }: { initialSettings: Recor
                   };
                   return (
                     <div key={field.id} className="flex flex-col gap-1.5">
-                      {field.type !== "checkbox" && (
+                      {field.type !== "checkbox" && field.type !== "file" && (
                         <label className="text-xs uppercase tracking-widest" style={{ color: "#C9A96E", opacity: 0.5 }}>
                           {field.label}{field.required && <span style={{ color: "#f87171" }}> *</span>}
                         </label>
@@ -858,6 +863,43 @@ export default function HomeClient({ initialSettings }: { initialSettings: Recor
                           ))}
                         </div>
                       )}
+                      {field.type === "file" && (() => {
+                        const accept = v.accept === "image" ? "image/*" : v.accept === "pdf" ? "application/pdf" : v.accept === "doc" ? "application/pdf,.doc,.docx" : undefined;
+                        const uploaded = dynFormValues[field.label];
+                        const uploading = dynFormValues[`__uploading_${field.label}`] === "1";
+                        return (
+                          <label style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 8, padding: "18px 12px", borderRadius: 12, border: `2px dashed ${err ? "rgba(239,68,68,0.5)" : uploaded ? "rgba(201,169,110,0.5)" : "rgba(201,169,110,0.2)"}`, background: uploaded ? "rgba(201,169,110,0.07)" : "#0E0E0E", cursor: uploading ? "wait" : "pointer", transition: "border-color 0.2s" }}>
+                            <input type="file" accept={accept} style={{ display: "none" }} onChange={async e => {
+                              const file = e.target.files?.[0]; if (!file) return;
+                              setDynFormValues(p => ({ ...p, [`__uploading_${field.label}`]: "1" }));
+                              const fd = new FormData(); fd.append("file", file);
+                              const res = await fetch("/api/form-upload", { method: "POST", body: fd });
+                              if (res.ok) {
+                                const { url, name } = await res.json();
+                                setDynFormValues(p => { const n = { ...p, [field.label]: url, [`__file_name_${field.label}`]: name }; delete n[`__uploading_${field.label}`]; return n; });
+                                setDynFormErrors(p => { const n = { ...p }; delete n[field.label]; return n; });
+                              } else {
+                                setDynFormValues(p => { const n = { ...p }; delete n[`__uploading_${field.label}`]; return n; });
+                              }
+                            }} />
+                            {uploading ? (
+                              <span style={{ fontSize: 12, color: "#C9A96E", opacity: 0.7 }}>Uploading…</span>
+                            ) : uploaded ? (
+                              <>
+                                <span style={{ fontSize: 18 }}>📎</span>
+                                <span className="text-xs text-center" style={{ color: "#C9A96E", opacity: 0.85, wordBreak: "break-all" }}>{dynFormValues[`__file_name_${field.label}`] || "File uploaded"}</span>
+                                <span className="text-xs" style={{ color: "#C9A96E", opacity: 0.45 }}>Tap to change</span>
+                              </>
+                            ) : (
+                              <>
+                                <span style={{ fontSize: 22 }}>📎</span>
+                                <span className="text-xs font-semibold uppercase tracking-widest" style={{ color: "#C9A96E", opacity: 0.5 }}>{field.label}{field.required && <span style={{ color: "#f87171" }}> *</span>}</span>
+                                <span className="text-xs" style={{ color: "#C9A96E", opacity: 0.35 }}>Tap to choose file</span>
+                              </>
+                            )}
+                          </label>
+                        );
+                      })()}
                       {field.type === "checkbox" && (
                         <label style={{ display: "flex", alignItems: "flex-start", gap: 10, cursor: "pointer", padding: "10px 12px", borderRadius: 12, border: `1px solid ${err ? "rgba(239,68,68,0.5)" : dynFormValues[field.label] === "true" ? "rgba(201,169,110,0.4)" : "rgba(201,169,110,0.15)"}`, background: dynFormValues[field.label] === "true" ? "rgba(201,169,110,0.07)" : "#0E0E0E", transition: "background 0.2s, border-color 0.2s" }}>
                           <input

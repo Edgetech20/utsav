@@ -9,7 +9,7 @@ import {
 import { useToast } from "../toast";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
-type FieldType = "text" | "date" | "datetime" | "textarea" | "select" | "checkbox";
+type FieldType = "text" | "date" | "datetime" | "textarea" | "select" | "checkbox" | "file";
 type TextFormat = "none" | "email" | "phone" | "numeric";
 
 type FieldValidation = {
@@ -20,6 +20,7 @@ type FieldValidation = {
   maxDate?: string;
   disallowPast?: boolean;
   disallowFuture?: boolean;
+  accept?: "any" | "image" | "pdf" | "doc";
 };
 
 type Field = {
@@ -126,6 +127,7 @@ function FieldRow({
           <option value="datetime">Date &amp; Time</option>
           <option value="select">Select</option>
           <option value="checkbox">Checkbox</option>
+          <option value="file">File Upload</option>
         </select>
 
         {/* format — text only */}
@@ -175,6 +177,17 @@ function FieldRow({
                 onChange={e => setV({ disallowFuture: e.target.checked || undefined })} /> No future
             </label>
           </>
+        )}
+
+        {/* file — accept type */}
+        {field.type === "file" && (
+          <select style={{ ...cell, flex: 1, minWidth: 130 }} value={v.accept ?? "any"}
+            onChange={e => setV({ accept: e.target.value as "any" | "image" | "pdf" | "doc" })}>
+            <option value="any">Any file</option>
+            <option value="image">Images only</option>
+            <option value="pdf">PDF only</option>
+            <option value="doc">Word / PDF</option>
+          </select>
         )}
 
         {/* select options — inline comma-separated */}
@@ -245,6 +258,10 @@ function FormPreview({ name, description, fields }: { name: string; description:
                   <input disabled type="date" style={previewInput} />
                 ) : f.type === "datetime" ? (
                   <input disabled type="datetime-local" style={previewInput} />
+                ) : f.type === "file" ? (
+                  <div style={{ border: "2px dashed #CBD5E1", borderRadius: 8, padding: "14px", textAlign: "center", background: "#F8FAFC", color: "#94A3B8", fontSize: 12 }}>
+                    📎 Choose file to upload
+                  </div>
                 ) : f.type === "checkbox" ? (
                   <label style={{ display: "flex", alignItems: "flex-start", gap: 8, cursor: "not-allowed", opacity: 0.6 }}>
                     <input type="checkbox" disabled style={{ marginTop: 2, accentColor: "#3B82F6", flexShrink: 0 }} />
