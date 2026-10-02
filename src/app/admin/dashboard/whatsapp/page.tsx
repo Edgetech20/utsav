@@ -5,7 +5,7 @@ import { Wifi, QrCode, CheckCircle, XCircle, Clock, RefreshCw, ScrollText, X } f
 import { C, Button, Badge, PageHeader, Card, Spinner, Table, Thead, Th, Tbody, Td, Tr, Skeleton, Empty } from "../ui";
 
 type WaStatus  = { status: string; qr?: string; updatedAt?: string };
-type Entry     = { name: string; whatsapp: string; submittedAt: string };
+type Entry     = { name: string; whatsapp: string; submittedAt: string; waSent: boolean };
 type LogEntry  = { name: string; whatsapp: string; status: "sent" | "failed"; sentAt: string; error?: string };
 type Row       = { name: string; whatsapp: string; submittedAt: string; status: "sent" | "failed" | "pending"; sentAt?: string; error?: string };
 
@@ -127,19 +127,17 @@ export default function WhatsAppPage() {
 
   async function loadLog() {
     setLogLoading(true);
-    const [rsvpRes, logs]: [{ entries: Entry[]; sent: string[] }, LogEntry[]] = await Promise.all([
+    const [rsvpRes, logs]: [{ entries: Entry[] }, LogEntry[]] = await Promise.all([
       fetch("/api/rsvp").then(r => r.json()),
       fetch("/api/wa-log").then(r => r.json()),
     ]);
     const entries = rsvpRes?.entries ?? [];
-    const sent    = rsvpRes?.sent    ?? [];
     const logMap  = new Map(logs.map(l => [l.whatsapp, l]));
     setRows([...entries].reverse().map(e => {
-      const isSent = sent.includes(`${e.whatsapp}|${e.submittedAt}`);
-      const log    = logMap.get(e.whatsapp);
+      const log = logMap.get(e.whatsapp);
       return {
         name: e.name, whatsapp: e.whatsapp, submittedAt: e.submittedAt,
-        status: isSent ? "sent" : log?.status === "failed" ? "failed" : "pending",
+        status: e.waSent ? "sent" : log?.status === "failed" ? "failed" : "pending",
         sentAt: log?.sentAt, error: log?.error,
       };
     }));
