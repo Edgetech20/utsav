@@ -1,10 +1,8 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { Wifi, QrCode, CheckCircle, XCircle, Clock, RefreshCw, ScrollText, X, Send, Users } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Wifi, QrCode, CheckCircle, XCircle, Clock, RefreshCw, ScrollText, X } from "lucide-react";
 import { C, Button, Badge, PageHeader, Card, Spinner, Table, Thead, Th, Tbody, Td, Tr, Skeleton, Empty } from "../ui";
-import { useToast } from "../toast";
-
 type WaStatus  = { status: string; qr?: string; updatedAt?: string };
 type Entry     = { name: string; whatsapp: string; submittedAt: string; waSent: boolean };
 type LogEntry  = { name: string; whatsapp: string; status: "sent" | "failed"; sentAt: string; error?: string };
@@ -111,30 +109,12 @@ function ConnectModal({ onClose }: { onClose: () => void }) {
   );
 }
 
-const GROUPS = [
-  { value: "rsvp",          label: "RSVP registrants"          },
-  { value: "accommodation",  label: "Accommodation registrants"  },
-  { value: "vehicle",        label: "Vehicle / Parking registrants" },
-];
-
 // ── Page ──────────────────────────────────────────────────────────────────────
 export default function WhatsAppPage() {
-  const { toast } = useToast();
-  const [wa, setWa]                 = useState<WaStatus>({ status: "not_started" });
+  const [wa, setWa]                   = useState<WaStatus>({ status: "not_started" });
   const [showConnect, setShowConnect] = useState(false);
-  const [rows, setRows]             = useState<Row[]>([]);
-  const [logLoading, setLogLoading] = useState(true);
-
-  // Template state
-  const [tplBody, setTplBody]   = useState("");
-  const [tplSaving, setTplSaving] = useState(false);
-  const origTpl = useRef("");
-
-  // Broadcast state
-  const [bcGroup, setBcGroup]   = useState("rsvp");
-  const [bcCount, setBcCount]   = useState<number | null>(null);
-  const [bcMsg, setBcMsg]       = useState("");
-  const [bcSending, setBcSending] = useState(false);
+  const [rows, setRows]               = useState<Row[]>([]);
+  const [logLoading, setLogLoading]   = useState(true);
 
   // Poll WA status every 3 s
   useEffect(() => {
@@ -164,37 +144,6 @@ export default function WhatsAppPage() {
   }
 
   useEffect(() => { loadLog(); }, []);
-
-  // Load template
-  useEffect(() => {
-    fetch("/api/wa-template").then(r => r.json()).then(d => {
-      setTplBody(d.body ?? ""); origTpl.current = d.body ?? "";
-    });
-  }, []);
-
-  // Load recipient count when group changes
-  useEffect(() => {
-    setBcCount(null);
-    fetch(`/api/wa-broadcast?group=${bcGroup}`).then(r => r.json()).then(d => setBcCount(d.count ?? 0));
-  }, [bcGroup]);
-
-  async function saveTemplate() {
-    setTplSaving(true);
-    await fetch("/api/wa-template", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ body: tplBody }) });
-    origTpl.current = tplBody;
-    setTplSaving(false);
-    toast("Template saved", "success");
-  }
-
-  async function sendBroadcast() {
-    if (!bcMsg.trim()) return;
-    setBcSending(true);
-    const res = await fetch("/api/wa-broadcast", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ group: bcGroup, message: bcMsg }) });
-    const data = await res.json();
-    setBcSending(false);
-    setBcMsg("");
-    toast(`Queued ${data.queued} message${data.queued !== 1 ? "s" : ""}`, "success");
-  }
 
   async function handleConnect() {
     setShowConnect(true);
@@ -278,92 +227,6 @@ export default function WhatsAppPage() {
       {showConnect && (
         <ConnectModal onClose={() => setShowConnect(false)} />
       )}
-
-      {/* ── Auto-message template ── */}
-      <Card>
-        <p style={{ fontSize: 12, fontWeight: 700, color: C.textSub, textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 14 }}>
-          Auto-Message Template
-        </p>
-        <p style={{ fontSize: 12, color: C.textMuted, marginBottom: 10 }}>
-          Sent automatically on RSVP. Use <code style={{ background: C.borderLight, padding: "1px 5px", borderRadius: 4 }}>{"{name}"}</code> for first name.
-        </p>
-        <textarea
-          value={tplBody}
-          onChange={e => setTplBody(e.target.value)}
-          rows={6}
-          style={{ width: "100%", boxSizing: "border-box", padding: "10px 12px", border: `1px solid ${C.border}`, borderRadius: 8, fontSize: 13, color: C.text, resize: "vertical", fontFamily: "inherit", lineHeight: 1.6, outline: "none" }}
-        />
-        <div style={{ marginTop: 10 }}>
-          <Button
-            disabled={tplBody === origTpl.current || !tplBody.trim()}
-            loading={tplSaving}
-            onClick={saveTemplate}
-          >
-            Save Template
-          </Button>
-        </div>
-      </Card>
-
-      {/* ── Manual broadcast ── */}
-      <Card>
-        <p style={{ fontSize: 12, fontWeight: 700, color: C.textSub, textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 14 }}>
-          Send Notification
-        </p>
-        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-          {/* Group picker */}
-          <div>
-            <label style={{ fontSize: 11, fontWeight: 600, color: C.textSub, textTransform: "uppercase", letterSpacing: "0.06em", display: "block", marginBottom: 5 }}>
-              Recipients
-            </label>
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-              {GROUPS.map(g => (
-                <button
-                  key={g.value}
-                  onClick={() => setBcGroup(g.value)}
-                  style={{
-                    padding: "6px 14px", borderRadius: 20, fontSize: 12, fontWeight: 600, cursor: "pointer", border: `1px solid ${bcGroup === g.value ? C.primary : C.border}`,
-                    background: bcGroup === g.value ? C.primary : "#fff",
-                    color: bcGroup === g.value ? "#fff" : C.textSub,
-                  }}
-                >
-                  {g.label}
-                  {bcGroup === g.value && bcCount !== null && (
-                    <span style={{ marginLeft: 6, opacity: 0.7 }}>({bcCount})</span>
-                  )}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Message */}
-          <div>
-            <label style={{ fontSize: 11, fontWeight: 600, color: C.textSub, textTransform: "uppercase", letterSpacing: "0.06em", display: "block", marginBottom: 5 }}>
-              Message
-            </label>
-            <textarea
-              value={bcMsg}
-              onChange={e => setBcMsg(e.target.value)}
-              rows={4}
-              placeholder={`Use {name} for first name.\nHello {name}, your accommodation has been confirmed…`}
-              style={{ width: "100%", boxSizing: "border-box", padding: "10px 12px", border: `1px solid ${C.border}`, borderRadius: 8, fontSize: 13, color: C.text, resize: "vertical", fontFamily: "inherit", lineHeight: 1.6, outline: "none" }}
-            />
-          </div>
-
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <Button
-              icon={<Send size={13} />}
-              disabled={!bcMsg.trim() || bcSending}
-              loading={bcSending}
-              onClick={sendBroadcast}
-            >
-              Send to {bcCount !== null ? bcCount : "…"} recipients
-            </Button>
-            {bcCount === 0 && (
-              <span style={{ fontSize: 12, color: C.textMuted }}>No registrants in this group yet</span>
-            )}
-          </div>
-        </div>
-      </Card>
 
       {/* ── Message log ── */}
       <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
