@@ -9,7 +9,7 @@ import {
 import { useToast } from "../toast";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
-type FieldType = "text" | "date" | "textarea" | "select";
+type FieldType = "text" | "date" | "datetime" | "textarea" | "select";
 type TextFormat = "none" | "email" | "phone" | "numeric";
 
 type FieldValidation = {
@@ -105,81 +105,156 @@ function FieldRow({
       </div>
 
       {/* label */}
-      <input style={{ ...cell, minWidth: 100, flex: 1 }} placeholder="Field label *" value={field.label}
+      <input style={{ ...cell, width: 240 }} placeholder="Field label *" value={field.label}
         onChange={e => set({ label: e.target.value })} />
-
-      {/* type */}
-      <select style={{ ...cell, width: 110 }} value={field.type}
-        onChange={e => set({ type: e.target.value as FieldType, options: [], validation: {} })}>
-        <option value="text">Text</option>
-        <option value="textarea">Text Box</option>
-        <option value="date">Date</option>
-        <option value="select">Select</option>
-      </select>
 
       {/* placeholder — text / textarea only */}
       {(field.type === "text" || field.type === "textarea") && (
-        <input style={{ ...cell, minWidth: 120, flex: 1 }} placeholder="Placeholder…"
+        <input style={{ ...cell, width: 240 }} placeholder="Placeholder…"
           value={field.placeholder ?? ""} onChange={e => set({ placeholder: e.target.value })} />
       )}
 
-      {/* format — text only */}
-      {field.type === "text" && (
-        <select style={{ ...cell, width: 110 }} value={v.format ?? "none"}
-          onChange={e => setV({ format: e.target.value as TextFormat })}>
-          <option value="none">Any text</option>
-          <option value="email">Email</option>
-          <option value="phone">Phone (IN)</option>
-          <option value="numeric">Numeric</option>
+      {/* right section fills remaining space */}
+      <div style={{ flex: 1, display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", minWidth: 0 }}>
+
+        {/* type */}
+        <select style={{ ...cell, flex: 1, minWidth: 100 }} value={field.type}
+          onChange={e => set({ type: e.target.value as FieldType, options: [], validation: {} })}>
+          <option value="text">Text</option>
+          <option value="textarea">Text Box</option>
+          <option value="date">Date</option>
+          <option value="datetime">Date &amp; Time</option>
+          <option value="select">Select</option>
         </select>
-      )}
 
-      {/* min / max length — text + textarea */}
-      {(field.type === "text" || field.type === "textarea") && (
-        <>
-          <input type="number" min={0} style={{ ...cell, width: 64 }} value={v.minLength ?? ""} placeholder="Min"
-            onChange={e => setV({ minLength: e.target.value ? Number(e.target.value) : undefined })} />
-          <input type="number" min={0} style={{ ...cell, width: 64 }} value={v.maxLength ?? ""} placeholder="Max"
-            onChange={e => setV({ maxLength: e.target.value ? Number(e.target.value) : undefined })} />
-        </>
-      )}
+        {/* format — text only */}
+        {field.type === "text" && (
+          <select style={{ ...cell, flex: 1, minWidth: 100 }} value={v.format ?? "none"}
+            onChange={e => setV({ format: e.target.value as TextFormat })}>
+            <option value="none">Any text</option>
+            <option value="email">Email</option>
+            <option value="phone">Phone (IN)</option>
+            <option value="numeric">Numeric</option>
+          </select>
+        )}
 
-      {/* date constraints */}
-      {field.type === "date" && (
-        <>
-          <input type="date" style={{ ...cell, width: 136 }} value={v.minDate ?? ""}
-            onChange={e => setV({ minDate: e.target.value || undefined })} title="Min date" />
-          <input type="date" style={{ ...cell, width: 136 }} value={v.maxDate ?? ""}
-            onChange={e => setV({ maxDate: e.target.value || undefined })} title="Max date" />
-          <label style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 11, color: C.textSub, cursor: "pointer", whiteSpace: "nowrap" }}>
-            <input type="checkbox" checked={!!v.disallowPast} style={{ accentColor: C.primary }}
-              onChange={e => setV({ disallowPast: e.target.checked || undefined })} /> No past
-          </label>
-          <label style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 11, color: C.textSub, cursor: "pointer", whiteSpace: "nowrap" }}>
-            <input type="checkbox" checked={!!v.disallowFuture} style={{ accentColor: C.primary }}
-              onChange={e => setV({ disallowFuture: e.target.checked || undefined })} /> No future
-          </label>
-        </>
-      )}
+        {/* min / max length — text + textarea */}
+        {(field.type === "text" || field.type === "textarea") && (
+          <>
+            <input type="number" min={0} style={{ ...cell, width: 64 }} value={v.minLength ?? ""} placeholder="Min"
+              onChange={e => setV({ minLength: e.target.value ? Number(e.target.value) : undefined })} />
+            <input type="number" min={0} style={{ ...cell, width: 64 }} value={v.maxLength ?? ""} placeholder="Max"
+              onChange={e => setV({ maxLength: e.target.value ? Number(e.target.value) : undefined })} />
+          </>
+        )}
 
-      {/* select options — inline comma-separated */}
-      {field.type === "select" && (
-        <input style={{ ...cell, minWidth: 160, flex: 1 }}
-          placeholder="Option A, Option B, Option C"
-          value={field.options.join(", ")}
-          onChange={e => set({ options: e.target.value.split(",").map(s => s.trimStart()) })} />
-      )}
+        {/* date / datetime constraints */}
+        {(field.type === "date" || field.type === "datetime") && (
+          <>
+            <input type={field.type === "datetime" ? "datetime-local" : "date"} style={{ ...cell, flex: 1, minWidth: 110 }} value={v.minDate ?? ""}
+              onChange={e => setV({ minDate: e.target.value || undefined })} title="Min" />
+            <input type={field.type === "datetime" ? "datetime-local" : "date"} style={{ ...cell, flex: 1, minWidth: 110 }} value={v.maxDate ?? ""}
+              onChange={e => setV({ maxDate: e.target.value || undefined })} title="Max" />
+            <label style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 11, color: C.textSub, cursor: "pointer", whiteSpace: "nowrap" }}>
+              <input type="checkbox" checked={!!v.disallowPast} style={{ accentColor: C.primary }}
+                onChange={e => setV({ disallowPast: e.target.checked || undefined })} /> No past
+            </label>
+            <label style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 11, color: C.textSub, cursor: "pointer", whiteSpace: "nowrap" }}>
+              <input type="checkbox" checked={!!v.disallowFuture} style={{ accentColor: C.primary }}
+                onChange={e => setV({ disallowFuture: e.target.checked || undefined })} /> No future
+            </label>
+          </>
+        )}
 
-      {/* required */}
-      <label style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 11, color: C.textSub, cursor: "pointer", whiteSpace: "nowrap" }}>
-        <input type="checkbox" checked={field.required} style={{ accentColor: C.primary }}
-          onChange={e => set({ required: e.target.checked })} /> Req
-      </label>
+        {/* select options — inline comma-separated */}
+        {field.type === "select" && (
+          <input style={{ ...cell, flex: 1, minWidth: 120 }}
+            placeholder="Option A, Option B, Option C"
+            value={field.options.join(", ")}
+            onChange={e => set({ options: e.target.value.split(",").map(s => s.trimStart()) })} />
+        )}
 
-      {/* remove */}
-      <button onClick={onRemove} style={{ border: "none", background: "none", cursor: "pointer", color: C.textMuted, padding: 3, lineHeight: 1, marginLeft: "auto" }}>
-        <X size={13} />
-      </button>
+        {/* required */}
+        <label style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 11, color: C.textSub, cursor: "pointer", whiteSpace: "nowrap" }}>
+          <input type="checkbox" checked={field.required} style={{ accentColor: C.primary }}
+            onChange={e => set({ required: e.target.checked })} /> Req
+        </label>
+
+        {/* remove */}
+        <button onClick={onRemove} style={{ border: "none", background: "none", cursor: "pointer", color: C.textMuted, padding: 3, lineHeight: 1, marginLeft: "auto" }}>
+          <X size={13} />
+        </button>
+
+      </div>
+    </div>
+  );
+}
+
+// ── Form Preview ──────────────────────────────────────────────────────────────
+function FormPreview({ name, description, fields }: { name: string; description: string; fields: Field[] }) {
+  const previewInput: React.CSSProperties = {
+    width: "100%", boxSizing: "border-box", padding: "7px 10px",
+    border: "1px solid #CBD5E1", borderRadius: 7, fontSize: 13,
+    color: "#94A3B8", background: "#F8FAFC", outline: "none", fontFamily: "inherit",
+  };
+  const previewLabel: React.CSSProperties = {
+    fontSize: 12, fontWeight: 600, color: "#475569", marginBottom: 4, display: "block",
+  };
+
+  return (
+    <div style={{ fontFamily: "inherit" }}>
+      {/* form card */}
+      <div style={{ background: "#fff", border: "1px solid #E2E8F0", borderRadius: 12, padding: "20px 18px", boxShadow: "0 2px 8px rgba(0,0,0,0.06)" }}>
+        <h3 style={{ fontSize: 16, fontWeight: 700, color: "#1E293B", margin: "0 0 4px" }}>
+          {name.trim() || <span style={{ color: "#CBD5E1" }}>Form name…</span>}
+        </h3>
+        {description && (
+          <p style={{ fontSize: 12, color: "#64748B", margin: "0 0 16px", lineHeight: 1.5 }}>{description}</p>
+        )}
+        {!description && <div style={{ marginBottom: 16 }} />}
+
+        {fields.length === 0 ? (
+          <p style={{ fontSize: 12, color: "#CBD5E1", textAlign: "center", padding: "20px 0", border: "1px dashed #E2E8F0", borderRadius: 8 }}>
+            Fields will appear here
+          </p>
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+            {fields.map((f, i) => (
+              <div key={i}>
+                <label style={previewLabel}>
+                  {f.label || <span style={{ color: "#CBD5E1" }}>Untitled field</span>}
+                  {f.required && <span style={{ color: "#EF4444", marginLeft: 2 }}>*</span>}
+                </label>
+                {f.type === "textarea" ? (
+                  <textarea disabled style={{ ...previewInput, height: 72, resize: "none" }}
+                    placeholder={f.placeholder || "Your answer…"} />
+                ) : f.type === "date" ? (
+                  <input disabled type="date" style={previewInput} />
+                ) : f.type === "datetime" ? (
+                  <input disabled type="datetime-local" style={previewInput} />
+                ) : f.type === "select" ? (
+                  <div style={{ display: "flex", borderRadius: 7, overflow: "hidden", border: "1px solid #CBD5E1", background: "#F8FAFC" }}>
+                    {f.options.filter(o => o.trim()).map((o, j, arr) => (
+                      <div key={j} style={{
+                        flex: 1, textAlign: "center", padding: "7px 4px", fontSize: 12,
+                        color: j === 0 ? "#475569" : "#94A3B8",
+                        background: j === 0 ? "#E2E8F0" : "transparent",
+                        borderRight: j < arr.length - 1 ? "1px solid #CBD5E1" : "none",
+                      }}>{o}</div>
+                    ))}
+                  </div>
+                ) : (
+                  <input disabled type="text" style={previewInput}
+                    placeholder={f.placeholder || "Your answer…"} />
+                )}
+              </div>
+            ))}
+            <button disabled style={{ marginTop: 4, padding: "9px 18px", background: "#3B82F6", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "not-allowed", opacity: 0.7, alignSelf: "flex-start" }}>
+              Submit
+            </button>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -265,7 +340,7 @@ function BuilderModal({
 
   return (
     <div style={{ position: "fixed", inset: 0, zIndex: 100, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(15,23,42,0.5)", padding: "16px" }}>
-      <div style={{ background: "#fff", borderRadius: 16, width: "85vw", height: "85vh", maxWidth: "none", boxShadow: "0 24px 64px rgba(0,0,0,0.18)", display: "flex", flexDirection: "column", overflow: "hidden" }}>
+      <div style={{ background: "#fff", borderRadius: 16, width: "95vw", height: "95vh", maxWidth: "none", boxShadow: "0 24px 64px rgba(0,0,0,0.18)", display: "flex", flexDirection: "column", overflow: "hidden" }}>
 
         {/* Header */}
         <div style={{ padding: "20px 24px 16px", borderBottom: `1px solid ${C.border}`, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
@@ -275,84 +350,96 @@ function BuilderModal({
           </button>
         </div>
 
-        <div style={{ padding: "20px 24px", display: "flex", flexDirection: "column", gap: 20, overflowY: "auto", flex: 1 }}>
+        {/* Two-column body */}
+        <div style={{ flex: 1, display: "grid", gridTemplateColumns: "1fr 320px", overflow: "hidden" }}>
 
-          {/* Basic info */}
-          <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 12 }}>
-            <div>
-              <label style={labelStyle}>Form Name *</label>
-              <input style={inputStyle} placeholder="e.g. Volunteer Registration" value={name} onChange={e => setName(e.target.value)} />
-            </div>
-            <div>
-              <label style={labelStyle}>Description (optional)</label>
-              <textarea style={{ ...inputStyle, height: 60, resize: "vertical", fontFamily: "inherit" }}
-                placeholder="Brief description shown at the top of the form"
-                value={description} onChange={e => setDesc(e.target.value)} />
-            </div>
-          </div>
+          {/* Left — builder */}
+          <div style={{ padding: "20px 24px", display: "flex", flexDirection: "column", gap: 20, overflowY: "auto" }}>
 
-          {/* Fields */}
-          <div>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-              <p style={{ fontSize: 13, fontWeight: 700, color: C.text, margin: 0 }}>Form Fields</p>
-              <Button variant="secondary" size="sm" icon={<Plus size={12} />} onClick={addField}>Add Field</Button>
+            {/* Basic info */}
+            <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 12 }}>
+              <div>
+                <label style={labelStyle}>Form Name *</label>
+                <input style={inputStyle} placeholder="e.g. Volunteer Registration" value={name} onChange={e => setName(e.target.value)} />
+              </div>
+              <div>
+                <label style={labelStyle}>Description (optional)</label>
+                <textarea style={{ ...inputStyle, height: 60, resize: "vertical", fontFamily: "inherit" }}
+                  placeholder="Brief description shown at the top of the form"
+                  value={description} onChange={e => setDesc(e.target.value)} />
+              </div>
             </div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              {fields.length === 0 && (
-                <div style={{ textAlign: "center", padding: "28px 0", color: C.textMuted, fontSize: 13, border: `2px dashed ${C.border}`, borderRadius: 10 }}>
-                  No fields yet. Click "Add Field" to start.
+
+            {/* Fields */}
+            <div>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+                <p style={{ fontSize: 13, fontWeight: 700, color: C.text, margin: 0 }}>Form Fields</p>
+                <Button variant="secondary" size="sm" icon={<Plus size={12} />} onClick={addField}>Add Field</Button>
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                {fields.length === 0 && (
+                  <div style={{ textAlign: "center", padding: "28px 0", color: C.textMuted, fontSize: 13, border: `2px dashed ${C.border}`, borderRadius: 10 }}>
+                    No fields yet. Click "Add Field" to start.
+                  </div>
+                )}
+                {fields.map((f, i) => (
+                  <FieldRow
+                    key={i} field={f} index={i} total={fields.length}
+                    onChange={updated => updateField(i, updated)}
+                    onRemove={() => removeField(i)}
+                    onMove={dir => moveField(i, dir)}
+                  />
+                ))}
+              </div>
+            </div>
+
+            {/* WhatsApp config */}
+            <div style={{ border: `1px solid ${C.border}`, borderRadius: 10, padding: 16 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: waEnabled ? 14 : 0 }}>
+                <div>
+                  <p style={{ fontSize: 13, fontWeight: 700, color: C.text, margin: 0 }}>WhatsApp Notification</p>
+                  <p style={{ fontSize: 11, color: C.textMuted, margin: "3px 0 0" }}>Send a message on submission</p>
+                </div>
+                <button onClick={() => setWaEnabled(v => !v)} style={{ border: "none", background: "none", cursor: "pointer", display: "flex", color: waEnabled ? C.green : C.textMuted }}>
+                  {waEnabled ? <ToggleRight size={28} /> : <ToggleLeft size={28} />}
+                </button>
+              </div>
+              {waEnabled && (
+                <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                    <div>
+                      <label style={labelStyle}>Which field is the person's name?</label>
+                      <select style={{ ...inputStyle, fontSize: 12 }} value={waNameField} onChange={e => setWaNameField(e.target.value)}>
+                        <option value="">— select —</option>
+                        {fieldLabels.map(l => <option key={l} value={l}>{l}</option>)}
+                      </select>
+                      <p style={{ fontSize: 11, color: C.textMuted, margin: "4px 0 0" }}>Used to greet them in the message</p>
+                    </div>
+                    <div>
+                      <label style={labelStyle}>Which field is their WhatsApp number?</label>
+                      <select style={{ ...inputStyle, fontSize: 12 }} value={waPhoneField} onChange={e => setWaPhoneField(e.target.value)}>
+                        <option value="">— select —</option>
+                        {fieldLabels.map(l => <option key={l} value={l}>{l}</option>)}
+                      </select>
+                      <p style={{ fontSize: 11, color: C.textMuted, margin: "4px 0 0" }}>Message will be sent to this number</p>
+                    </div>
+                  </div>
+                  <div style={{ background: C.bg, border: `1px solid ${C.border}`, borderRadius: 8, padding: "10px 12px" }}>
+                    <p style={{ fontSize: 12, color: C.textSub, margin: 0, lineHeight: 1.6 }}>
+                      A sample template is auto-created in <strong>Operations → Templates</strong> as <em>&ldquo;{name.trim() || "Form Name"} Auto-Message&rdquo;</em>. Edit the body and enable it there.
+                    </p>
+                  </div>
                 </div>
               )}
-              {fields.map((f, i) => (
-                <FieldRow
-                  key={i} field={f} index={i} total={fields.length}
-                  onChange={updated => updateField(i, updated)}
-                  onRemove={() => removeField(i)}
-                  onMove={dir => moveField(i, dir)}
-                />
-              ))}
             </div>
           </div>
 
-          {/* WhatsApp config */}
-          <div style={{ border: `1px solid ${C.border}`, borderRadius: 10, padding: 16 }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: waEnabled ? 14 : 0 }}>
-              <div>
-                <p style={{ fontSize: 13, fontWeight: 700, color: C.text, margin: 0 }}>WhatsApp Notification</p>
-                <p style={{ fontSize: 11, color: C.textMuted, margin: "3px 0 0" }}>Send a message on submission</p>
-              </div>
-              <button onClick={() => setWaEnabled(v => !v)} style={{ border: "none", background: "none", cursor: "pointer", display: "flex", color: waEnabled ? C.green : C.textMuted }}>
-                {waEnabled ? <ToggleRight size={28} /> : <ToggleLeft size={28} />}
-              </button>
-            </div>
-            {waEnabled && (
-              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-                  <div>
-                    <label style={labelStyle}>Which field is the person's name?</label>
-                    <select style={{ ...inputStyle, fontSize: 12 }} value={waNameField} onChange={e => setWaNameField(e.target.value)}>
-                      <option value="">— select —</option>
-                      {fieldLabels.map(l => <option key={l} value={l}>{l}</option>)}
-                    </select>
-                    <p style={{ fontSize: 11, color: C.textMuted, margin: "4px 0 0" }}>Used to greet them in the message</p>
-                  </div>
-                  <div>
-                    <label style={labelStyle}>Which field is their WhatsApp number?</label>
-                    <select style={{ ...inputStyle, fontSize: 12 }} value={waPhoneField} onChange={e => setWaPhoneField(e.target.value)}>
-                      <option value="">— select —</option>
-                      {fieldLabels.map(l => <option key={l} value={l}>{l}</option>)}
-                    </select>
-                    <p style={{ fontSize: 11, color: C.textMuted, margin: "4px 0 0" }}>Message will be sent to this number</p>
-                  </div>
-                </div>
-                <div style={{ background: C.bg, border: `1px solid ${C.border}`, borderRadius: 8, padding: "10px 12px" }}>
-                  <p style={{ fontSize: 12, color: C.textSub, margin: 0, lineHeight: 1.6 }}>
-                    A sample template is auto-created in <strong>Operations → Templates</strong> as <em>&ldquo;{name.trim() || "Form Name"} Auto-Message&rdquo;</em>. Edit the body and enable it there.
-                  </p>
-                </div>
-              </div>
-            )}
+          {/* Right — live preview */}
+          <div style={{ borderLeft: `1px solid ${C.border}`, background: C.bg, overflowY: "auto", padding: "20px 18px" }}>
+            <p style={{ fontSize: 11, fontWeight: 700, color: C.textMuted, textTransform: "uppercase", letterSpacing: "0.06em", margin: "0 0 12px" }}>Preview</p>
+            <FormPreview name={name} description={description} fields={fields} />
           </div>
+
         </div>
 
         {/* Footer */}

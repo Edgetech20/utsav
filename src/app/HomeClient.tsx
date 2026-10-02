@@ -611,7 +611,7 @@ export default function HomeClient({ initialSettings }: { initialSettings: Recor
                             </div>
                           )}
                           {a.formSlug && (
-                            <button onClick={() => setDynFormSlug(a.formSlug)} className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl font-bold text-sm" style={{ background: "linear-gradient(135deg, rgba(201,169,110,0.22), rgba(154,120,64,0.16))", border: "1px solid rgba(201,169,110,0.45)", color: "#C9A96E", letterSpacing: "0.04em" }}>
+                            <button onClick={() => setDynFormSlug(a.formSlug)} className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl font-bold text-sm mt-2" style={{ background: "linear-gradient(135deg, rgba(201,169,110,0.22), rgba(154,120,64,0.16))", border: "1px solid rgba(201,169,110,0.45)", color: "#C9A96E", letterSpacing: "0.04em" }}>
                               <CheckCircle className="w-4 h-4" /> Register
                             </button>
                           )}
@@ -1381,24 +1381,33 @@ export default function HomeClient({ initialSettings }: { initialSettings: Recor
                           onChange={e => { setDynFormValues(p => ({ ...p, [field.label]: e.target.value })); setDynFormErrors(p => { const n = { ...p }; delete n[field.label]; return n; }); }}
                         />
                       )}
-                      {field.type === "date" && (
+                      {(field.type === "date" || field.type === "datetime") && (
                         <input
-                          type="date" className={inputCls} style={{ ...inputStyle, colorScheme: "dark" }}
-                          min={v.disallowPast ? new Date().toISOString().slice(0,10) : (v.minDate as string | undefined)}
-                          max={v.disallowFuture ? new Date().toISOString().slice(0,10) : (v.maxDate as string | undefined)}
+                          type={field.type === "datetime" ? "datetime-local" : "date"}
+                          className={inputCls} style={{ ...inputStyle, colorScheme: "dark" }}
+                          min={v.disallowPast ? new Date().toISOString().slice(0, field.type === "datetime" ? 16 : 10) : (v.minDate as string | undefined)}
+                          max={v.disallowFuture ? new Date().toISOString().slice(0, field.type === "datetime" ? 16 : 10) : (v.maxDate as string | undefined)}
                           value={dynFormValues[field.label] ?? ""}
                           onChange={e => { setDynFormValues(p => ({ ...p, [field.label]: e.target.value })); setDynFormErrors(p => { const n = { ...p }; delete n[field.label]; return n; }); }}
                         />
                       )}
                       {field.type === "select" && (
-                        <select
-                          className={inputCls} style={{ ...inputStyle, cursor: "pointer" }}
-                          value={dynFormValues[field.label] ?? ""}
-                          onChange={e => { setDynFormValues(p => ({ ...p, [field.label]: e.target.value })); setDynFormErrors(p => { const n = { ...p }; delete n[field.label]; return n; }); }}
-                        >
-                          <option value="">— select —</option>
-                          {opts.filter((o: string) => o.trim()).map((o: string) => <option key={o} value={o}>{o}</option>)}
-                        </select>
+                        <div className="flex rounded-xl overflow-hidden" style={{ border: `1px solid ${err ? "rgba(239,68,68,0.5)" : "rgba(201,169,110,0.2)"}`, background: "#0E0E0E" }}>
+                          {opts.filter((o: string) => o.trim()).map((o: string, oi: number, arr: string[]) => (
+                            <button
+                              key={o} type="button"
+                              onClick={() => { setDynFormValues(p => ({ ...p, [field.label]: o })); setDynFormErrors(p => { const n = { ...p }; delete n[field.label]; return n; }); }}
+                              className="flex flex-1 items-center justify-center py-3 text-sm font-semibold"
+                              style={{
+                                background: dynFormValues[field.label] === o ? "rgba(201,169,110,0.15)" : "transparent",
+                                color: dynFormValues[field.label] === o ? "#C9A96E" : "#555",
+                                borderTop: "none", borderBottom: "none", borderLeft: "none",
+                                borderRight: oi < arr.length - 1 ? "1px solid rgba(201,169,110,0.2)" : "none",
+                                transition: "background 0.2s, color 0.2s", cursor: "pointer",
+                              }}
+                            >{o}</button>
+                          ))}
+                        </div>
                       )}
                       {err && <p className="text-xs" style={{ color: "#f87171" }}>{err}</p>}
                     </div>

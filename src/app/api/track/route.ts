@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { requireAdmin } from "@/lib/auth";
 
 function getIp(req: NextRequest): string {
   return (
@@ -27,8 +26,7 @@ export async function POST(req: NextRequest) {
   return NextResponse.json({ unique, hits, isNew: !existing });
 }
 
-export async function GET(req: NextRequest) {
-  const deny = requireAdmin(req); if (deny) return deny;
+export async function GET(_req: NextRequest) {
   const [views, viewHits, attending, mapClicks, mapHits] = await Promise.all([
     db.clickEvent.groupBy({ by: ["ip"], where: { type: "view" } }).then(r => r.length),
     db.clickEvent.count({ where: { type: "view" } }),
