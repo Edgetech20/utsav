@@ -561,39 +561,41 @@ export default function HomeClient({ initialSettings }: { initialSettings: Recor
                   </button>
 
                   <div style={{ maxHeight: open ? "500px" : "0px", overflow: "hidden", transition: "max-height 0.45s cubic-bezier(0.16,1,0.3,1)" }}>
+                    {open && (
                     <div className="mx-6 mb-4 flex flex-col gap-2">
                       {a.description && <p className="text-xs leading-relaxed" style={{ color: "#C9A96E", opacity: 0.55 }}>{a.description}</p>}
-                          {imgs.length > 0 && (
-                            <div className="grid gap-2 mt-2" style={{ gridTemplateColumns: imgs.length === 1 ? "1fr" : "1fr 1fr" }}>
-                              {imgs.map((src, idx) => (
-                                <div key={idx} className="rounded-xl overflow-hidden aspect-video" style={{ border: "1px solid rgba(201,169,110,0.2)" }}>
-                                  <img src={src} alt={`${a.name} ${idx + 1}`} className="w-full h-full object-cover" loading="lazy" />
-                                </div>
-                              ))}
+                      {imgs.length > 0 && (
+                        <div className="grid gap-2 mt-2" style={{ gridTemplateColumns: imgs.length === 1 ? "1fr" : "1fr 1fr" }}>
+                          {imgs.map((src, idx) => (
+                            <div key={idx} className="rounded-xl overflow-hidden aspect-video" style={{ border: "1px solid rgba(201,169,110,0.2)" }}>
+                              <img src={src} alt={`${a.name} ${idx + 1}`} className="w-full h-full object-cover" loading="lazy" />
                             </div>
-                          )}
-                          {a.formSlug && (
-                            <button onClick={() => setDynFormSlug(a.formSlug)} className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl font-bold text-sm mt-2" style={{ background: "linear-gradient(135deg, rgba(201,169,110,0.22), rgba(154,120,64,0.16))", border: "1px solid rgba(201,169,110,0.45)", color: "#C9A96E", letterSpacing: "0.04em" }}>
-                              <CheckCircle className="w-4 h-4" /> Register
-                            </button>
-                          )}
-                          {a.url && (
-                            <a href={a.url} target="_blank" rel="noopener noreferrer" className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl font-bold text-sm" style={{ background: "linear-gradient(135deg, rgba(201,169,110,0.18), rgba(154,120,64,0.12))", border: "1px solid rgba(201,169,110,0.35)", color: "#C9A96E", letterSpacing: "0.04em" }}>
-                              <Sparkles className="w-4 h-4" /> Open Link
-                            </a>
-                          )}
-                          {a.navigateToVenue && (
-                            <a href={event.mapsUrl} target="_blank" rel="noopener noreferrer" className="w-full flex items-center justify-center gap-2 py-3 rounded-xl font-semibold text-sm" style={{ background: "linear-gradient(135deg, rgba(201,169,110,0.18), rgba(154,120,64,0.12))", border: "1px solid rgba(201,169,110,0.35)", color: "#C9A96E" }}>
-                              <Navigation className="w-4 h-4" /> Navigate to Venue
-                            </a>
-                          )}
-                          {imgs.length === 0 && !a.url && !a.formSlug && !a.navigateToVenue && (
-                            <div className="rounded-xl flex flex-col items-center justify-center gap-2 py-8" style={{ background: "#1A1A1A", border: "1px solid rgba(201,169,110,0.15)" }}>
-                              <Icon className="w-8 h-8" style={{ color: "#C9A96E", opacity: 0.35 }} />
-                              <p className="text-xs uppercase tracking-widest" style={{ color: "#C9A96E", opacity: 0.35 }}>Photo coming soon</p>
-                            </div>
-                          )}
+                          ))}
+                        </div>
+                      )}
+                      {a.formSlug && (
+                        <button onClick={() => setDynFormSlug(a.formSlug)} className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl font-bold text-sm mt-2" style={{ background: "linear-gradient(135deg, rgba(201,169,110,0.22), rgba(154,120,64,0.16))", border: "1px solid rgba(201,169,110,0.45)", color: "#C9A96E", letterSpacing: "0.04em" }}>
+                          <CheckCircle className="w-4 h-4" /> Register
+                        </button>
+                      )}
+                      {a.url && (
+                        <a href={a.url} target="_blank" rel="noopener noreferrer" className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl font-bold text-sm" style={{ background: "linear-gradient(135deg, rgba(201,169,110,0.18), rgba(154,120,64,0.12))", border: "1px solid rgba(201,169,110,0.35)", color: "#C9A96E", letterSpacing: "0.04em" }}>
+                          <Sparkles className="w-4 h-4" /> Open Link
+                        </a>
+                      )}
+                      {a.navigateToVenue && (
+                        <a href={event.mapsUrl} target="_blank" rel="noopener noreferrer" className="w-full flex items-center justify-center gap-2 py-3 rounded-xl font-semibold text-sm" style={{ background: "linear-gradient(135deg, rgba(201,169,110,0.18), rgba(154,120,64,0.12))", border: "1px solid rgba(201,169,110,0.35)", color: "#C9A96E" }}>
+                          <Navigation className="w-4 h-4" /> Navigate to Venue
+                        </a>
+                      )}
+                      {imgs.length === 0 && !a.url && !a.formSlug && !a.navigateToVenue && !a.description && (
+                        <div className="rounded-xl flex flex-col items-center justify-center gap-2 py-8" style={{ background: "#1A1A1A", border: "1px solid rgba(201,169,110,0.15)" }}>
+                          <Icon className="w-8 h-8" style={{ color: "#C9A96E", opacity: 0.35 }} />
+                          <p className="text-xs uppercase tracking-widest" style={{ color: "#C9A96E", opacity: 0.35 }}>Photo coming soon</p>
+                        </div>
+                      )}
                     </div>
+                    )}
                   </div>
                 </div>
               );
