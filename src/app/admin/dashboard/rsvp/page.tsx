@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Trash2, RefreshCw, CheckCircle, Clock, Users } from "lucide-react";
-import { C, Badge, Button, Search, PageHeader, Table, Thead, Th, Tbody, Td, Tr, Skeleton, Empty, Avatar } from "../ui";
+import { C, Badge, Button, Search, PageHeader, Table, Thead, Th, Tbody, Td, Tr, Skeleton, Empty, Avatar, Pagination } from "../ui";
 import { useToast } from "../toast";
 
 type Entry = { id: number; name: string; whatsapp: string; address: string; submittedAt: string; waSent: boolean };
@@ -29,6 +29,8 @@ export default function RsvpPage() {
   const [search, setSearch]     = useState("");
   const [acting, setActing]     = useState<number | null>(null);
   const [toConfirm, setToConfirm] = useState<number | null>(null);
+  const [page, setPage] = useState(1);
+  const PER_PAGE = 20;
 
   async function load() {
     const res = await fetch("/api/rsvp").then(r => r.json()).catch(() => ({}));
@@ -58,6 +60,7 @@ export default function RsvpPage() {
     e.whatsapp.includes(search) ||
     e.address.toLowerCase().includes(search.toLowerCase())
   );
+  const paginated = filtered.slice((page - 1) * PER_PAGE, page * PER_PAGE);
   const sent    = entries.filter(e => e.waSent).length;
   const pending = entries.length - sent;
 
@@ -97,7 +100,7 @@ export default function RsvpPage() {
                 <Empty icon={<Users size={40} />} title={search ? "No results" : "No registrations yet"} sub={search ? "Try a different search term" : "Registrations will appear here"} />
               </Td>
             </Tr>
-          ) : filtered.map(e => {
+          ) : paginated.map(e => {
             const busy    = acting === e.id;
             const confirm = toConfirm === e.id;
             return (
@@ -143,6 +146,7 @@ export default function RsvpPage() {
           })}
         </tbody>
       </Table>
+      <Pagination page={page} total={filtered.length} perPage={PER_PAGE} onChange={p => setPage(p)} />
     </div>
   );
 }

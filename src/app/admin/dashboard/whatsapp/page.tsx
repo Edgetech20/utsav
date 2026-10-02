@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Wifi, QrCode, CheckCircle, XCircle, Clock, RefreshCw, ScrollText, X } from "lucide-react";
-import { C, Button, Badge, PageHeader, Card, Spinner, Table, Thead, Th, Tbody, Td, Tr, Skeleton, Empty } from "../ui";
+import { C, Button, Badge, PageHeader, Card, Spinner, Table, Thead, Th, Tbody, Td, Tr, Skeleton, Empty, Pagination } from "../ui";
 type WaStatus = { status: string; qr?: string; updatedAt?: string };
 type Row      = { id: number; type: string; name: string; whatsapp: string; status: "sent" | "failed" | "pending"; sentAt: string; error?: string | null };
 
@@ -120,6 +120,8 @@ export default function WhatsAppPage() {
   const [showConnect, setShowConnect] = useState(false);
   const [rows, setRows]               = useState<Row[]>([]);
   const [logLoading, setLogLoading]   = useState(true);
+  const [logPage, setLogPage]         = useState(1);
+  const LOG_PER_PAGE = 25;
 
   // Poll WA status every 3 s
   useEffect(() => {
@@ -270,7 +272,7 @@ export default function WhatsAppPage() {
                   <Empty icon={<ScrollText size={40} />} title="No messages yet" />
                 </Td>
               </Tr>
-            ) : rows.map((r, i) => {
+            ) : rows.slice((logPage - 1) * LOG_PER_PAGE, logPage * LOG_PER_PAGE).map((r, i) => {
               const { icon: Icon, variant, label } = STATUS_CFG[r.status];
               const typeMeta = TYPE_LABEL[r.type] ?? { label: r.type, variant: "blue" as const };
               return (
@@ -288,6 +290,7 @@ export default function WhatsAppPage() {
             })}
           </Tbody>
         </Table>
+        <Pagination page={logPage} total={rows.length} perPage={LOG_PER_PAGE} onChange={p => setLogPage(p)} />
       </div>
     </div>
   );

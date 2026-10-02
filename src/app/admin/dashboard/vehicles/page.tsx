@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Trash2, Car, Bus } from "lucide-react";
-import { C, Badge, Button, Search, PageHeader, Table, Thead, Th, Tbody, Td, Tr, Skeleton, Empty, Card } from "../ui";
+import { C, Badge, Button, Search, PageHeader, Table, Thead, Th, Tbody, Td, Tr, Skeleton, Empty, Card, Pagination } from "../ui";
 import { useToast } from "../toast";
 
 type Entry = {
@@ -39,6 +39,8 @@ export default function VehiclesPage() {
   const [search, setSearch]       = useState("");
   const [acting, setActing]       = useState<number | null>(null);
   const [toConfirm, setToConfirm] = useState<number | null>(null);
+  const [page, setPage] = useState(1);
+  const PER_PAGE = 20;
 
   async function load() {
     const res = await fetch("/api/vehicle").then(r => r.json()).catch(() => ({}));
@@ -61,6 +63,7 @@ export default function VehiclesPage() {
     e.vehicleNo.toLowerCase().includes(search.toLowerCase()) ||
     e.comingFrom.toLowerCase().includes(search.toLowerCase())
   );
+  const paginated = filtered.slice((page - 1) * PER_PAGE, page * PER_PAGE);
 
   const cars      = entries.filter(e => e.vehicleType === "car").length;
   const buses     = entries.filter(e => e.vehicleType === "bus").length;
@@ -111,7 +114,7 @@ export default function VehiclesPage() {
                 <Empty icon={<Car size={40} />} title={search ? "No results" : "No registrations yet"} />
               </Td>
             </Tr>
-          ) : filtered.map(e => {
+          ) : paginated.map(e => {
             const busy    = acting === e.id;
             const confirm = toConfirm === e.id;
             const isBus   = e.vehicleType === "bus";
@@ -150,6 +153,7 @@ export default function VehiclesPage() {
           })}
         </tbody>
       </Table>
+      <Pagination page={page} total={filtered.length} perPage={PER_PAGE} onChange={p => setPage(p)} />
     </div>
   );
 }

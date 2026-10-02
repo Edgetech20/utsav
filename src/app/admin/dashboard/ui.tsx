@@ -295,3 +295,61 @@ export function Avatar({ name, size = 36, style }: { name: string; size?: number
     </div>
   );
 }
+
+// ── Pagination ────────────────────────────────────────────────────────────────
+export function Pagination({ page, total, perPage, onChange }: { page: number; total: number; perPage: number; onChange: (p: number) => void }) {
+  const totalPages = Math.ceil(total / perPage);
+  if (totalPages <= 1) return null;
+  const from = (page - 1) * perPage + 1;
+  const to   = Math.min(page * perPage, total);
+
+  return (
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, paddingTop: 12 }}>
+      <span style={{ fontSize: 12, color: C.textMuted }}>
+        Showing {from}–{to} of {total}
+      </span>
+      <div style={{ display: "flex", gap: 4 }}>
+        <button
+          disabled={page <= 1}
+          onClick={() => onChange(page - 1)}
+          style={{
+            padding: "5px 12px", borderRadius: 7, border: `1px solid ${C.border}`,
+            background: "#fff", color: page <= 1 ? C.textMuted : C.textSub,
+            cursor: page <= 1 ? "not-allowed" : "pointer", fontSize: 12, fontWeight: 600,
+          }}
+        >← Prev</button>
+        {Array.from({ length: totalPages }, (_, i) => i + 1)
+          .filter(p => p === 1 || p === totalPages || Math.abs(p - page) <= 1)
+          .reduce<(number | "…")[]>((acc, p, i, arr) => {
+            if (i > 0 && (p as number) - (arr[i - 1] as number) > 1) acc.push("…");
+            acc.push(p);
+            return acc;
+          }, [])
+          .map((p, i) => p === "…" ? (
+            <span key={`e${i}`} style={{ padding: "5px 8px", fontSize: 12, color: C.textMuted }}>…</span>
+          ) : (
+            <button
+              key={p}
+              onClick={() => onChange(p as number)}
+              style={{
+                padding: "5px 10px", borderRadius: 7, fontSize: 12, fontWeight: 600,
+                border: `1px solid ${p === page ? C.primary : C.border}`,
+                background: p === page ? C.primary : "#fff",
+                color: p === page ? "#fff" : C.textSub,
+                cursor: "pointer",
+              }}
+            >{p}</button>
+          ))}
+        <button
+          disabled={page >= totalPages}
+          onClick={() => onChange(page + 1)}
+          style={{
+            padding: "5px 12px", borderRadius: 7, border: `1px solid ${C.border}`,
+            background: "#fff", color: page >= totalPages ? C.textMuted : C.textSub,
+            cursor: page >= totalPages ? "not-allowed" : "pointer", fontSize: 12, fontWeight: 600,
+          }}
+        >Next →</button>
+      </div>
+    </div>
+  );
+}

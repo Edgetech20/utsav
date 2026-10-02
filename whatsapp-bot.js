@@ -164,8 +164,13 @@ function watch() {
     }
 
     // ── Manual broadcast queue ──────────────────────────────────────
+    // Mark as 'processing' first so a restart never double-sends
     const [queueRows] = await pool.execute("SELECT * FROM WaQueue WHERE status = 'pending' LIMIT 20");
     for (const q of queueRows) {
+      const [upd] = await pool.execute(
+        "UPDATE WaQueue SET status = 'processing' WHERE id = ? AND status = 'pending'", [q.id]
+      );
+      if (upd.affectedRows === 0) continue; // another process already claimed it
       try {
         await sendWithRetry(toWaId(q.whatsapp), q.message);
         await pool.execute("UPDATE WaQueue SET status = 'sent', sentAt = NOW() WHERE id = ?", [q.id]);

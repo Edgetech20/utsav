@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Trash2, BedDouble, Car, Bus } from "lucide-react";
-import { C, Badge, Button, Search, PageHeader, Table, Thead, Th, Tbody, Td, Tr, Skeleton, Empty, Card } from "../ui";
+import { C, Badge, Button, Search, PageHeader, Table, Thead, Th, Tbody, Td, Tr, Skeleton, Empty, Card, Pagination } from "../ui";
 import { useToast } from "../toast";
 
 type Entry = {
@@ -51,6 +51,8 @@ export default function AccommodationPage() {
   const [search, setSearch]       = useState("");
   const [acting, setActing]       = useState<number | null>(null);
   const [toConfirm, setToConfirm] = useState<number | null>(null);
+  const [page, setPage] = useState(1);
+  const PER_PAGE = 20;
 
   async function load() {
     const res = await fetch("/api/accommodation").then(r => r.json()).catch(() => ({}));
@@ -72,6 +74,7 @@ export default function AccommodationPage() {
     e.mobile.includes(search) ||
     e.comingFrom.toLowerCase().includes(search.toLowerCase())
   );
+  const paginated = filtered.slice((page - 1) * PER_PAGE, page * PER_PAGE);
 
   const totalPersons = entries.reduce((s, e) => s + e.totalPersons, 0);
   const needHelp     = entries.filter(e => e.needsAssistance).length;
@@ -122,7 +125,7 @@ export default function AccommodationPage() {
                 <Empty icon={<BedDouble size={40} />} title={search ? "No results" : "No registrations yet"} />
               </Td>
             </Tr>
-          ) : filtered.map(e => {
+          ) : paginated.map(e => {
             const busy    = acting === e.id;
             const confirm = toConfirm === e.id;
             return (
@@ -168,6 +171,7 @@ export default function AccommodationPage() {
           })}
         </tbody>
       </Table>
+      <Pagination page={page} total={filtered.length} perPage={PER_PAGE} onChange={p => setPage(p)} />
     </div>
   );
 }
