@@ -46,42 +46,6 @@ model WaLog {
   sentAt   DateTime @default(now())
 }
 
-model AccommodationRegistration {
-  id                Int      @id @default(autoincrement())
-  primaryName       String
-  mobile            String
-  waSent            Boolean  @default(false)
-  comingFrom        String
-  totalPersons      Int
-  maleMem           Int      @default(0)
-  femaleMem         Int      @default(0)
-  children          Int      @default(0)
-  seniorCitizens    Int      @default(0)
-  arrivalAt         DateTime
-  departureAt       DateTime
-  needsAssistance   Boolean
-  assistanceDetails String?
-  hasVehicle        Boolean
-  vehicleType       String?
-  vehicleNo         String?
-  additionalInfo    String?
-  submittedAt       DateTime @default(now())
-}
-
-model VehicleRegistration {
-  id              Int      @id @default(autoincrement())
-  contactName     String
-  mobile          String
-  waSent          Boolean  @default(false)
-  vehicleType     String   // 'car' | 'bus'
-  vehicleNo       String
-  totalPassengers Int
-  comingFrom      String
-  arrivalAt       DateTime
-  departureAt     DateTime
-  remark          String
-  submittedAt     DateTime @default(now())
-}
 
 model FeedbackResponse {
   id          Int      @id @default(autoincrement())
