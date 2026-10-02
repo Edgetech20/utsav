@@ -490,8 +490,8 @@ function ResponsesModal({ form, onClose }: { form: Form; onClose: () => void }) 
   const cols = responses.length > 0 ? Object.keys(JSON.parse(responses[0].data)) : [];
 
   return (
-    <div style={{ position: "fixed", inset: 0, zIndex: 100, display: "flex", alignItems: "flex-start", justifyContent: "center", background: "rgba(15,23,42,0.5)", overflowY: "auto", padding: "24px 16px" }}>
-      <div style={{ background: "#fff", borderRadius: 16, width: "100%", maxWidth: 900, boxShadow: "0 24px 64px rgba(0,0,0,0.18)", marginBottom: 24 }}>
+    <div style={{ position: "fixed", inset: 0, zIndex: 100, background: "rgba(15,23,42,0.5)", display: "flex", flexDirection: "column" }}>
+      <div style={{ background: "#fff", flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
         <div style={{ padding: "20px 24px 16px", borderBottom: `1px solid ${C.border}`, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <div>
             <h2 style={{ fontSize: 16, fontWeight: 700, color: C.text, margin: 0 }}>{form.name}</h2>
@@ -502,7 +502,7 @@ function ResponsesModal({ form, onClose }: { form: Form; onClose: () => void }) 
           </button>
         </div>
 
-        <div style={{ padding: "20px 24px" }}>
+        <div style={{ padding: "20px 24px", overflowY: "auto", flex: 1 }}>
           {loading ? (
             <div style={{ display: "flex", justifyContent: "center", padding: 40 }}><Spinner /></div>
           ) : responses.length === 0 ? (
