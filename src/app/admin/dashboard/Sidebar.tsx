@@ -7,24 +7,51 @@ import {
   LayoutDashboard, Wifi, Users, ScrollText, LogOut,
   Car, BedDouble, MessageSquare, ImageIcon, Menu, X, QrCode,
 } from "lucide-react";
+import { ToastProvider } from "./toast";
+import { C } from "./ui";
 
-const NAV = [
-  { label: "Dashboard",     href: "/admin/dashboard",              icon: LayoutDashboard },
-  { label: "WhatsApp",      href: "/admin/dashboard/whatsapp",     icon: Wifi },
-  { label: "RSVP",          href: "/admin/dashboard/rsvp",         icon: Users },
-  { label: "Vehicles",      href: "/admin/dashboard/vehicles",     icon: Car },
-  { label: "Accommodation", href: "/admin/dashboard/accommodation", icon: BedDouble },
-  { label: "Feedback",      href: "/admin/dashboard/feedback",     icon: MessageSquare },
-  { label: "Attractions",   href: "/admin/dashboard/attractions",  icon: ImageIcon },
-  { label: "QR Codes",      href: "/admin/dashboard/qr",           icon: QrCode },
-  { label: "Message Log",   href: "/admin/dashboard/logs",         icon: ScrollText },
+// ── Nav structure ─────────────────────────────────────────────────────────────
+const NAV_GROUPS = [
+  {
+    label: "Overview",
+    items: [
+      { label: "Dashboard", href: "/admin/dashboard", icon: LayoutDashboard },
+    ],
+  },
+  {
+    label: "Registrations",
+    items: [
+      { label: "RSVP",          href: "/admin/dashboard/rsvp",          icon: Users },
+      { label: "Vehicles",      href: "/admin/dashboard/vehicles",      icon: Car },
+      { label: "Accommodation", href: "/admin/dashboard/accommodation",  icon: BedDouble },
+    ],
+  },
+  {
+    label: "Content",
+    items: [
+      { label: "Feedback",    href: "/admin/dashboard/feedback",    icon: MessageSquare },
+      { label: "Attractions", href: "/admin/dashboard/attractions", icon: ImageIcon },
+    ],
+  },
+  {
+    label: "Operations",
+    items: [
+      { label: "QR Codes",    href: "/admin/dashboard/qr",        icon: QrCode },
+      { label: "WhatsApp",    href: "/admin/dashboard/whatsapp",  icon: Wifi },
+      { label: "Message Log", href: "/admin/dashboard/logs",      icon: ScrollText },
+    ],
+  },
 ];
 
+// Flat list for header label lookup
+const ALL_NAV = NAV_GROUPS.flatMap(g => g.items);
+
+// ── Sidebar ───────────────────────────────────────────────────────────────────
 export default function Sidebar({ children }: { children: React.ReactNode }) {
-  const pathname = usePathname();
-  const router = useRouter();
-  const [desktop, setDesktop] = useState(false);
-  const [drawerOpen, setDrawerOpen] = useState(false);
+  const pathname  = usePathname();
+  const router    = useRouter();
+  const [desktop, setDesktop]     = useState(false);
+  const [drawerOpen, setDrawer]   = useState(false);
 
   useEffect(() => {
     const mq = window.matchMedia("(min-width: 768px)");
@@ -34,164 +61,207 @@ export default function Sidebar({ children }: { children: React.ReactNode }) {
     return () => mq.removeEventListener("change", h);
   }, []);
 
-  // Close drawer on navigation
-  useEffect(() => { setDrawerOpen(false); }, [pathname]);
+  useEffect(() => { setDrawer(false); }, [pathname]);
 
   async function logout() {
     await fetch("/api/admin-login", { method: "DELETE" });
     router.push("/admin");
   }
 
-  const currentLabel = NAV.find(n => n.href === pathname)?.label ?? "Dashboard";
+  const currentLabel = ALL_NAV.find(n => n.href === pathname)?.label ?? "Dashboard";
 
-  const navLink = (href: string, label: string, Icon: React.ElementType, onClick?: () => void) => {
+  // ── Nav item ───────────────────────────────────────────────────────────────
+  function NavItem({ label, href, icon: Icon, onClick }: { label: string; href: string; icon: React.ElementType; onClick?: () => void }) {
     const active = pathname === href;
     return (
-      <Link key={href} href={href} onClick={onClick} style={{
-        display: "flex", alignItems: "center", gap: 10,
-        padding: "10px 12px", borderRadius: 8, textDecoration: "none",
-        fontSize: 13.5, fontWeight: active ? 600 : 500,
-        background: active ? "#F1F5F9" : "transparent",
-        color: active ? "#0F172A" : "#64748B",
-        borderLeft: active ? "3px solid #0F172A" : "3px solid transparent",
-        transition: "background 0.15s",
-      }}>
-        <Icon size={16} />
+      <Link
+        href={href}
+        onClick={onClick}
+        style={{
+          display: "flex", alignItems: "center", gap: 9,
+          padding: "8px 12px", borderRadius: 8, textDecoration: "none",
+          fontSize: 13, fontWeight: active ? 600 : 500,
+          color: active ? C.text : C.textSub,
+          background: active ? C.goldBg : "transparent",
+          borderLeft: `3px solid ${active ? C.gold : "transparent"}`,
+          transition: "background 0.12s, color 0.12s",
+          marginLeft: -3, // compensate border-left shifting content
+        }}
+      >
+        <Icon size={15} color={active ? C.gold : C.textMuted} strokeWidth={active ? 2.2 : 1.8} />
         {label}
       </Link>
     );
-  };
+  }
 
-  const logo = (
+  // ── Nav body (shared between sidebar + drawer) ─────────────────────────────
+  function NavBody({ onItemClick }: { onItemClick?: () => void }) {
+    return (
+      <nav style={{ flex: 1, padding: "12px 10px", display: "flex", flexDirection: "column", gap: 4, overflowY: "auto" }}>
+        {NAV_GROUPS.map(group => (
+          <div key={group.label} style={{ marginBottom: 4 }}>
+            <p style={{
+              fontSize: 10, fontWeight: 700, color: C.textMuted,
+              letterSpacing: "0.09em", textTransform: "uppercase",
+              padding: "6px 15px 4px", margin: 0,
+            }}>
+              {group.label}
+            </p>
+            {group.items.map(item => (
+              <NavItem key={item.href} {...item} onClick={onItemClick} />
+            ))}
+          </div>
+        ))}
+      </nav>
+    );
+  }
+
+  // ── Logo ───────────────────────────────────────────────────────────────────
+  const Logo = (
     <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
       <div style={{
         width: 34, height: 34, borderRadius: 9, flexShrink: 0,
-        background: "linear-gradient(135deg, #1a1a2e, #16213e)",
+        background: "linear-gradient(135deg,#1a1a2e,#16213e)",
         display: "flex", alignItems: "center", justifyContent: "center",
-        fontSize: 13, fontWeight: 700, color: "#C9A96E",
-      }}>প</div>
+        fontSize: 14, fontWeight: 700, color: C.gold,
+      }}>
+        প
+      </div>
       <div>
-        <p style={{ fontSize: 13, fontWeight: 700, color: "#0F172A", lineHeight: 1.2, margin: 0 }}>Priyabodhi</p>
-        <p style={{ fontSize: 11, color: "#94A3B8", marginTop: 1 }}>Admin Panel</p>
+        <p style={{ fontSize: 13, fontWeight: 700, color: C.text, lineHeight: 1.2, margin: 0 }}>Priyabodhi</p>
+        <p style={{ fontSize: 10, color: C.textMuted, marginTop: 1 }}>Admin Panel</p>
+      </div>
+    </div>
+  );
+
+  // ── Bottom user bar ────────────────────────────────────────────────────────
+  const BottomBar = (
+    <div style={{ padding: "10px 12px", borderTop: `1px solid ${C.border}` }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <div style={{
+            width: 30, height: 30, borderRadius: "50%",
+            background: "linear-gradient(135deg,#1a1a2e,#16213e)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            fontSize: 11, fontWeight: 700, color: C.gold, flexShrink: 0,
+          }}>
+            A
+          </div>
+          <div>
+            <p style={{ fontSize: 12, fontWeight: 600, color: C.text, margin: 0, lineHeight: 1.2 }}>Admin</p>
+            <p style={{ fontSize: 10, color: C.textMuted, margin: 0 }}>Priyabodhi</p>
+          </div>
+        </div>
+        <button
+          onClick={logout}
+          title="Sign out"
+          style={{
+            background: "transparent", border: "none", cursor: "pointer",
+            padding: 6, borderRadius: 6, color: C.textMuted,
+            display: "flex", alignItems: "center",
+            transition: "color 0.15s",
+          }}
+        >
+          <LogOut size={15} />
+        </button>
       </div>
     </div>
   );
 
   return (
-    <div className="admin-scroll" style={{ display: "flex", minHeight: "100vh", background: "#F5F7FA", fontFamily: "system-ui, sans-serif" }}>
+    <ToastProvider>
+      <div className="admin-scroll" style={{
+        display: "flex", minHeight: "100vh",
+        background: C.bg, fontFamily: "system-ui, -apple-system, sans-serif",
+      }}>
 
-      {/* ── Desktop Sidebar ── */}
-      {desktop && (
-        <aside style={{
-          width: 240, position: "fixed", top: 0, left: 0, bottom: 0, zIndex: 20,
-          background: "#fff", borderRight: "1px solid #E8ECF0",
-          display: "flex", flexDirection: "column",
-        }}>
-          <div style={{ padding: "24px 20px 20px", borderBottom: "1px solid #E8ECF0" }}>
-            {logo}
-          </div>
-          <nav style={{ flex: 1, padding: "14px 10px", display: "flex", flexDirection: "column", gap: 2, overflowY: "auto" }}>
-            <p style={{ fontSize: 10, fontWeight: 600, color: "#CBD5E1", letterSpacing: "0.08em", textTransform: "uppercase", padding: "0 12px", marginBottom: 6 }}>Menu</p>
-            {NAV.map(({ label, href, icon: Icon }) => navLink(href, label, Icon))}
-          </nav>
-          <div style={{ padding: "10px", borderTop: "1px solid #E8ECF0" }}>
-            <button onClick={logout} style={{
-              display: "flex", alignItems: "center", gap: 10,
-              padding: "9px 12px", borderRadius: 8, border: "none",
-              background: "transparent", cursor: "pointer", width: "100%",
-              fontSize: 13.5, fontWeight: 500, color: "#94A3B8",
-            }}>
-              <LogOut size={16} /> Sign Out
-            </button>
-          </div>
-        </aside>
-      )}
-
-      {/* ── Mobile Drawer ── */}
-      {!desktop && drawerOpen && (
-        <>
-          <div
-            className="admin-overlay"
-            onClick={() => setDrawerOpen(false)}
-            style={{
-              position: "fixed", inset: 0, zIndex: 30,
-              background: "rgba(15,23,42,0.5)",
-            }}
-          />
-          <aside className="admin-drawer" style={{
-            position: "fixed", top: 0, left: 0, bottom: 0, width: 272, zIndex: 40,
-            background: "#fff", display: "flex", flexDirection: "column",
-            boxShadow: "4px 0 32px rgba(0,0,0,0.14)",
+        {/* ── Desktop sidebar ────────────────────────────────────────────── */}
+        {desktop && (
+          <aside style={{
+            width: 232, position: "fixed", top: 0, left: 0, bottom: 0, zIndex: 20,
+            background: C.surface, borderRight: `1px solid ${C.border}`,
+            display: "flex", flexDirection: "column",
           }}>
-            <div style={{ padding: "16px 16px 14px", borderBottom: "1px solid #E8ECF0", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-              {logo}
-              <button
-                onClick={() => setDrawerOpen(false)}
-                style={{
-                  border: "none", background: "#F1F5F9", borderRadius: 8,
-                  padding: 7, cursor: "pointer", display: "flex", color: "#64748B", flexShrink: 0,
-                }}
-              >
-                <X size={16} />
-              </button>
+            <div style={{ padding: "18px 16px 14px", borderBottom: `1px solid ${C.border}` }}>
+              {Logo}
             </div>
-            <nav style={{ flex: 1, padding: "12px 10px", display: "flex", flexDirection: "column", gap: 2, overflowY: "auto" }}>
-              <p style={{ fontSize: 10, fontWeight: 600, color: "#CBD5E1", letterSpacing: "0.08em", textTransform: "uppercase", padding: "0 12px", marginBottom: 6 }}>Menu</p>
-              {NAV.map(({ label, href, icon: Icon }) => navLink(href, label, Icon, () => setDrawerOpen(false)))}
-            </nav>
-            <div style={{ padding: "10px", borderTop: "1px solid #E8ECF0" }}>
-              <button onClick={logout} style={{
-                display: "flex", alignItems: "center", gap: 10,
-                padding: "11px 12px", borderRadius: 8, border: "none",
-                background: "transparent", cursor: "pointer", width: "100%",
-                fontSize: 13.5, fontWeight: 500, color: "#94A3B8",
-              }}>
-                <LogOut size={16} /> Sign Out
-              </button>
-            </div>
+            <NavBody />
+            {BottomBar}
           </aside>
-        </>
-      )}
+        )}
 
-      {/* ── Main Content ── */}
-      <main style={{ flex: 1, marginLeft: desktop ? 240 : 0, minWidth: 0 }}>
-        {/* Top bar */}
-        <div style={{
-          height: 56, background: "#fff", borderBottom: "1px solid #E8ECF0",
-          display: "flex", alignItems: "center",
-          padding: desktop ? "0 28px" : "0 16px",
-          justifyContent: "space-between",
-          position: "sticky", top: 0, zIndex: 10,
-          gap: 12,
-        }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
-            {!desktop && (
-              <button
-                onClick={() => setDrawerOpen(true)}
-                style={{
-                  border: "none", background: "transparent",
-                  padding: 4, cursor: "pointer", display: "flex",
-                  color: "#0F172A", borderRadius: 6, flexShrink: 0,
-                }}
-              >
-                <Menu size={22} />
-              </button>
-            )}
-            <p style={{ fontSize: 14, fontWeight: 600, color: "#0F172A", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-              {currentLabel}
-            </p>
-          </div>
+        {/* ── Mobile drawer overlay ──────────────────────────────────────── */}
+        {!desktop && drawerOpen && (
+          <>
+            <div
+              className="admin-overlay"
+              onClick={() => setDrawer(false)}
+              style={{ position: "fixed", inset: 0, zIndex: 30, background: "rgba(15,23,42,0.45)" }}
+            />
+            <aside className="admin-drawer" style={{
+              position: "fixed", top: 0, left: 0, bottom: 0, width: 268, zIndex: 40,
+              background: C.surface, display: "flex", flexDirection: "column",
+              boxShadow: "4px 0 32px rgba(0,0,0,0.14)",
+            }}>
+              <div style={{ padding: "14px 14px 12px", borderBottom: `1px solid ${C.border}`, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                {Logo}
+                <button
+                  onClick={() => setDrawer(false)}
+                  style={{ border: "none", background: "#F1F5F9", borderRadius: 7, padding: 7, cursor: "pointer", color: C.textSub, display: "flex" }}
+                >
+                  <X size={15} />
+                </button>
+              </div>
+              <NavBody onItemClick={() => setDrawer(false)} />
+              {BottomBar}
+            </aside>
+          </>
+        )}
+
+        {/* ── Main content ───────────────────────────────────────────────── */}
+        <main style={{ flex: 1, marginLeft: desktop ? 232 : 0, minWidth: 0, display: "flex", flexDirection: "column" }}>
+
+          {/* Top bar */}
           <div style={{
-            width: 32, height: 32, borderRadius: "50%", background: "#F1F5F9",
-            display: "flex", alignItems: "center", justifyContent: "center",
-            fontSize: 12, fontWeight: 700, color: "#475569", flexShrink: 0,
-          }}>A</div>
-        </div>
+            height: 54, background: C.surface, borderBottom: `1px solid ${C.border}`,
+            display: "flex", alignItems: "center",
+            padding: desktop ? "0 28px" : "0 16px",
+            justifyContent: "space-between",
+            position: "sticky", top: 0, zIndex: 10,
+            gap: 12,
+          }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
+              {!desktop && (
+                <button
+                  onClick={() => setDrawer(true)}
+                  style={{ border: "none", background: "transparent", padding: 4, cursor: "pointer", display: "flex", color: C.text, borderRadius: 6, flexShrink: 0 }}
+                >
+                  <Menu size={20} />
+                </button>
+              )}
+              <p style={{ fontSize: 14, fontWeight: 600, color: C.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                {currentLabel}
+              </p>
+            </div>
+            {/* Right side: event countdown chip */}
+            <div style={{
+              display: "flex", alignItems: "center", gap: 6,
+              background: C.goldBg, border: `1px solid ${C.goldBorder}`,
+              borderRadius: 20, padding: "4px 12px", flexShrink: 0,
+            }}>
+              <span style={{ fontSize: 11, fontWeight: 700, color: C.gold }}>
+                {Math.max(0, Math.ceil((new Date("2026-12-20").getTime() - Date.now()) / 86400000))}d
+              </span>
+              <span style={{ fontSize: 11, color: C.textMuted }}>to event</span>
+            </div>
+          </div>
 
-        <div style={{ padding: desktop ? 28 : 16 }}>
-          {children}
-        </div>
-      </main>
-    </div>
+          {/* Page content */}
+          <div style={{ padding: desktop ? "28px 28px" : "16px", flex: 1 }}>
+            {children}
+          </div>
+        </main>
+      </div>
+    </ToastProvider>
   );
 }
