@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Wifi, WifiOff, QrCode, CheckCircle, XCircle, Clock, RefreshCw, ScrollText } from "lucide-react";
+import { Wifi, WifiOff, QrCode, CheckCircle, XCircle, Clock, RefreshCw, ScrollText, X } from "lucide-react";
 import { C, Button, Badge, PageHeader, Card, Spinner, Table, Thead, Th, Tbody, Td, Tr, Skeleton, Empty } from "../ui";
 
 type WaStatus  = { status: string; qr?: string; updatedAt?: string };
@@ -34,10 +34,86 @@ function fmtDate(iso?: string) {
   return new Date(iso).toLocaleString("en-IN", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
 }
 
+// ── Connect modal ─────────────────────────────────────────────────────────────
+function ConnectModal({ wa, onClose }: { wa: WaStatus; onClose: () => void }) {
+  const isQr      = wa.status === "qr" && !!wa.qr;
+  const isStarting = wa.status === "starting";
+  const isConnected = wa.status === "connected" || wa.status === "authenticated";
+
+  // Auto-close on connect
+  useEffect(() => {
+    if (isConnected) onClose();
+  }, [isConnected, onClose]);
+
+  return (
+    <div
+      style={{ position: "fixed", inset: 0, zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.5)", padding: 16 }}
+      onClick={onClose}
+    >
+      <Card
+        padding={0}
+        style={{ width: "100%", maxWidth: 400, boxShadow: "0 24px 64px rgba(0,0,0,0.22)" }}
+        onClick={(e: React.MouseEvent) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 20px", borderBottom: `1px solid ${C.border}` }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <Wifi size={15} color={C.textSub} />
+            <p style={{ fontWeight: 700, fontSize: 14, color: C.text, margin: 0 }}>Connect WhatsApp</p>
+          </div>
+          <button onClick={onClose} style={{ border: "none", background: "none", cursor: "pointer", color: C.textMuted, display: "flex", padding: 4 }}>
+            <X size={17} />
+          </button>
+        </div>
+
+        {/* Body */}
+        <div style={{ padding: "32px 24px", display: "flex", flexDirection: "column", alignItems: "center", gap: 20, textAlign: "center" }}>
+          {isStarting && (
+            <>
+              <Spinner size={32} color={C.orange} />
+              <div>
+                <p style={{ fontSize: 14, fontWeight: 700, color: C.text, margin: 0 }}>Starting bot…</p>
+                <p style={{ fontSize: 12, color: C.textSub, marginTop: 6 }}>QR code will appear shortly</p>
+              </div>
+            </>
+          )}
+
+          {isQr && (
+            <>
+              <div style={{ background: C.borderLight, borderRadius: 14, padding: 12, border: `1px solid ${C.border}` }}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={wa.qr} alt="WhatsApp QR" style={{ width: 200, height: 200, display: "block", borderRadius: 8 }} />
+              </div>
+              <div>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, marginBottom: 6 }}>
+                  <QrCode size={14} color={C.orange} />
+                  <p style={{ fontSize: 14, fontWeight: 700, color: C.text, margin: 0 }}>Scan to Connect</p>
+                </div>
+                <p style={{ fontSize: 12, color: C.textSub, lineHeight: 1.7 }}>
+                  WhatsApp → Settings → Linked Devices → Link a Device<br />
+                  Point your camera at the QR code above
+                </p>
+              </div>
+            </>
+          )}
+
+          {!isStarting && !isQr && (
+            <>
+              <Spinner size={24} color={C.textMuted} />
+              <p style={{ fontSize: 13, color: C.textSub }}>Waiting for bot status…</p>
+            </>
+          )}
+        </div>
+      </Card>
+    </div>
+  );
+}
+
+// ── Page ──────────────────────────────────────────────────────────────────────
 export default function WhatsAppPage() {
-  const [wa, setWa]             = useState<WaStatus>({ status: "not_started" });
-  const [starting, setStarting] = useState(false);
-  const [rows, setRows]         = useState<Row[]>([]);
+  const [wa, setWa]                 = useState<WaStatus>({ status: "not_started" });
+  const [showConnect, setShowConnect] = useState(false);
+  const [rows, setRows]             = useState<Row[]>([]);
   const [logLoading, setLogLoading] = useState(true);
 
   // Poll WA status every 3 s
@@ -71,10 +147,9 @@ export default function WhatsAppPage() {
 
   useEffect(() => { loadLog(); }, []);
 
-  async function startBot() {
-    setStarting(true);
+  async function handleConnect() {
+    setShowConnect(true);
     await fetch("/api/wa-start", { method: "POST" });
-    setTimeout(() => setStarting(false), 4000);
   }
 
   const isStale     = wa.updatedAt ? (Date.now() - new Date(wa.updatedAt).getTime()) > 30000 : false;
@@ -139,30 +214,23 @@ export default function WhatsAppPage() {
             </>
           )}
 
-          {isQr && (
+          {(isQr || isStarting) && (
             <>
-              <div style={{ background: C.borderLight, borderRadius: 14, padding: 12, border: `1px solid ${C.border}` }}>
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={wa.qr} alt="WhatsApp QR" style={{ width: 200, height: 200, display: "block", borderRadius: 8 }} />
+              <div style={{ width: 64, height: 64, borderRadius: "50%", background: C.orangeBg, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <Spinner size={26} color={C.orange} />
               </div>
               <div>
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, marginBottom: 8 }}>
-                  <QrCode size={14} color={C.orange} />
-                  <p style={{ fontSize: 14, fontWeight: 700, color: C.text, margin: 0 }}>Scan to Connect</p>
-                </div>
-                <p style={{ fontSize: 12, color: C.textSub, lineHeight: 1.7 }}>
-                  WhatsApp → Settings → Linked Devices → Link a Device<br />
-                  Point your camera at the QR code above
+                <p style={{ fontSize: 15, fontWeight: 700, color: C.text, margin: 0 }}>
+                  {isStarting ? "Bot is starting…" : "Waiting for QR scan"}
+                </p>
+                <p style={{ fontSize: 13, color: C.textSub, marginTop: 6 }}>
+                  {isStarting ? "QR code will appear shortly" : "Open the connect dialog to scan"}
                 </p>
               </div>
+              <Button variant="secondary" size="lg" icon={<QrCode size={14} />} onClick={() => setShowConnect(true)}>
+                Show QR Code
+              </Button>
             </>
-          )}
-
-          {isStarting && (
-            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 12, padding: "16px 0" }}>
-              <Spinner size={24} color={C.orange} />
-              <p style={{ fontSize: 13, color: C.textSub }}>Bot is starting — QR will appear shortly…</p>
-            </div>
           )}
 
           {needsStart && (
@@ -172,15 +240,20 @@ export default function WhatsAppPage() {
               </div>
               <div>
                 <p style={{ fontSize: 15, fontWeight: 700, color: C.text, margin: 0 }}>Bot Not Running</p>
-                <p style={{ fontSize: 13, color: C.textMuted, marginTop: 4 }}>Start the bot to enable auto-messaging</p>
+                <p style={{ fontSize: 13, color: C.textMuted, marginTop: 4 }}>Connect to enable auto-messaging</p>
               </div>
-              <Button size="lg" loading={starting} onClick={startBot}>
-                {starting ? "Starting…" : "Start Bot"}
+              <Button size="lg" icon={<Wifi size={15} />} onClick={handleConnect}>
+                Connect WhatsApp
               </Button>
             </>
           )}
         </div>
       </Card>
+
+      {/* Connect modal */}
+      {showConnect && (
+        <ConnectModal wa={wa} onClose={() => setShowConnect(false)} />
+      )}
 
       {/* ── Message log ── */}
       <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
@@ -191,7 +264,6 @@ export default function WhatsAppPage() {
           <Button variant="secondary" size="sm" icon={<RefreshCw size={13} />} onClick={loadLog}>Refresh</Button>
         </div>
 
-        {/* Stat pills */}
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
           {(["sent", "pending", "failed"] as const).map(s => {
             const { icon: Icon, variant, label } = STATUS_CFG[s];
