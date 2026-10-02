@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Wifi, WifiOff, QrCode, CheckCircle, XCircle, Clock, RefreshCw, ScrollText, X } from "lucide-react";
+import { Wifi, QrCode, CheckCircle, XCircle, Clock, RefreshCw, ScrollText, X } from "lucide-react";
 import { C, Button, Badge, PageHeader, Card, Spinner, Table, Thead, Th, Tbody, Td, Tr, Skeleton, Empty } from "../ui";
 
 type WaStatus  = { status: string; qr?: string; updatedAt?: string };
@@ -172,83 +172,75 @@ export default function WhatsAppPage() {
       <PageHeader
         title="WhatsApp"
         sub="Bot connection and message delivery log"
-        actions={<Badge variant={statusVariant} dot>{statusLabel}</Badge>}
-      />
-
-      {/* ── Connection card ── */}
-      <Card padding={0} style={{ overflow: "hidden", maxWidth: 520 }}>
-        <div style={{
-          padding: "12px 20px", borderBottom: `1px solid ${C.border}`,
-          display: "flex", alignItems: "center", justifyContent: "space-between",
-        }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <div style={{
-              width: 8, height: 8, borderRadius: "50%", flexShrink: 0,
-              background: isConnected ? C.green : isQr || isStarting ? C.orange : C.textMuted,
-              boxShadow: isConnected ? `0 0 0 3px rgba(16,185,129,0.2)` : "none",
-            }} />
-            <span style={{ fontSize: 13, fontWeight: 600, color: C.text }}>{statusLabel}</span>
-            {isStale && wa.status === "connected" && (
-              <span style={{ fontSize: 11, color: C.orange }}>— may have stopped</span>
+        actions={
+          <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+            <Badge variant={statusVariant} dot>{statusLabel}</Badge>
+            {needsStart && (
+              <Button size="sm" icon={<Wifi size={13} />} onClick={handleConnect}>
+                Connect
+              </Button>
+            )}
+            {(isQr || isStarting) && (
+              <Button variant="secondary" size="sm" icon={<QrCode size={13} />} onClick={() => setShowConnect(true)}>
+                Show QR
+              </Button>
             )}
           </div>
-          {wa.updatedAt && (
-            <span style={{ fontSize: 11, color: C.textMuted }}>
-              {new Date(wa.updatedAt).toLocaleTimeString("en-IN")}
-            </span>
-          )}
-        </div>
+        }
+      />
 
-        <div style={{ padding: "32px 24px", display: "flex", flexDirection: "column", alignItems: "center", gap: 20, textAlign: "center" }}>
-          {isConnected && (
-            <>
-              <div style={{ width: 64, height: 64, borderRadius: "50%", background: C.greenBg, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                <Wifi size={28} color={C.green} />
-              </div>
-              <div>
-                <p style={{ fontSize: 15, fontWeight: 700, color: C.text, margin: 0 }}>WhatsApp Connected</p>
-                <p style={{ fontSize: 13, color: C.textSub, marginTop: 6, maxWidth: 320, lineHeight: 1.6 }}>
-                  The bot is active. Registrants automatically receive a thank-you message upon RSVP submission.
-                </p>
-              </div>
-            </>
-          )}
+      {/* ── Connection card — only shown when connected or in-progress ── */}
+      {(isConnected || isQr || isStarting) && (
+        <Card padding={0} style={{ overflow: "hidden", maxWidth: 520 }}>
+          <div style={{
+            padding: "12px 20px", borderBottom: `1px solid ${C.border}`,
+            display: "flex", alignItems: "center", justifyContent: "space-between",
+          }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <div style={{
+                width: 8, height: 8, borderRadius: "50%", flexShrink: 0,
+                background: isConnected ? C.green : C.orange,
+                boxShadow: isConnected ? `0 0 0 3px rgba(16,185,129,0.2)` : "none",
+              }} />
+              <span style={{ fontSize: 13, fontWeight: 600, color: C.text }}>{statusLabel}</span>
+              {isStale && wa.status === "connected" && (
+                <span style={{ fontSize: 11, color: C.orange }}>— may have stopped</span>
+              )}
+            </div>
+            {wa.updatedAt && (
+              <span style={{ fontSize: 11, color: C.textMuted }}>
+                {new Date(wa.updatedAt).toLocaleTimeString("en-IN")}
+              </span>
+            )}
+          </div>
 
-          {(isQr || isStarting) && (
-            <>
-              <div style={{ width: 64, height: 64, borderRadius: "50%", background: C.orangeBg, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                <Spinner size={26} color={C.orange} />
-              </div>
-              <div>
-                <p style={{ fontSize: 15, fontWeight: 700, color: C.text, margin: 0 }}>
-                  {isStarting ? "Bot is starting…" : "Waiting for QR scan"}
+          <div style={{ padding: "28px 24px", display: "flex", flexDirection: "column", alignItems: "center", gap: 16, textAlign: "center" }}>
+            {isConnected && (
+              <>
+                <div style={{ width: 56, height: 56, borderRadius: "50%", background: C.greenBg, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <Wifi size={24} color={C.green} />
+                </div>
+                <div>
+                  <p style={{ fontSize: 14, fontWeight: 700, color: C.text, margin: 0 }}>WhatsApp Connected</p>
+                  <p style={{ fontSize: 12, color: C.textSub, marginTop: 4, lineHeight: 1.6 }}>
+                    Registrants automatically receive a thank-you message upon RSVP submission.
+                  </p>
+                </div>
+              </>
+            )}
+            {(isQr || isStarting) && (
+              <>
+                <div style={{ width: 56, height: 56, borderRadius: "50%", background: C.orangeBg, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <Spinner size={22} color={C.orange} />
+                </div>
+                <p style={{ fontSize: 13, color: C.textSub, margin: 0 }}>
+                  {isStarting ? "Starting — QR code will appear shortly…" : "Waiting for QR scan"}
                 </p>
-                <p style={{ fontSize: 13, color: C.textSub, marginTop: 6 }}>
-                  {isStarting ? "QR code will appear shortly" : "Open the connect dialog to scan"}
-                </p>
-              </div>
-              <Button variant="secondary" size="lg" icon={<QrCode size={14} />} onClick={() => setShowConnect(true)}>
-                Show QR Code
-              </Button>
-            </>
-          )}
-
-          {needsStart && (
-            <>
-              <div style={{ width: 64, height: 64, borderRadius: "50%", background: C.borderLight, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                <WifiOff size={26} color={C.textMuted} />
-              </div>
-              <div>
-                <p style={{ fontSize: 15, fontWeight: 700, color: C.text, margin: 0 }}>Bot Not Running</p>
-                <p style={{ fontSize: 13, color: C.textMuted, marginTop: 4 }}>Connect to enable auto-messaging</p>
-              </div>
-              <Button size="lg" icon={<Wifi size={15} />} onClick={handleConnect}>
-                Connect WhatsApp
-              </Button>
-            </>
-          )}
-        </div>
-      </Card>
+              </>
+            )}
+          </div>
+        </Card>
+      )}
 
       {/* Connect modal */}
       {showConnect && (
