@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Trash2, Car, Bus, BedDouble } from "lucide-react";
+import { Trash2, BedDouble, Car, Bus } from "lucide-react";
+import { C, Badge, Button, Search, PageHeader, Table, Thead, Th, Tbody, Td, Tr, Skeleton, Empty, Card } from "../ui";
+import { useToast } from "../toast";
 
 type Entry = {
   id: number; primaryName: string; mobile: string; comingFrom: string;
@@ -12,28 +14,55 @@ type Entry = {
   additionalInfo: string | null; submittedAt: string;
 };
 
-function fmtDT(iso: string) {
+function fmt(iso: string) {
   return new Date(iso).toLocaleString("en-IN", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
 }
 
+function breakdown(e: Entry) {
+  return [
+    e.maleMem > 0 && `${e.maleMem}M`,
+    e.femaleMem > 0 && `${e.femaleMem}F`,
+    e.children > 0 && `${e.children} ch`,
+    e.seniorCitizens > 0 && `${e.seniorCitizens} sr`,
+  ].filter(Boolean).join(" · ");
+}
+
+function SkeletonRows() {
+  return (
+    <>{Array.from({ length: 4 }).map((_, i) => (
+      <Tr key={i}>
+        <Td><div style={{ display: "flex", flexDirection: "column", gap: 5 }}><Skeleton width={120} height={13} /><Skeleton width={90} height={11} /></div></Td>
+        <Td><Skeleton width={70} height={13} /></Td>
+        <Td><Skeleton width={30} height={22} radius={20} /></Td>
+        <Td><Skeleton width={80} height={11} /></Td>
+        <Td><Skeleton width={90} height={13} /></Td>
+        <Td><Skeleton width={90} height={13} /></Td>
+        <Td><Skeleton width={80} height={22} radius={6} /></Td>
+        <Td><Skeleton width={32} height={28} radius={7} /></Td>
+      </Tr>
+    ))}</>
+  );
+}
+
 export default function AccommodationPage() {
-  const [entries, setEntries] = useState<Entry[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState("");
-  const [acting, setActing] = useState<number | null>(null);
+  const { toast }  = useToast();
+  const [entries, setEntries]     = useState<Entry[]>([]);
+  const [loading, setLoading]     = useState(true);
+  const [search, setSearch]       = useState("");
+  const [acting, setActing]       = useState<number | null>(null);
+  const [toConfirm, setToConfirm] = useState<number | null>(null);
 
   async function load() {
     const res = await fetch("/api/accommodation").then(r => r.json()).catch(() => ({}));
     setEntries(res?.entries ?? []);
     setLoading(false);
   }
-
   useEffect(() => { load(); }, []);
 
   async function handleDelete(id: number) {
-    if (!confirm("Delete this accommodation registration?")) return;
-    setActing(id);
+    setActing(id); setToConfirm(null);
     await fetch("/api/accommodation", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id }) });
+    toast("Accommodation registration deleted", "success");
     await load();
     setActing(null);
   }
@@ -45,113 +74,100 @@ export default function AccommodationPage() {
   );
 
   const totalPersons = entries.reduce((s, e) => s + e.totalPersons, 0);
-  const needingHelp = entries.filter(e => e.needsAssistance).length;
+  const needHelp     = entries.filter(e => e.needsAssistance).length;
+  const withVehicle  = entries.filter(e => e.hasVehicle).length;
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
-      {/* Header */}
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
-        <div>
-          <h1 style={{ fontSize: 22, fontWeight: 700, color: "#0F172A", margin: 0 }}>Accommodation</h1>
-          <p style={{ fontSize: 13, color: "#94A3B8", marginTop: 4 }}>
-            {entries.length} registrations · {totalPersons} persons · {needingHelp} need assistance
-          </p>
-        </div>
-        <span style={{ background: "#0F172A", color: "#fff", borderRadius: 8, padding: "6px 14px", fontSize: 13, fontWeight: 600 }}>
-          {entries.length} total
-        </span>
-      </div>
-
-      {/* Search */}
-      <input
-        type="text"
-        placeholder="Search by name, phone or city…"
-        value={search}
-        onChange={e => setSearch(e.target.value)}
-        style={{ width: "100%", padding: "10px 16px", borderRadius: 10, border: "1px solid #E2E8F0", fontSize: 13, color: "#0F172A", background: "#fff", outline: "none", boxSizing: "border-box" }}
+    <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+      <PageHeader
+        title="Accommodation"
+        sub={`${entries.length} registrations · ${totalPersons} persons · ${needHelp} need assistance`}
+        actions={<Search placeholder="Name, phone, city…" value={search} onChange={e => setSearch(e.target.value)} />}
       />
 
-      {/* Cards */}
-      {loading ? (
-        <div style={{ padding: 40, textAlign: "center", color: "#CBD5E1", fontSize: 13 }}>Loading…</div>
-      ) : filtered.length === 0 ? (
-        <div style={{ padding: 48, textAlign: "center" }}>
-          <p style={{ fontSize: 14, color: "#94A3B8" }}>{search ? "No results found" : "No registrations yet"}</p>
-        </div>
-      ) : (
-        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-          {filtered.map(e => (
-            <div key={e.id} style={{ background: "#fff", borderRadius: 14, border: "1px solid #E8ECF0", padding: "16px 20px", opacity: acting === e.id ? 0.5 : 1, transition: "opacity 0.2s" }}>
-              <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
-                <div style={{ display: "flex", gap: 14, flex: 1, flexWrap: "wrap" }}>
+      {/* Stat chips */}
+      <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+        {[
+          { label: "Registrations", value: entries.length },
+          { label: "Total Persons",  value: totalPersons },
+          { label: "Need Assistance", value: needHelp },
+          { label: "With Vehicle",   value: withVehicle },
+        ].map(s => (
+          <Card key={s.label} padding="10px 18px" style={{ display: "flex", flexDirection: "column", alignItems: "center", minWidth: 80 }}>
+            <p style={{ fontSize: 20, fontWeight: 800, color: C.text, margin: 0, lineHeight: 1 }}>{s.value}</p>
+            <p style={{ fontSize: 11, color: C.textMuted, margin: "3px 0 0", fontWeight: 500, whiteSpace: "nowrap" }}>{s.label}</p>
+          </Card>
+        ))}
+      </div>
 
-                  {/* Person count badge */}
-                  <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "4px 12px", borderRadius: 20, background: "#EFF6FF", color: "#3B82F6", fontWeight: 600, fontSize: 12, alignSelf: "flex-start" }}>
-                    <BedDouble size={13} /> {e.totalPersons} person{e.totalPersons !== 1 ? "s" : ""}
-                  </div>
-
-                  <div style={{ flex: 1, minWidth: 180 }}>
-                    <p style={{ fontSize: 14, fontWeight: 700, color: "#0F172A" }}>{e.primaryName}</p>
-                    <p style={{ fontSize: 12, color: "#64748B", marginTop: 2 }}>{e.mobile} · from {e.comingFrom}</p>
-                    {(e.maleMem > 0 || e.femaleMem > 0 || e.children > 0 || e.seniorCitizens > 0) && (
-                      <p style={{ fontSize: 11, color: "#94A3B8", marginTop: 3 }}>
-                        {[
-                          e.maleMem > 0 && `${e.maleMem}M`,
-                          e.femaleMem > 0 && `${e.femaleMem}F`,
-                          e.children > 0 && `${e.children} children`,
-                          e.seniorCitizens > 0 && `${e.seniorCitizens} senior`,
-                        ].filter(Boolean).join(" · ")}
-                      </p>
-                    )}
-                  </div>
-
-                  <div style={{ minWidth: 160 }}>
-                    <p style={{ fontSize: 11, color: "#94A3B8", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em" }}>Arrival</p>
-                    <p style={{ fontSize: 12, color: "#0F172A", marginTop: 2 }}>{fmtDT(e.arrivalAt)}</p>
-                    <p style={{ fontSize: 11, color: "#94A3B8", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em", marginTop: 8 }}>Departure</p>
-                    <p style={{ fontSize: 12, color: "#0F172A", marginTop: 2 }}>{fmtDT(e.departureAt)}</p>
-                  </div>
-
-                  <div style={{ minWidth: 140, display: "flex", flexDirection: "column", gap: 4 }}>
+      <Table>
+        <Thead>
+          <Tr>
+            <Th>Name</Th>
+            <Th>From</Th>
+            <Th>Persons</Th>
+            <Th>Breakdown</Th>
+            <Th>Arrival</Th>
+            <Th>Departure</Th>
+            <Th>Flags</Th>
+            <Th style={{ textAlign: "right" }}>Actions</Th>
+          </Tr>
+        </Thead>
+        <tbody>
+          {loading ? (
+            <SkeletonRows />
+          ) : filtered.length === 0 ? (
+            <Tr>
+              <Td style={{ padding: 0, border: "none" }} colSpan={8}>
+                <Empty icon={<BedDouble size={40} />} title={search ? "No results" : "No registrations yet"} />
+              </Td>
+            </Tr>
+          ) : filtered.map(e => {
+            const busy    = acting === e.id;
+            const confirm = toConfirm === e.id;
+            return (
+              <Tr key={e.id} style={{ opacity: busy ? 0.5 : 1 }}>
+                <Td>
+                  <p style={{ fontWeight: 600, margin: 0, whiteSpace: "nowrap" }}>{e.primaryName}</p>
+                  <p style={{ fontSize: 11, color: C.textMuted, margin: "2px 0 0", fontFamily: "monospace" }}>{e.mobile}</p>
+                </Td>
+                <Td style={{ color: C.textSub, whiteSpace: "nowrap" }}>{e.comingFrom}</Td>
+                <Td>
+                  <Badge variant="blue" icon={<BedDouble size={10} />}>{e.totalPersons}</Badge>
+                </Td>
+                <Td style={{ fontSize: 11, color: C.textMuted, whiteSpace: "nowrap" }}>{breakdown(e) || "—"}</Td>
+                <Td style={{ fontSize: 12, color: C.textSub, whiteSpace: "nowrap" }}>{fmt(e.arrivalAt)}</Td>
+                <Td style={{ fontSize: 12, color: C.textSub, whiteSpace: "nowrap" }}>{fmt(e.departureAt)}</Td>
+                <Td>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
                     {e.needsAssistance && (
-                      <span style={{ fontSize: 11, color: "#D97706", background: "#FFFBEB", border: "1px solid #FDE68A", borderRadius: 6, padding: "2px 8px", display: "inline-block" }}>
-                        Needs assistance
-                      </span>
+                      <Badge variant="orange" style={{ fontSize: 10 }}>Assistance</Badge>
                     )}
-                    {e.hasVehicle && (
-                      <span style={{ fontSize: 11, color: "#6366F1", background: "#EEF2FF", borderRadius: 6, padding: "2px 8px", display: "inline-flex", alignItems: "center", gap: 4 }}>
-                        {e.vehicleType === "bus" ? <Bus size={11} /> : <Car size={11} />}
+                    {e.hasVehicle && e.vehicleNo && (
+                      <Badge variant="blue" icon={e.vehicleType === "bus" ? <Bus size={10} /> : <Car size={10} />} style={{ fontSize: 10 }}>
                         {e.vehicleNo}
-                      </span>
+                      </Badge>
                     )}
-                    {e.additionalInfo && (
-                      <p style={{ fontSize: 11, color: "#64748B" }}>{e.additionalInfo}</p>
+                    {!e.needsAssistance && !e.hasVehicle && <span style={{ color: C.textMuted, fontSize: 11 }}>—</span>}
+                  </div>
+                </Td>
+                <Td>
+                  <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
+                    {confirm ? (
+                      <>
+                        <Button variant="danger" size="sm" loading={busy} onClick={() => handleDelete(e.id)}>Confirm</Button>
+                        <Button variant="secondary" size="sm" onClick={() => setToConfirm(null)}>Cancel</Button>
+                      </>
+                    ) : (
+                      <Button variant="ghost" size="sm" icon={<Trash2 size={11} />} onClick={() => setToConfirm(e.id)} style={{ color: C.red }}>Delete</Button>
                     )}
                   </div>
-                </div>
-
-                <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6 }}>
-                  <button
-                    onClick={() => handleDelete(e.id)}
-                    disabled={acting === e.id}
-                    title="Delete"
-                    style={{ padding: "6px", borderRadius: 7, border: "1px solid #FEE2E2", background: "#FFF5F5", cursor: "pointer", display: "flex", alignItems: "center", color: "#EF4444" }}
-                  >
-                    <Trash2 size={13} />
-                  </button>
-                  <p style={{ fontSize: 10, color: "#CBD5E1" }}>{fmtDT(e.submittedAt)}</p>
-                </div>
-              </div>
-
-              {e.needsAssistance && e.assistanceDetails && (
-                <div style={{ marginTop: 10, padding: "8px 12px", background: "#FFFBEB", borderRadius: 8, border: "1px solid #FDE68A" }}>
-                  <p style={{ fontSize: 11, color: "#92400E" }}><strong>Assistance:</strong> {e.assistanceDetails}</p>
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
-      )}
+                </Td>
+              </Tr>
+            );
+          })}
+        </tbody>
+      </Table>
     </div>
   );
 }

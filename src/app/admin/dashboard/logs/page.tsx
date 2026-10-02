@@ -1,17 +1,32 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { CheckCircle, XCircle, Clock, RefreshCw } from "lucide-react";
+import { CheckCircle, XCircle, Clock, RefreshCw, ScrollText } from "lucide-react";
+import { C, Badge, Button, PageHeader, Table, Thead, Th, Tbody, Td, Tr, Skeleton, Empty, Card } from "../ui";
 
-type Entry    = { name: string; whatsapp: string; address: string; submittedAt: string };
+type Entry    = { name: string; whatsapp: string; submittedAt: string };
 type LogEntry = { name: string; whatsapp: string; status: "sent" | "failed"; sentAt: string; error?: string };
 type Row      = { name: string; whatsapp: string; submittedAt: string; status: "sent" | "failed" | "pending"; sentAt?: string; error?: string };
 
-const STATUS = {
-  sent:    { icon: CheckCircle, color: "#10B981", bg: "#ECFDF5", label: "Sent" },
-  failed:  { icon: XCircle,     color: "#EF4444", bg: "#FEF2F2", label: "Failed" },
-  pending: { icon: Clock,       color: "#F59E0B", bg: "#FFFBEB", label: "Pending" },
+const STATUS_CFG = {
+  sent:    { icon: CheckCircle, variant: "green"  as const, label: "Sent"    },
+  failed:  { icon: XCircle,     variant: "red"    as const, label: "Failed"  },
+  pending: { icon: Clock,       variant: "orange" as const, label: "Pending" },
 } as const;
+
+function SkeletonRows() {
+  return (
+    <>{Array.from({ length: 5 }).map((_, i) => (
+      <Tr key={i}>
+        <Td><Skeleton width={60} height={22} radius={20} /></Td>
+        <Td><Skeleton width={120} height={13} /></Td>
+        <Td><Skeleton width={100} height={13} /></Td>
+        <Td><Skeleton width={90} height={13} /></Td>
+        <Td><Skeleton width={90} height={13} /></Td>
+      </Tr>
+    ))}</>
+  );
+}
 
 export default function LogsPage() {
   const [rows, setRows]       = useState<Row[]>([]);
@@ -24,9 +39,8 @@ export default function LogsPage() {
       fetch("/api/wa-log").then(r => r.json()),
     ]);
     const entries = rsvpRes?.entries ?? [];
-    const sent    = rsvpRes?.sent ?? [];
-    const logMap  = new Map<string, LogEntry>();
-    for (const l of logs) logMap.set(l.whatsapp, l);
+    const sent    = rsvpRes?.sent    ?? [];
+    const logMap  = new Map(logs.map(l => [l.whatsapp, l]));
 
     setRows([...entries].reverse().map(e => {
       const isSent = sent.includes(`${e.whatsapp}|${e.submittedAt}`);
@@ -48,103 +62,83 @@ export default function LogsPage() {
     pending: rows.filter(r => r.status === "pending").length,
   };
 
+  function fmtDate(iso?: string) {
+    if (!iso) return "—";
+    return new Date(iso).toLocaleString("en-IN", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+  }
+
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+      <PageHeader
+        title="Message Log"
+        sub="WhatsApp delivery status for all registrants"
+        actions={
+          <Button variant="secondary" size="sm" icon={<RefreshCw size={13} />} onClick={load}>
+            Refresh
+          </Button>
+        }
+      />
 
-      {/* Header */}
-      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
-        <div>
-          <h1 style={{ fontSize: 20, fontWeight: 700, color: "#0F172A", margin: 0 }}>Message Log</h1>
-          <p style={{ fontSize: 12, color: "#94A3B8", marginTop: 3 }}>WhatsApp delivery status for all registrants</p>
-        </div>
-        <button onClick={load} style={{
-          display: "flex", alignItems: "center", gap: 6,
-          padding: "8px 14px", borderRadius: 8, border: "1px solid #E2E8F0",
-          background: "#fff", cursor: "pointer", fontSize: 13, fontWeight: 500, color: "#475569", flexShrink: 0,
-        }}>
-          <RefreshCw size={14} /> Refresh
-        </button>
-      </div>
-
-      {/* Summary chips */}
-      <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+      {/* Summary stat cards */}
+      <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
         {(["sent", "pending", "failed"] as const).map(s => {
-          const { icon: Icon, color, bg, label } = STATUS[s];
+          const { icon: Icon, variant, label } = STATUS_CFG[s];
           return (
-            <div key={s} style={{ background: bg, borderRadius: 10, padding: "9px 16px", display: "flex", gap: 6, alignItems: "center" }}>
-              <Icon size={15} color={color} />
-              <span style={{ fontSize: 13, fontWeight: 600, color }}>{counts[s]} {label}</span>
-            </div>
+            <Card key={s} padding="10px 18px" style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <Icon size={18} color={variant === "green" ? C.green : variant === "orange" ? C.orange : C.red} />
+              <div>
+                <p style={{ fontSize: 18, fontWeight: 800, color: C.text, margin: 0, lineHeight: 1 }}>{counts[s]}</p>
+                <p style={{ fontSize: 11, color: C.textMuted, margin: "2px 0 0" }}>{label}</p>
+              </div>
+            </Card>
           );
         })}
-        <div style={{ background: "#F1F5F9", borderRadius: 10, padding: "9px 16px", display: "flex", alignItems: "center" }}>
-          <span style={{ fontSize: 13, fontWeight: 600, color: "#64748B" }}>{rows.length} Total</span>
-        </div>
+        <Card padding="10px 18px" style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <div>
+            <p style={{ fontSize: 18, fontWeight: 800, color: C.text, margin: 0, lineHeight: 1 }}>{rows.length}</p>
+            <p style={{ fontSize: 11, color: C.textMuted, margin: "2px 0 0" }}>Total</p>
+          </div>
+        </Card>
       </div>
 
-      {/* Cards */}
-      {loading ? (
-        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          {[...Array(4)].map((_, i) => (
-            <div key={i} style={{ background: "#fff", borderRadius: 12, height: 68, border: "1px solid #E8ECF0" }} />
-          ))}
-        </div>
-      ) : rows.length === 0 ? (
-        <div style={{ padding: "56px 0", textAlign: "center" }}>
-          <p style={{ fontSize: 14, color: "#94A3B8", fontWeight: 500 }}>No registrations yet</p>
-        </div>
-      ) : (
-        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          {rows.map((r, i) => {
-            const { icon: Icon, color, bg, label } = STATUS[r.status];
+      <Table>
+        <Thead>
+          <Tr>
+            <Th>Status</Th>
+            <Th>Name</Th>
+            <Th>Phone</Th>
+            <Th>Registered</Th>
+            <Th>Message Sent</Th>
+          </Tr>
+        </Thead>
+        <tbody>
+          {loading ? (
+            <SkeletonRows />
+          ) : rows.length === 0 ? (
+            <Tr>
+              <Td style={{ padding: 0, border: "none" }} colSpan={5}>
+                <Empty icon={<ScrollText size={40} />} title="No registrations yet" />
+              </Td>
+            </Tr>
+          ) : rows.map((r, i) => {
+            const { icon: Icon, variant, label } = STATUS_CFG[r.status];
             return (
-              <div key={i} style={{
-                background: "#fff", borderRadius: 12, border: "1px solid #E8ECF0",
-                padding: "13px 16px",
-                boxShadow: "0 1px 3px rgba(0,0,0,0.04)",
-              }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                  {/* Status icon */}
-                  <div style={{
-                    width: 36, height: 36, borderRadius: "50%", flexShrink: 0,
-                    background: bg, display: "flex", alignItems: "center", justifyContent: "center",
-                  }}>
-                    <Icon size={16} color={color} />
-                  </div>
-
-                  {/* Name + phone */}
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <p style={{ fontSize: 13, fontWeight: 600, color: "#0F172A", margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                      {r.name}
-                    </p>
-                    {r.error ? (
-                      <p style={{ fontSize: 11, color: "#EF4444", marginTop: 2 }}>{r.error}</p>
-                    ) : (
-                      <p style={{ fontSize: 12, color: "#64748B", fontFamily: "monospace", marginTop: 2 }}>{r.whatsapp}</p>
-                    )}
-                  </div>
-
-                  {/* Badge + time */}
-                  <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4, flexShrink: 0 }}>
-                    <span style={{
-                      display: "inline-flex", alignItems: "center", gap: 4,
-                      fontSize: 11, fontWeight: 600, padding: "3px 9px", borderRadius: 6, background: bg, color,
-                    }}>
-                      {label}
-                    </span>
-                    <p style={{ fontSize: 11, color: "#CBD5E1", textAlign: "right" }}>
-                      {r.sentAt
-                        ? new Date(r.sentAt).toLocaleString("en-IN", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })
-                        : new Date(r.submittedAt).toLocaleDateString("en-IN", { day: "numeric", month: "short" })
-                      }
-                    </p>
-                  </div>
-                </div>
-              </div>
+              <Tr key={i}>
+                <Td>
+                  <Badge variant={variant} icon={<Icon size={10} />}>{label}</Badge>
+                </Td>
+                <Td style={{ fontWeight: 600, whiteSpace: "nowrap" }}>{r.name}</Td>
+                <Td>
+                  <span style={{ fontFamily: "monospace", fontSize: 12, color: C.textSub }}>{r.whatsapp}</span>
+                  {r.error && <p style={{ fontSize: 11, color: C.red, margin: "2px 0 0" }}>{r.error}</p>}
+                </Td>
+                <Td style={{ fontSize: 12, color: C.textMuted, whiteSpace: "nowrap" }}>{fmtDate(r.submittedAt)}</Td>
+                <Td style={{ fontSize: 12, color: C.textMuted, whiteSpace: "nowrap" }}>{fmtDate(r.sentAt)}</Td>
+              </Tr>
             );
           })}
-        </div>
-      )}
+        </tbody>
+      </Table>
     </div>
   );
 }
