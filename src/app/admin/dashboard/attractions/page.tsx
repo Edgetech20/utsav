@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Trash2, Upload, ChevronUp, ChevronDown, Plus, ExternalLink, Navigation, ImageIcon, X, Pencil } from "lucide-react";
+import { Trash2, Upload, ChevronUp, ChevronDown, Plus, ExternalLink, Navigation, ImageIcon, X, Pencil, GripVertical } from "lucide-react";
+import { C, Button, PageHeader, Card, Input, Spinner } from "../ui";
+import { useToast } from "../toast";
 
 type AttractionImage = { id: number; imageUrl: string };
 type Attraction = { id: number; name: string; order: number; url: string | null; navigateToVenue: boolean; images: AttractionImage[] };
@@ -13,45 +15,93 @@ const DEFAULTS = [
 ];
 const PROTECTED = ["Accommodation", "Bus & Car Parking"];
 
-const inp: React.CSSProperties = { width: "100%", padding: "9px 11px", borderRadius: 8, border: "1px solid #E8ECF0", fontSize: 13, outline: "none", boxSizing: "border-box" };
-const btn = (bg = "#0F172A", color = "#fff"): React.CSSProperties => ({ padding: "9px 16px", borderRadius: 8, background: bg, color, border: "none", cursor: "pointer", fontSize: 13, fontWeight: 600, display: "flex", alignItems: "center", gap: 6 });
+// ── Modal shell ───────────────────────────────────────────────────────────────
+function Modal({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
+  return (
+    <div
+      style={{ position: "fixed", inset: 0, zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.45)", padding: 16 }}
+      onClick={onClose}
+    >
+      <Card
+        padding={0}
+        style={{ width: "100%", maxWidth: 480, maxHeight: "90vh", overflowY: "auto", boxShadow: "0 24px 64px rgba(0,0,0,0.18)" }}
+        onClick={(e: React.MouseEvent) => e.stopPropagation()}
+      >
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 20px", borderBottom: `1px solid ${C.border}` }}>
+          <p style={{ fontWeight: 700, fontSize: 14, color: C.text, margin: 0 }}>{title}</p>
+          <button onClick={onClose} style={{ border: "none", background: "none", cursor: "pointer", color: C.textMuted, display: "flex", padding: 4 }}>
+            <X size={17} />
+          </button>
+        </div>
+        <div style={{ padding: 20 }}>{children}</div>
+      </Card>
+    </div>
+  );
+}
 
+// ── Image strip ───────────────────────────────────────────────────────────────
+function ImageStrip({ images, onRemove }: { images: AttractionImage[]; onRemove: (id: number) => void }) {
+  if (!images.length) return (
+    <div style={{ display: "flex", alignItems: "center", gap: 6, color: C.textMuted, fontSize: 12, padding: "6px 0" }}>
+      <ImageIcon size={14} /> No images — default icon shows
+    </div>
+  );
+  return (
+    <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+      {images.map(img => (
+        <div key={img.id} style={{ position: "relative" }}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={img.imageUrl} alt="" style={{ width: 80, height: 52, objectFit: "cover", borderRadius: 6, border: `1px solid ${C.border}`, display: "block" }} />
+          <button
+            onClick={() => onRemove(img.id)}
+            style={{ position: "absolute", top: -6, right: -6, width: 18, height: 18, borderRadius: "50%", background: C.red, color: "#fff", border: "none", cursor: "pointer", fontSize: 11, display: "flex", alignItems: "center", justifyContent: "center" }}
+          >×</button>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ── Page ──────────────────────────────────────────────────────────────────────
 export default function AttractionsPage() {
-  const [list, setList] = useState<Attraction[]>([]);
-  const [showAdd, setShowAdd] = useState(false);
-  const [addForm, setAddForm] = useState({ name: "", url: "", navigateToVenue: false });
-  const [addFiles, setAddFiles] = useState<File[]>([]);
-  const addFileRef = useRef<HTMLInputElement>(null);
+  const { toast } = useToast();
+  const [list, setList]           = useState<Attraction[]>([]);
+  const [showAdd, setShowAdd]     = useState(false);
+  const [addForm, setAddForm]     = useState({ name: "", url: "", navigateToVenue: false });
+  const [addFiles, setAddFiles]   = useState<File[]>([]);
+  const addFileRef                = useRef<HTMLInputElement>(null);
   const [editTarget, setEditTarget] = useState<Attraction | null>(null);
-  const [editForm, setEditForm] = useState({ name: "", url: "", navigateToVenue: false });
+  const [editForm, setEditForm]   = useState({ name: "", url: "", navigateToVenue: false });
   const [uploading, setUploading] = useState(false);
-  const [dragOver, setDragOver] = useState<number | null>(null);
-  const dragId = useRef<number | null>(null);
-  const fileRef = useRef<HTMLInputElement>(null);
+  const [seeding, setSeeding]     = useState(false);
+  const [dragOver, setDragOver]   = useState<number | null>(null);
+  const [toConfirm, setToConfirm] = useState<number | null>(null);
+  const dragId                    = useRef<number | null>(null);
+  const fileRef                   = useRef<HTMLInputElement>(null);
 
   async function load() {
     const res = await fetch("/api/attractions");
     if (res.ok) setList(await res.json());
   }
-
   useEffect(() => { load(); }, []);
 
   async function seedDefaults() {
+    setSeeding(true);
     for (const name of DEFAULTS) {
       await fetch("/api/attractions", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+        method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name, navigateToVenue: name === "Ananda Bazar", url: name === "Suggestions" ? "https://forms.gle/RnBrNibfw7P2MvoY6" : null }),
       });
     }
     await load();
+    setSeeding(false);
+    toast("Default attractions seeded", "success");
   }
 
   async function add() {
     if (!addForm.name.trim()) return;
     const res = await fetch("/api/attractions", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
+      method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ ...addForm, url: addForm.url || null }),
     });
     if (res.ok && addFiles.length) {
@@ -67,23 +117,25 @@ export default function AttractionsPage() {
     setAddFiles([]);
     setShowAdd(false);
     await load();
+    toast("Attraction added", "success");
   }
 
   async function saveEdit() {
     if (!editTarget) return;
     await fetch("/api/attractions", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
+      method: "PUT", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ id: editTarget.id, ...editForm, url: editForm.url || null }),
     });
     setEditTarget(null);
     await load();
+    toast("Changes saved", "success");
   }
 
   async function remove(id: number) {
-    if (!confirm("Delete this attraction?")) return;
+    setToConfirm(null);
     await fetch("/api/attractions", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id }) });
     setList(l => l.filter(x => x.id !== id));
+    toast("Attraction deleted", "success");
   }
 
   async function move(id: number, dir: -1 | 1) {
@@ -100,7 +152,7 @@ export default function AttractionsPage() {
     const fromId = dragId.current;
     if (!fromId || fromId === targetId) { setDragOver(null); return; }
     const from = list.findIndex(x => x.id === fromId);
-    const to = list.findIndex(x => x.id === targetId);
+    const to   = list.findIndex(x => x.id === targetId);
     const updated = [...list];
     const [item] = updated.splice(from, 1);
     updated.splice(to, 0, item);
@@ -127,6 +179,7 @@ export default function AttractionsPage() {
       setList(fresh);
     }
     setUploading(false);
+    toast("Images uploaded", "success");
   }
 
   async function removeImage(imgId: number) {
@@ -141,83 +194,129 @@ export default function AttractionsPage() {
     setEditForm({ name: a.name, url: a.url ?? "", navigateToVenue: a.navigateToVenue });
   }
 
-  const Modal = ({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) => (
-    <div style={{ position: "fixed", inset: 0, zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.4)" }} onClick={onClose}>
-      <div style={{ background: "#fff", borderRadius: 14, width: "100%", maxWidth: 480, margin: 16, boxShadow: "0 20px 60px rgba(0,0,0,0.15)", maxHeight: "90vh", overflowY: "auto" }} onClick={e => e.stopPropagation()}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "18px 20px", borderBottom: "1px solid #F1F5F9" }}>
-          <p style={{ fontWeight: 700, fontSize: 15, color: "#0F172A" }}>{title}</p>
-          <button onClick={onClose} style={{ border: "none", background: "none", cursor: "pointer", color: "#94A3B8" }}><X size={18} /></button>
-        </div>
-        <div style={{ padding: 20 }}>{children}</div>
+  // ── Shared form fields ─────────────────────────────────────────────────────
+  function FormFields({ form, setForm }: { form: typeof addForm; setForm: (f: typeof addForm) => void }) {
+    return (
+      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+        <Input label="Name *" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="e.g. Cultural Events" />
+        <Input label="URL (optional)" value={form.url} onChange={e => setForm({ ...form, url: e.target.value })} placeholder="https://…" />
+        <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: C.textSub, cursor: "pointer" }}>
+          <input type="checkbox" checked={form.navigateToVenue} onChange={e => setForm({ ...form, navigateToVenue: e.target.checked })} />
+          Show "Navigate to Venue" button
+        </label>
       </div>
-    </div>
-  );
+    );
+  }
 
   return (
-    <div style={{ width: "100%" }}>
-      {/* Header */}
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
-        <div>
-          <h2 style={{ fontSize: 18, fontWeight: 700, color: "#0F172A", marginBottom: 2 }}>Specialties & Attractions</h2>
-          <p style={{ fontSize: 13, color: "#64748B" }}>Manage, reorder and upload images.</p>
-        </div>
-        <div style={{ display: "flex", gap: 8 }}>
-          {list.length === 0 && <button onClick={seedDefaults} style={btn("#475569")}>Seed Defaults</button>}
-          <button onClick={() => setShowAdd(true)} style={btn()}><Plus size={14} /> Add</button>
-        </div>
-      </div>
+    <div>
+      <PageHeader
+        title="Specialties & Attractions"
+        sub="Manage, reorder and upload images"
+        actions={
+          <div style={{ display: "flex", gap: 8 }}>
+            {list.length === 0 && (
+              <Button variant="secondary" loading={seeding} onClick={seedDefaults}>Seed Defaults</Button>
+            )}
+            <Button icon={<Plus size={13} />} onClick={() => setShowAdd(true)}>Add</Button>
+          </div>
+        }
+      />
 
       {/* Table */}
-      <div style={{ background: "#fff", borderRadius: 12, border: "1px solid #E8ECF0", overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
-        <table style={{ width: "100%", minWidth: 580, borderCollapse: "collapse" }}>
-          <thead>
-            <tr style={{ background: "#F8FAFC" }}>
-              <th style={{ padding: "10px 16px", textAlign: "left", fontSize: 11, fontWeight: 600, color: "#94A3B8", letterSpacing: "0.06em", textTransform: "uppercase", width: 40 }}>#</th>
-              <th style={{ padding: "10px 16px", textAlign: "left", fontSize: 11, fontWeight: 600, color: "#94A3B8", letterSpacing: "0.06em", textTransform: "uppercase" }}>Name</th>
-              <th style={{ padding: "10px 16px", textAlign: "center", fontSize: 11, fontWeight: 600, color: "#94A3B8", letterSpacing: "0.06em", textTransform: "uppercase", width: 60 }}>Link</th>
-              <th style={{ padding: "10px 16px", textAlign: "center", fontSize: 11, fontWeight: 600, color: "#94A3B8", letterSpacing: "0.06em", textTransform: "uppercase", width: 60 }}>Nav</th>
-              <th style={{ padding: "10px 16px", textAlign: "center", fontSize: 11, fontWeight: 600, color: "#94A3B8", letterSpacing: "0.06em", textTransform: "uppercase", width: 60 }}>Imgs</th>
-              <th style={{ padding: "10px 16px", textAlign: "center", fontSize: 11, fontWeight: 600, color: "#94A3B8", letterSpacing: "0.06em", textTransform: "uppercase", width: 100 }}>Order</th>
-              <th style={{ padding: "10px 16px", width: 80 }} />
+      <div style={{ background: C.surface, borderRadius: 12, border: `1px solid ${C.border}`, overflowX: "auto" }}>
+        <table className="admin-table" style={{ width: "100%", minWidth: 560, borderCollapse: "collapse" }}>
+          <thead style={{ background: "#FAFBFC" }}>
+            <tr>
+              {["#", "Name", "Link", "Nav", "Imgs", "Order", ""].map((h, i) => (
+                <th key={i} style={{
+                  padding: "10px 14px", textAlign: i >= 2 && i <= 5 ? "center" : i === 6 ? "right" : "left",
+                  fontSize: 11, fontWeight: 600, color: C.textMuted,
+                  textTransform: "uppercase", letterSpacing: "0.06em",
+                  borderBottom: `1px solid ${C.border}`, whiteSpace: "nowrap",
+                  width: i === 0 ? 44 : i >= 2 && i <= 5 ? 64 : i === 6 ? 100 : undefined,
+                }}>
+                  {h}
+                </th>
+              ))}
             </tr>
           </thead>
           <tbody>
-            {list.map((a, i) => (
-              <tr
-                key={a.id}
-                draggable
-                onDragStart={() => { dragId.current = a.id; }}
-                onDragOver={e => { e.preventDefault(); setDragOver(a.id); }}
-                onDragLeave={() => setDragOver(null)}
-                onDrop={() => drop(a.id)}
-                style={{ borderTop: "1px solid #F1F5F9", background: dragOver === a.id ? "#F0F9FF" : "transparent", cursor: "grab", transition: "background 0.15s" }}
-              >
-                <td style={{ padding: "12px 16px", fontSize: 12, fontWeight: 700, color: "#CBD5E1" }}>{String(i + 1).padStart(2, "0")}</td>
-                <td style={{ padding: "12px 16px", fontSize: 13, fontWeight: 600, color: "#0F172A" }}>
-                  {a.name}
-                  {PROTECTED.includes(a.name) && <span style={{ marginLeft: 6, fontSize: 10, color: "#94A3B8", fontWeight: 400 }}>protected</span>}
-                </td>
-                <td style={{ padding: "12px 16px", textAlign: "center" }}>{a.url ? <ExternalLink size={14} color="#22c55e" /> : <span style={{ color: "#E2E8F0" }}>—</span>}</td>
-                <td style={{ padding: "12px 16px", textAlign: "center" }}>{a.navigateToVenue ? <Navigation size={14} color="#22c55e" /> : <span style={{ color: "#E2E8F0" }}>—</span>}</td>
-                <td style={{ padding: "12px 16px", textAlign: "center", fontSize: 13, color: a.images.length ? "#0F172A" : "#CBD5E1" }}>{a.images.length || "—"}</td>
-                <td style={{ padding: "12px 16px", textAlign: "center" }}>
-                  <div style={{ display: "flex", justifyContent: "center", gap: 4 }}>
-                    <button onClick={() => move(a.id, -1)} disabled={i === 0} style={{ border: "1px solid #E8ECF0", background: "#fff", borderRadius: 6, cursor: i === 0 ? "not-allowed" : "pointer", color: "#94A3B8", padding: "2px 6px", opacity: i === 0 ? 0.4 : 1 }}><ChevronUp size={13} /></button>
-                    <button onClick={() => move(a.id, 1)} disabled={i === list.length - 1} style={{ border: "1px solid #E8ECF0", background: "#fff", borderRadius: 6, cursor: i === list.length - 1 ? "not-allowed" : "pointer", color: "#94A3B8", padding: "2px 6px", opacity: i === list.length - 1 ? 0.4 : 1 }}><ChevronDown size={13} /></button>
-                  </div>
-                </td>
-                <td style={{ padding: "12px 16px" }}>
-                  <div style={{ display: "flex", gap: 4, justifyContent: "flex-end" }}>
-                    <button onClick={() => openEdit(a)} style={{ border: "1px solid #E8ECF0", background: "#fff", borderRadius: 6, cursor: "pointer", color: "#475569", padding: "4px 8px" }}><Pencil size={13} /></button>
-                    {!PROTECTED.includes(a.name) && (
-                      <button onClick={() => remove(a.id)} style={{ border: "1px solid #FEE2E2", background: "#FFF5F5", borderRadius: 6, cursor: "pointer", color: "#EF4444", padding: "4px 8px" }}><Trash2 size={13} /></button>
+            {list.map((a, i) => {
+              const confirming = toConfirm === a.id;
+              return (
+                <tr
+                  key={a.id}
+                  draggable
+                  onDragStart={() => { dragId.current = a.id; }}
+                  onDragOver={e => { e.preventDefault(); setDragOver(a.id); }}
+                  onDragLeave={() => setDragOver(null)}
+                  onDrop={() => drop(a.id)}
+                  style={{
+                    borderTop: `1px solid ${C.borderLight}`,
+                    background: dragOver === a.id ? C.blueBg : "transparent",
+                    cursor: "grab", transition: "background 0.12s",
+                  }}
+                >
+                  <td style={{ padding: "11px 14px" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                      <GripVertical size={13} color={C.textMuted} style={{ opacity: 0.4 }} />
+                      <span style={{ fontSize: 11, fontWeight: 700, color: C.textMuted }}>{String(i + 1).padStart(2, "0")}</span>
+                    </div>
+                  </td>
+                  <td style={{ padding: "11px 14px", fontSize: 13, fontWeight: 600, color: C.text }}>
+                    {a.name}
+                    {PROTECTED.includes(a.name) && (
+                      <span style={{ marginLeft: 7, fontSize: 10, color: C.textMuted, fontWeight: 400, background: C.borderLight, borderRadius: 4, padding: "1px 6px" }}>protected</span>
                     )}
-                  </div>
+                  </td>
+                  <td style={{ padding: "11px 14px", textAlign: "center" }}>
+                    {a.url ? <ExternalLink size={14} color={C.green} /> : <span style={{ color: C.border }}>—</span>}
+                  </td>
+                  <td style={{ padding: "11px 14px", textAlign: "center" }}>
+                    {a.navigateToVenue ? <Navigation size={14} color={C.green} /> : <span style={{ color: C.border }}>—</span>}
+                  </td>
+                  <td style={{ padding: "11px 14px", textAlign: "center", fontSize: 13, color: a.images.length ? C.text : C.border }}>
+                    {a.images.length || "—"}
+                  </td>
+                  <td style={{ padding: "11px 14px", textAlign: "center" }}>
+                    <div style={{ display: "flex", justifyContent: "center", gap: 3 }}>
+                      <button
+                        onClick={() => move(a.id, -1)} disabled={i === 0}
+                        style={{ border: `1px solid ${C.border}`, background: "#fff", borderRadius: 5, cursor: i === 0 ? "not-allowed" : "pointer", color: C.textMuted, padding: "2px 5px", opacity: i === 0 ? 0.3 : 1, display: "flex" }}
+                      ><ChevronUp size={12} /></button>
+                      <button
+                        onClick={() => move(a.id, 1)} disabled={i === list.length - 1}
+                        style={{ border: `1px solid ${C.border}`, background: "#fff", borderRadius: 5, cursor: i === list.length - 1 ? "not-allowed" : "pointer", color: C.textMuted, padding: "2px 5px", opacity: i === list.length - 1 ? 0.3 : 1, display: "flex" }}
+                      ><ChevronDown size={12} /></button>
+                    </div>
+                  </td>
+                  <td style={{ padding: "11px 14px" }}>
+                    <div style={{ display: "flex", gap: 5, justifyContent: "flex-end" }}>
+                      {confirming ? (
+                        <>
+                          <Button variant="danger" size="sm" onClick={() => remove(a.id)}>Confirm</Button>
+                          <Button variant="secondary" size="sm" onClick={() => setToConfirm(null)}>Cancel</Button>
+                        </>
+                      ) : (
+                        <>
+                          <Button variant="secondary" size="sm" icon={<Pencil size={12} />} onClick={() => openEdit(a)} />
+                          {!PROTECTED.includes(a.name) && (
+                            <Button variant="ghost" size="sm" icon={<Trash2 size={12} />} onClick={() => setToConfirm(a.id)} style={{ color: C.red }} />
+                          )}
+                        </>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              );
+            })}
+            {list.length === 0 && (
+              <tr>
+                <td colSpan={7} style={{ padding: "40px", textAlign: "center", color: C.textMuted, fontSize: 13 }}>
+                  No attractions yet — click <strong>Seed Defaults</strong> to start.
                 </td>
               </tr>
-            ))}
-            {list.length === 0 && (
-              <tr><td colSpan={7} style={{ padding: 40, textAlign: "center", color: "#CBD5E1", fontSize: 13 }}>No attractions yet. Click "Seed Defaults" to start.</td></tr>
             )}
           </tbody>
         </table>
@@ -226,35 +325,34 @@ export default function AttractionsPage() {
       {/* Add Modal */}
       {showAdd && (
         <Modal title="Add Attraction" onClose={() => { setShowAdd(false); setAddFiles([]); }}>
-          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-            <div><label style={{ fontSize: 12, fontWeight: 600, color: "#475569", display: "block", marginBottom: 4 }}>Name *</label><input style={inp} value={addForm.name} onChange={e => setAddForm(f => ({ ...f, name: e.target.value }))} placeholder="e.g. Cultural Events" /></div>
-            <div><label style={{ fontSize: 12, fontWeight: 600, color: "#475569", display: "block", marginBottom: 4 }}>URL (optional)</label><input style={inp} value={addForm.url} onChange={e => setAddForm(f => ({ ...f, url: e.target.value }))} placeholder="https://..." /></div>
-            <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: "#475569", cursor: "pointer" }}>
-              <input type="checkbox" checked={addForm.navigateToVenue} onChange={e => setAddForm(f => ({ ...f, navigateToVenue: e.target.checked }))} />
-              Show "Navigate to Venue" button
-            </label>
+          <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+            <FormFields form={addForm} setForm={setAddForm} />
 
-            <div style={{ borderTop: "1px solid #F1F5F9", paddingTop: 12 }}>
-              <label style={{ fontSize: 12, fontWeight: 600, color: "#475569", display: "block", marginBottom: 8 }}>Images (optional)</label>
+            <div style={{ borderTop: `1px solid ${C.borderLight}`, paddingTop: 14 }}>
+              <p style={{ fontSize: 11, fontWeight: 600, color: C.textSub, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 8 }}>Images (optional)</p>
               <input ref={addFileRef} type="file" accept="image/*" multiple style={{ display: "none" }} onChange={e => setAddFiles(Array.from(e.target.files ?? []))} />
-              <button onClick={() => addFileRef.current?.click()} style={{ width: "100%", padding: 10, borderRadius: 8, border: "2px dashed #E8ECF0", background: "#FAFAFA", cursor: "pointer", fontSize: 13, color: "#475569", display: "flex", alignItems: "center", justifyContent: "center", gap: 6, marginBottom: 8 }}>
-                <Upload size={14} /> Choose Images
+              <button
+                onClick={() => addFileRef.current?.click()}
+                style={{ width: "100%", padding: 10, borderRadius: 8, border: `2px dashed ${C.border}`, background: C.borderLight, cursor: "pointer", fontSize: 13, color: C.textSub, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, marginBottom: 8 }}
+              >
+                <Upload size={13} /> Choose Images
               </button>
               {addFiles.length > 0 && (
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
                   {addFiles.map((f, i) => (
                     <div key={i} style={{ position: "relative" }}>
-                      <img src={URL.createObjectURL(f)} style={{ width: 80, height: 52, objectFit: "cover", borderRadius: 6, border: "1px solid #E8ECF0" }} />
-                      <button onClick={() => setAddFiles(files => files.filter((_, j) => j !== i))} style={{ position: "absolute", top: -6, right: -6, width: 18, height: 18, borderRadius: "50%", background: "#EF4444", color: "#fff", border: "none", cursor: "pointer", fontSize: 12, display: "flex", alignItems: "center", justifyContent: "center" }}>×</button>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={URL.createObjectURL(f)} alt="" style={{ width: 80, height: 52, objectFit: "cover", borderRadius: 6, border: `1px solid ${C.border}`, display: "block" }} />
+                      <button onClick={() => setAddFiles(files => files.filter((_, j) => j !== i))} style={{ position: "absolute", top: -6, right: -6, width: 18, height: 18, borderRadius: "50%", background: C.red, color: "#fff", border: "none", cursor: "pointer", fontSize: 11, display: "flex", alignItems: "center", justifyContent: "center" }}>×</button>
                     </div>
                   ))}
                 </div>
               )}
             </div>
 
-            <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 4 }}>
-              <button onClick={() => { setShowAdd(false); setAddFiles([]); }} style={btn("#F1F5F9", "#475569")}>Cancel</button>
-              <button onClick={add} style={btn()}><Plus size={14} /> Add</button>
+            <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+              <Button variant="secondary" onClick={() => { setShowAdd(false); setAddFiles([]); }}>Cancel</Button>
+              <Button icon={<Plus size={13} />} onClick={add}>Add Attraction</Button>
             </div>
           </div>
         </Modal>
@@ -263,39 +361,25 @@ export default function AttractionsPage() {
       {/* Edit Modal */}
       {editTarget && (
         <Modal title={`Edit — ${editTarget.name}`} onClose={() => setEditTarget(null)}>
-          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-            <div><label style={{ fontSize: 12, fontWeight: 600, color: "#475569", display: "block", marginBottom: 4 }}>Name</label><input style={inp} value={editForm.name} onChange={e => setEditForm(f => ({ ...f, name: e.target.value }))} /></div>
-            <div><label style={{ fontSize: 12, fontWeight: 600, color: "#475569", display: "block", marginBottom: 4 }}>URL (optional)</label><input style={inp} value={editForm.url} onChange={e => setEditForm(f => ({ ...f, url: e.target.value }))} placeholder="https://..." /></div>
-            <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: "#475569", cursor: "pointer" }}>
-              <input type="checkbox" checked={editForm.navigateToVenue} onChange={e => setEditForm(f => ({ ...f, navigateToVenue: e.target.checked }))} />
-              Show "Navigate to Venue" button
-            </label>
+          <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+            <FormFields form={editForm} setForm={setEditForm} />
 
-            <div style={{ borderTop: "1px solid #F1F5F9", paddingTop: 12 }}>
-              <label style={{ fontSize: 12, fontWeight: 600, color: "#475569", display: "block", marginBottom: 8 }}>Images</label>
+            <div style={{ borderTop: `1px solid ${C.borderLight}`, paddingTop: 14 }}>
+              <p style={{ fontSize: 11, fontWeight: 600, color: C.textSub, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 8 }}>Images</p>
               <input ref={fileRef} type="file" accept="image/*" multiple style={{ display: "none" }} onChange={e => uploadImages(editTarget.id, e.target.files)} />
-              <button onClick={() => fileRef.current?.click()} disabled={uploading} style={{ width: "100%", padding: 10, borderRadius: 8, border: "2px dashed #E8ECF0", background: "#FAFAFA", cursor: "pointer", fontSize: 13, color: "#475569", display: "flex", alignItems: "center", justifyContent: "center", gap: 6, marginBottom: 10 }}>
-                <Upload size={14} /> {uploading ? "Uploading…" : "Upload Images"}
+              <button
+                onClick={() => fileRef.current?.click()} disabled={uploading}
+                style={{ width: "100%", padding: 10, borderRadius: 8, border: `2px dashed ${C.border}`, background: C.borderLight, cursor: uploading ? "wait" : "pointer", fontSize: 13, color: C.textSub, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, marginBottom: 10 }}
+              >
+                {uploading ? <Spinner size={13} /> : <Upload size={13} />}
+                {uploading ? "Uploading…" : "Upload Images"}
               </button>
-              {editTarget.images.length === 0 ? (
-                <div style={{ textAlign: "center", color: "#CBD5E1", fontSize: 13, padding: "8px 0", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
-                  <ImageIcon size={16} /> No images — default icon shows
-                </div>
-              ) : (
-                <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-                  {editTarget.images.map(img => (
-                    <div key={img.id} style={{ position: "relative" }}>
-                      <img src={img.imageUrl} style={{ width: 80, height: 52, objectFit: "cover", borderRadius: 6, border: "1px solid #E8ECF0" }} />
-                      <button onClick={() => removeImage(img.id)} style={{ position: "absolute", top: -6, right: -6, width: 18, height: 18, borderRadius: "50%", background: "#EF4444", color: "#fff", border: "none", cursor: "pointer", fontSize: 12, display: "flex", alignItems: "center", justifyContent: "center" }}>×</button>
-                    </div>
-                  ))}
-                </div>
-              )}
+              <ImageStrip images={editTarget.images} onRemove={removeImage} />
             </div>
 
-            <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 4 }}>
-              <button onClick={() => setEditTarget(null)} style={btn("#F1F5F9", "#475569")}>Cancel</button>
-              <button onClick={saveEdit} style={btn()}>Save Changes</button>
+            <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+              <Button variant="secondary" onClick={() => setEditTarget(null)}>Cancel</Button>
+              <Button onClick={saveEdit}>Save Changes</Button>
             </div>
           </div>
         </Modal>

@@ -98,15 +98,15 @@ export function Badge({ variant = "gray", children, dot, icon, style }: BadgePro
 }
 
 // ── Card ──────────────────────────────────────────────────────────────────────
-interface CardProps { children: ReactNode; style?: React.CSSProperties; padding?: number | string; }
-export function Card({ children, style, padding = 20 }: CardProps) {
+interface CardProps { children: ReactNode; style?: React.CSSProperties; padding?: number | string; onClick?: React.MouseEventHandler<HTMLDivElement>; }
+export function Card({ children, style, padding = 20, onClick }: CardProps) {
   return (
     <div style={{
       background: C.surface, borderRadius: 14,
       border: `1px solid ${C.border}`,
       boxShadow: "0 1px 4px rgba(0,0,0,0.04)",
       padding, ...style,
-    }}>
+    }} onClick={onClick}>
       {children}
     </div>
   );

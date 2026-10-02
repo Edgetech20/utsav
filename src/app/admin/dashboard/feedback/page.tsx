@@ -1,30 +1,51 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { MessageSquare, X, ChevronDown, ChevronUp, Trash2 } from "lucide-react";
+import { MessageSquare, ChevronDown, ChevronUp, Trash2 } from "lucide-react";
+import { C, Button, Badge, PageHeader, Card, Skeleton, Empty, Avatar, Search } from "../ui";
+import { useToast } from "../toast";
 
 type Entry = { id: number; name: string; mobile: string; responses: string; submittedAt: string };
 
 function ResponseDetail({ responses }: { responses: string }) {
   const data: Record<string, string> = JSON.parse(responses);
+  const pairs = Object.entries(data).filter(([, a]) => a?.trim());
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-      {Object.entries(data).map(([q, a]) =>
-        a?.trim() ? (
-          <div key={q} style={{ borderLeft: "3px solid #E8ECF0", paddingLeft: 12 }}>
-            <p style={{ fontSize: 11, color: "#94A3B8", marginBottom: 4 }}>{q}</p>
-            <p style={{ fontSize: 13, color: "#0F172A" }}>{a}</p>
+    <div style={{ display: "flex", flexDirection: "column", gap: 14, paddingTop: 16 }}>
+      {pairs.map(([q, a]) => (
+        <div key={q} style={{ borderLeft: `3px solid ${C.goldBorder}`, paddingLeft: 12 }}>
+          <p style={{ fontSize: 11, color: C.textMuted, marginBottom: 4, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em" }}>{q}</p>
+          <p style={{ fontSize: 13, color: C.text, lineHeight: 1.5 }}>{a}</p>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function SkeletonCards() {
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+      {Array.from({ length: 3 }).map((_, i) => (
+        <Card key={i} padding="16px 18px" style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <Skeleton width={36} height={36} radius={99} />
+          <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 6 }}>
+            <Skeleton width={140} height={13} />
+            <Skeleton width={100} height={11} />
           </div>
-        ) : null
-      )}
+          <Skeleton width={64} height={30} radius={7} />
+        </Card>
+      ))}
     </div>
   );
 }
 
 export default function FeedbackPage() {
-  const [entries, setEntries] = useState<Entry[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [expanded, setExpanded] = useState<number | null>(null);
+  const { toast }  = useToast();
+  const [entries, setEntries]     = useState<Entry[]>([]);
+  const [loading, setLoading]     = useState(true);
+  const [expanded, setExpanded]   = useState<number | null>(null);
+  const [toConfirm, setToConfirm] = useState<number | null>(null);
+  const [search, setSearch]       = useState("");
 
   useEffect(() => {
     fetch("/api/feedback")
@@ -33,83 +54,90 @@ export default function FeedbackPage() {
   }, []);
 
   async function del(id: number) {
-    if (!confirm("Delete this response?")) return;
+    setToConfirm(null);
     await fetch("/api/feedback", { method: "DELETE", body: JSON.stringify({ id }), headers: { "Content-Type": "application/json" } });
     setEntries(e => e.filter(x => x.id !== id));
+    if (expanded === id) setExpanded(null);
+    toast("Response deleted", "success");
   }
 
+  const filtered = entries.filter(e =>
+    e.name.toLowerCase().includes(search.toLowerCase()) ||
+    e.mobile.includes(search)
+  );
+
   return (
-    <div>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 24 }}>
-        <div>
-          <h1 style={{ fontSize: 20, fontWeight: 700, color: "#0F172A", margin: 0 }}>Feedback Responses</h1>
-          <p style={{ fontSize: 12, color: "#94A3B8", marginTop: 4 }}>প্রথম বর্ষ · {entries.length} response{entries.length !== 1 ? "s" : ""}</p>
-        </div>
-        <div style={{ background: "#EEF2FF", borderRadius: 8, padding: "8px 12px", display: "flex", alignItems: "center", gap: 6 }}>
-          <MessageSquare size={14} color="#6366F1" />
-          <span style={{ fontSize: 14, fontWeight: 700, color: "#6366F1" }}>{entries.length}</span>
-        </div>
-      </div>
+    <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+      <PageHeader
+        title="Feedback Responses"
+        sub={`প্রথম বর্ষ · ${entries.length} response${entries.length !== 1 ? "s" : ""}`}
+        actions={
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <Search placeholder="Search name or phone…" value={search} onChange={e => setSearch(e.target.value)} width={220} />
+            <Badge variant="blue" icon={<MessageSquare size={11} />}>{entries.length}</Badge>
+          </div>
+        }
+      />
 
       {loading ? (
-        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          {[...Array(3)].map((_, i) => (
-            <div key={i} style={{ background: "#fff", borderRadius: 12, height: 72, border: "1px solid #E8ECF0" }} />
-          ))}
-        </div>
-      ) : entries.length === 0 ? (
-        <div style={{ textAlign: "center", padding: "60px 0", color: "#94A3B8" }}>
-          <MessageSquare size={32} style={{ marginBottom: 12, opacity: 0.4 }} />
-          <p style={{ fontSize: 14 }}>No feedback responses yet</p>
-          <p style={{ fontSize: 12, marginTop: 4 }}>Responses will appear here once submitted via Google Form</p>
-        </div>
+        <SkeletonCards />
+      ) : filtered.length === 0 ? (
+        <Empty
+          icon={<MessageSquare size={40} />}
+          title={search ? "No results" : "No feedback yet"}
+          sub={search ? "Try a different search term" : "Responses appear here once submitted via Google Form"}
+        />
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          {entries.map(e => (
-            <div key={e.id} style={{
-              background: "#fff", borderRadius: 12, border: "1px solid #E8ECF0",
-              overflow: "hidden", boxShadow: "0 1px 3px rgba(0,0,0,0.04)",
-            }}>
-              {/* Row */}
-              <div style={{ display: "flex", alignItems: "center", padding: "14px 18px", gap: 12 }}>
-                <div style={{
-                  width: 36, height: 36, borderRadius: "50%", flexShrink: 0,
-                  background: "#F1F5F9", display: "flex", alignItems: "center",
-                  justifyContent: "center", fontWeight: 700, fontSize: 14, color: "#475569",
-                }}>
-                  {e.name.charAt(0).toUpperCase()}
-                </div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <p style={{ fontSize: 14, fontWeight: 600, color: "#0F172A", margin: 0 }}>{e.name}</p>
-                  <p style={{ fontSize: 12, color: "#94A3B8", marginTop: 2 }}>
-                    {e.mobile} · {new Date(e.submittedAt).toLocaleString("en-IN")}
-                  </p>
-                </div>
-                <button onClick={() => del(e.id)} style={{
-                  background: "none", border: "none", cursor: "pointer", padding: 6,
-                  color: "#94A3B8", borderRadius: 6,
-                }} title="Delete">
-                  <Trash2 size={14} />
-                </button>
-                <button onClick={() => setExpanded(expanded === e.id ? null : e.id)} style={{
-                  background: "#F1F5F9", border: "none", cursor: "pointer",
-                  borderRadius: 6, padding: "6px 12px", display: "flex",
-                  alignItems: "center", gap: 4, fontSize: 12, fontWeight: 500, color: "#475569",
-                }}>
-                  {expanded === e.id ? <><ChevronUp size={13} /> Hide</> : <><ChevronDown size={13} /> View</>}
-                </button>
-              </div>
+          {filtered.map(e => {
+            const isOpen    = expanded === e.id;
+            const confirming = toConfirm === e.id;
+            return (
+              <Card key={e.id} padding={0} style={{ overflow: "hidden" }}>
+                {/* Row */}
+                <div style={{ display: "flex", alignItems: "center", padding: "14px 18px", gap: 12 }}>
+                  <Avatar name={e.name} size={36} />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <p style={{ fontSize: 14, fontWeight: 600, color: C.text, margin: 0 }}>{e.name}</p>
+                    <p style={{ fontSize: 12, color: C.textMuted, marginTop: 2 }}>
+                      {e.mobile} · {new Date(e.submittedAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
+                    </p>
+                  </div>
 
-              {/* Expanded answers */}
-              {expanded === e.id && (
-                <div style={{ padding: "0 18px 18px", borderTop: "1px solid #F1F5F9" }}>
-                  <div style={{ paddingTop: 16 }}>
-                    <ResponseDetail responses={e.responses} />
+                  {/* Actions */}
+                  <div style={{ display: "flex", gap: 6, alignItems: "center", flexShrink: 0 }}>
+                    {confirming ? (
+                      <>
+                        <Button variant="danger" size="sm" onClick={() => del(e.id)}>Confirm</Button>
+                        <Button variant="secondary" size="sm" onClick={() => setToConfirm(null)}>Cancel</Button>
+                      </>
+                    ) : (
+                      <Button
+                        variant="ghost" size="sm"
+                        icon={<Trash2 size={11} />}
+                        onClick={() => setToConfirm(e.id)}
+                        style={{ color: C.red }}
+                      />
+                    )}
+                    <Button
+                      variant="secondary" size="sm"
+                      icon={isOpen ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
+                      onClick={() => { setExpanded(isOpen ? null : e.id); setToConfirm(null); }}
+                    >
+                      {isOpen ? "Hide" : "View"}
+                    </Button>
                   </div>
                 </div>
-              )}
-            </div>
-          ))}
+
+                {/* Expanded answers */}
+                {isOpen && (
+                  <div style={{ padding: "0 18px 18px", borderTop: `1px solid ${C.borderLight}` }}>
+                    <ResponseDetail responses={e.responses} />
+                  </div>
+                )}
+              </Card>
+            );
+          })}
         </div>
       )}
     </div>
