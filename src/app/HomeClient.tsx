@@ -104,6 +104,10 @@ export default function HomeClient({ initialSettings }: { initialSettings: Recor
     if (!dynFormData) return false;
     const errs: Record<string, string> = {};
     for (const field of dynFormData.fields) {
+      if (field.type === "checkbox") {
+        if (field.required && dynFormValues[field.label] !== "true") errs[field.label] = "You must confirm this";
+        continue;
+      }
       const val = (dynFormValues[field.label] ?? "").trim();
       if (field.required && !val) { errs[field.label] = `${field.label} is required`; continue; }
       if (!val) continue;
@@ -804,9 +808,11 @@ export default function HomeClient({ initialSettings }: { initialSettings: Recor
                   };
                   return (
                     <div key={field.id} className="flex flex-col gap-1.5">
-                      <label className="text-xs uppercase tracking-widest" style={{ color: "#C9A96E", opacity: 0.5 }}>
-                        {field.label}{field.required && <span style={{ color: "#f87171" }}> *</span>}
-                      </label>
+                      {field.type !== "checkbox" && (
+                        <label className="text-xs uppercase tracking-widest" style={{ color: "#C9A96E", opacity: 0.5 }}>
+                          {field.label}{field.required && <span style={{ color: "#f87171" }}> *</span>}
+                        </label>
+                      )}
                       {field.type === "text" && (
                         <input
                           type={v.format === "email" ? "email" : v.format === "numeric" ? "number" : "text"}
@@ -851,6 +857,17 @@ export default function HomeClient({ initialSettings }: { initialSettings: Recor
                             >{o}</button>
                           ))}
                         </div>
+                      )}
+                      {field.type === "checkbox" && (
+                        <label style={{ display: "flex", alignItems: "flex-start", gap: 10, cursor: "pointer", padding: "10px 12px", borderRadius: 12, border: `1px solid ${err ? "rgba(239,68,68,0.5)" : dynFormValues[field.label] === "true" ? "rgba(201,169,110,0.4)" : "rgba(201,169,110,0.15)"}`, background: dynFormValues[field.label] === "true" ? "rgba(201,169,110,0.07)" : "#0E0E0E", transition: "background 0.2s, border-color 0.2s" }}>
+                          <input
+                            type="checkbox"
+                            checked={dynFormValues[field.label] === "true"}
+                            onChange={e => { setDynFormValues(p => ({ ...p, [field.label]: e.target.checked ? "true" : "" })); setDynFormErrors(p => { const n = { ...p }; delete n[field.label]; return n; }); }}
+                            style={{ marginTop: 2, accentColor: "#C9A96E", flexShrink: 0, width: 15, height: 15, cursor: "pointer" }}
+                          />
+                          <span className="text-xs leading-relaxed" style={{ color: dynFormValues[field.label] === "true" ? "#C9A96E" : "#C9A96E", opacity: dynFormValues[field.label] === "true" ? 0.85 : 0.55 }}>{field.label}{field.required && <span style={{ color: "#f87171" }}> *</span>}</span>
+                        </label>
                       )}
                       {err && <p className="text-xs" style={{ color: "#f87171" }}>{err}</p>}
                     </div>

@@ -9,7 +9,7 @@ import {
 import { useToast } from "../toast";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
-type FieldType = "text" | "date" | "datetime" | "textarea" | "select";
+type FieldType = "text" | "date" | "datetime" | "textarea" | "select" | "checkbox";
 type TextFormat = "none" | "email" | "phone" | "numeric";
 
 type FieldValidation = {
@@ -125,6 +125,7 @@ function FieldRow({
           <option value="date">Date</option>
           <option value="datetime">Date &amp; Time</option>
           <option value="select">Select</option>
+          <option value="checkbox">Checkbox</option>
         </select>
 
         {/* format — text only */}
@@ -231,10 +232,12 @@ function FormPreview({ name, description, fields }: { name: string; description:
           <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
             {fields.map((f, i) => (
               <div key={i}>
-                <label style={previewLabel}>
-                  {f.label || <span style={{ color: "#CBD5E1" }}>Untitled field</span>}
-                  {f.required && <span style={{ color: "#EF4444", marginLeft: 2 }}>*</span>}
-                </label>
+                {f.type !== "checkbox" && (
+                  <label style={previewLabel}>
+                    {f.label || <span style={{ color: "#CBD5E1" }}>Untitled field</span>}
+                    {f.required && <span style={{ color: "#EF4444", marginLeft: 2 }}>*</span>}
+                  </label>
+                )}
                 {f.type === "textarea" ? (
                   <textarea disabled style={{ ...previewInput, height: 72, resize: "none" }}
                     placeholder={f.placeholder || "Your answer…"} />
@@ -242,6 +245,11 @@ function FormPreview({ name, description, fields }: { name: string; description:
                   <input disabled type="date" style={previewInput} />
                 ) : f.type === "datetime" ? (
                   <input disabled type="datetime-local" style={previewInput} />
+                ) : f.type === "checkbox" ? (
+                  <label style={{ display: "flex", alignItems: "flex-start", gap: 8, cursor: "not-allowed", opacity: 0.6 }}>
+                    <input type="checkbox" disabled style={{ marginTop: 2, accentColor: "#3B82F6", flexShrink: 0 }} />
+                    <span style={{ fontSize: 12, color: "#475569", lineHeight: 1.5 }}>{f.label || "Confirmation text…"}</span>
+                  </label>
                 ) : f.type === "select" ? (
                   <div style={{ display: "flex", borderRadius: 7, overflow: "hidden", border: "1px solid #CBD5E1", background: "#F8FAFC" }}>
                     {f.options.filter(o => o.trim()).map((o, j, arr) => (
