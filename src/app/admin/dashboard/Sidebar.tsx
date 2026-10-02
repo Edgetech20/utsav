@@ -243,16 +243,22 @@ export default function Sidebar({ children }: { children: React.ReactNode }) {
                 {currentLabel}
               </p>
             </div>
-            {/* Right side: event countdown chip */}
-            <div style={{
-              display: "flex", alignItems: "center", gap: 6,
-              background: C.goldBg, border: `1px solid ${C.goldBorder}`,
-              borderRadius: 20, padding: "4px 12px", flexShrink: 0,
-            }}>
-              <span style={{ fontSize: 11, fontWeight: 700, color: C.gold }}>
-                {Math.max(0, Math.ceil((new Date("2026-12-20").getTime() - Date.now()) / 86400000))}d
+            <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
+              {/* Today's date */}
+              <span style={{ fontSize: 11, color: C.textMuted, whiteSpace: "nowrap" }}>
+                {new Date().toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short", year: "numeric" })}
               </span>
-              <span style={{ fontSize: 11, color: C.textMuted }}>to event</span>
+              {/* Event countdown chip */}
+              <div style={{
+                display: "flex", alignItems: "center", gap: 6,
+                background: C.goldBg, border: `1px solid ${C.goldBorder}`,
+                borderRadius: 20, padding: "4px 12px",
+              }}>
+                <span style={{ fontSize: 11, fontWeight: 700, color: C.gold }}>
+                  {Math.max(0, Math.ceil((new Date("2026-12-20").getTime() - Date.now()) / 86400000))}d
+                </span>
+                <span style={{ fontSize: 11, color: C.textMuted }}>to event</span>
+              </div>
             </div>
           </div>
 
