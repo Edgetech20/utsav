@@ -148,6 +148,12 @@ model WaTemplate {
   updatedAt DateTime @updatedAt
 }
 
+model Setting {
+  key       String   @id
+  value     String   @db.Text
+  updatedAt DateTime @updatedAt
+}
+
 model WaQueue {
   id            Int       @id @default(autoincrement())
   whatsapp      String

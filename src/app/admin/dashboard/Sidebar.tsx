@@ -5,7 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import {
   LayoutDashboard, Wifi, Users, LogOut,
-  Car, BedDouble, MessageSquare, ImageIcon, Menu, X, QrCode, FileText,
+  Car, BedDouble, MessageSquare, ImageIcon, Menu, X, QrCode, FileText, Settings,
 } from "lucide-react";
 import { ToastProvider } from "./toast";
 import { C } from "./ui";
@@ -39,6 +39,7 @@ const NAV_GROUPS = [
       { label: "QR Codes",    href: "/admin/dashboard/qr",         icon: QrCode    },
       { label: "WhatsApp",    href: "/admin/dashboard/whatsapp",   icon: Wifi      },
       { label: "Templates",   href: "/admin/dashboard/templates",  icon: FileText  },
+      { label: "Settings",    href: "/admin/dashboard/settings",   icon: Settings  },
     ],
   },
 ];
