@@ -35,9 +35,18 @@ function fmtDate(iso?: string) {
 }
 
 // ── Connect modal ─────────────────────────────────────────────────────────────
-function ConnectModal({ wa, onClose }: { wa: WaStatus; onClose: () => void }) {
-  const isQr      = wa.status === "qr" && !!wa.qr;
-  const isStarting = wa.status === "starting";
+function ConnectModal({ onClose }: { onClose: () => void }) {
+  const [wa, setWa] = useState<WaStatus>({ status: "starting" });
+
+  // Poll independently every 2 s so modal doesn't miss fast status changes
+  useEffect(() => {
+    const tick = () => fetch("/api/wa-status").then(r => r.json()).then(setWa);
+    tick();
+    const id = setInterval(tick, 2000);
+    return () => clearInterval(id);
+  }, []);
+
+  const isQr       = wa.status === "qr" && !!wa.qr;
   const isConnected = wa.status === "connected" || wa.status === "authenticated";
 
   // Auto-close on connect
@@ -73,6 +82,7 @@ function ConnectModal({ wa, onClose }: { wa: WaStatus; onClose: () => void }) {
                 <p style={{ fontSize: 14, fontWeight: 700, color: C.text, margin: 0 }}>Starting bot…</p>
                 <p style={{ fontSize: 12, color: C.textSub, marginTop: 6 }}>QR code will appear shortly</p>
               </div>
+              <span style={{ fontSize: 11, color: C.textMuted, fontFamily: "monospace" }}>status: {wa.status}</span>
             </>
           )}
 
@@ -94,7 +104,6 @@ function ConnectModal({ wa, onClose }: { wa: WaStatus; onClose: () => void }) {
               </div>
             </>
           )}
-
         </div>
       </Card>
     </div>
@@ -236,7 +245,7 @@ export default function WhatsAppPage() {
 
       {/* Connect modal */}
       {showConnect && (
-        <ConnectModal wa={wa} onClose={() => setShowConnect(false)} />
+        <ConnectModal onClose={() => setShowConnect(false)} />
       )}
 
       {/* ── Message log ── */}
