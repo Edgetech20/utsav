@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Eye, Users, MousePointerClick, MapPin, UserCheck, ClipboardCheck, BedDouble, Car } from "lucide-react";
+import { Eye, Users, MousePointerClick, MapPin, UserCheck, ClipboardCheck } from "lucide-react";
 import { C, Card, StatCard, Skeleton, useDesktop } from "./ui";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -219,8 +219,6 @@ export default function DashboardPage() {
   const desktop = useDesktop();
   const [track,     setTrack]     = useState<TrackStats | null>(null);
   const [rsvp,      setRsvp]      = useState<Entry[]>([]);
-  const [accom,     setAccom]     = useState<Entry[]>([]);
-  const [veh,       setVeh]       = useState<Entry[]>([]);
   const [waLog,     setWaLog]     = useState<LogEntry[]>([]);
   const [viewSeries, setViewSeries] = useState<DaySeries[]>([]);
 
@@ -229,15 +227,11 @@ export default function DashboardPage() {
       Promise.all([
         fetch("/api/track").then(r => r.json()),
         fetch("/api/rsvp").then(r => r.json()),
-        fetch("/api/accommodation").then(r => r.json()),
-        fetch("/api/vehicle").then(r => r.json()),
         fetch("/api/wa-log").then(r => r.json()),
         fetch("/api/track/series").then(r => r.json()),
-      ]).then(([t, rv, ac, vh, wl, vs]) => {
+      ]).then(([t, rv, wl, vs]) => {
         setTrack(t);
         setRsvp(rv?.entries ?? []);
-        setAccom(ac?.entries ?? []);
-        setVeh(vh?.entries ?? []);
         setWaLog(Array.isArray(wl) ? wl : []);
         setViewSeries(Array.isArray(vs) ? vs : []);
       }).catch(() => {});
@@ -253,9 +247,7 @@ export default function DashboardPage() {
 
   // Chart data
   const chartData = [
-    countByDay(rsvp,  days),
-    countByDay(accom, days),
-    countByDay(veh,   days),
+    countByDay(rsvp, days),
   ];
 
   // WA delivery
@@ -344,7 +336,7 @@ export default function DashboardPage() {
             Registrations — Last 14 Days
           </p>
           <div style={{ display: "flex", gap: 14, marginBottom: 12 }}>
-            {[["RSVP", C.orange], ["Accommodation", C.green], ["Vehicle", C.blue]].map(([l, c]) => (
+            {[["RSVP", C.orange]].map(([l, c]) => (
               <div key={l} style={{ display: "flex", alignItems: "center", gap: 5 }}>
                 <div style={{ width: 8, height: 8, borderRadius: 2, background: c as string }} />
                 <span style={{ fontSize: 11, color: C.textMuted }}>{l}</span>
@@ -354,8 +346,8 @@ export default function DashboardPage() {
           <BarChart
             data={chartData}
             labels={dayLabels}
-            colors={[C.orange, C.green, C.blue]}
-            series={["RSVP", "Accommodation", "Vehicle"]}
+            colors={[C.orange]}
+            series={["RSVP"]}
           />
         </Card>
 
@@ -379,9 +371,7 @@ export default function DashboardPage() {
             Registration Breakdown
           </p>
           <DonutChart segments={[
-            { label: "RSVP",          value: rsvp.length,  color: C.orange },
-            { label: "Accommodation", value: accom.length, color: C.green  },
-            { label: "Vehicle",       value: veh.length,   color: C.blue   },
+            { label: "RSVP", value: rsvp.length, color: C.orange },
           ]} />
         </Card>
 
