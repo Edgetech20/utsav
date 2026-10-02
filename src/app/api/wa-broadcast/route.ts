@@ -37,12 +37,6 @@ export async function POST(req: NextRequest) {
 
 async function getRecipients(group: string): Promise<{ name: string; mobile: string }[]> {
   switch (group) {
-    case "accommodation":
-      return (await db.accommodationRegistration.findMany({ select: { primaryName: true, mobile: true } }))
-        .map(r => ({ name: r.primaryName, mobile: r.mobile }));
-    case "vehicle":
-      return (await db.vehicleRegistration.findMany({ select: { contactName: true, mobile: true } }))
-        .map(r => ({ name: r.contactName, mobile: r.mobile }));
     case "rsvp":
     default:
       return (await db.rsvp.findMany({ select: { name: true, whatsapp: true } }))

@@ -13,10 +13,8 @@ const STATUS_CFG = {
 } as const;
 
 const TYPE_LABEL: Record<string, { label: string; variant: "blue" | "green" | "orange" | "purple" }> = {
-  rsvp_auto:          { label: "RSVP",          variant: "blue"   },
-  accommodation_auto: { label: "Accommodation",  variant: "green"  },
-  vehicle_auto:       { label: "Vehicle",        variant: "orange" },
-  broadcast:          { label: "Broadcast",      variant: "purple" },
+  rsvp_auto: { label: "RSVP",      variant: "blue"   },
+  broadcast:  { label: "Broadcast", variant: "purple" },
 };
 
 function SkeletonRows() {
