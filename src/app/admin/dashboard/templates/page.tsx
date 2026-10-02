@@ -168,7 +168,7 @@ export default function TemplatesPage() {
       />
 
       {/* ── Auto-send templates ── */}
-      <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+      <div>
         <p style={{ fontSize: 12, fontWeight: 700, color: C.textSub, textTransform: "uppercase", letterSpacing: "0.07em", margin: "0 0 12px" }}>
           Auto-Send Templates
         </p>
@@ -177,7 +177,7 @@ export default function TemplatesPage() {
             <Spinner size={24} color={C.textMuted} />
           </div>
         ) : (
-          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: 16 }}>
             {templates.map(tpl => (
               <TemplateCard key={tpl.key} tpl={tpl} onSave={handleSave} />
             ))}
