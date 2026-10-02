@@ -31,8 +31,8 @@ async function writeStatus(obj) {
 
 async function appendLog(entry) {
   await pool.execute(
-    "INSERT INTO WaLog (name, whatsapp, status, error, sentAt) VALUES (?,?,?,?,NOW())",
-    [entry.name, entry.whatsapp, entry.status, entry.error ?? null]
+    "INSERT INTO WaLog (type, name, whatsapp, status, error, sentAt) VALUES (?,?,?,?,?,NOW())",
+    [entry.type ?? "rsvp_auto", entry.name, entry.whatsapp, entry.status, entry.error ?? null]
   );
 }
 
@@ -117,11 +117,11 @@ function watch() {
         try {
           await sendWithRetry(toWaId(entry.whatsapp), applyTemplate(rsvpBody, entry.name));
           await pool.execute("UPDATE Rsvp SET waSent = 1 WHERE id = ?", [entry.id]);
-          await appendLog({ name: entry.name, whatsapp: entry.whatsapp, status: "sent" });
+          await appendLog({ type: "rsvp_auto", name: entry.name, whatsapp: entry.whatsapp, status: "sent" });
           console.log(`✓ RSVP sent to ${entry.name}`);
           await delay(2000);
         } catch (err) {
-          await appendLog({ name: entry.name, whatsapp: entry.whatsapp, status: "failed", error: err.message });
+          await appendLog({ type: "rsvp_auto", name: entry.name, whatsapp: entry.whatsapp, status: "failed", error: err.message });
           console.error(`✗ RSVP failed for ${entry.name}:`, err.message);
         }
       }
@@ -135,9 +135,11 @@ function watch() {
         try {
           await sendWithRetry(toWaId(entry.mobile), applyTemplate(accBody, entry.primaryName));
           await pool.execute("UPDATE AccommodationRegistration SET waSent = 1 WHERE id = ?", [entry.id]);
+          await appendLog({ type: "accommodation_auto", name: entry.primaryName, whatsapp: entry.mobile, status: "sent" });
           console.log(`✓ Accommodation sent to ${entry.primaryName}`);
           await delay(2000);
         } catch (err) {
+          await appendLog({ type: "accommodation_auto", name: entry.primaryName, whatsapp: entry.mobile, status: "failed", error: err.message });
           console.error(`✗ Accommodation failed for ${entry.primaryName}:`, err.message);
         }
       }
@@ -151,9 +153,11 @@ function watch() {
         try {
           await sendWithRetry(toWaId(entry.mobile), applyTemplate(vehBody, entry.contactName));
           await pool.execute("UPDATE VehicleRegistration SET waSent = 1 WHERE id = ?", [entry.id]);
+          await appendLog({ type: "vehicle_auto", name: entry.contactName, whatsapp: entry.mobile, status: "sent" });
           console.log(`✓ Vehicle sent to ${entry.contactName}`);
           await delay(2000);
         } catch (err) {
+          await appendLog({ type: "vehicle_auto", name: entry.contactName, whatsapp: entry.mobile, status: "failed", error: err.message });
           console.error(`✗ Vehicle failed for ${entry.contactName}:`, err.message);
         }
       }
@@ -165,10 +169,12 @@ function watch() {
       try {
         await sendWithRetry(toWaId(q.whatsapp), q.message);
         await pool.execute("UPDATE WaQueue SET status = 'sent', sentAt = NOW() WHERE id = ?", [q.id]);
+        await appendLog({ type: "broadcast", name: q.recipientName, whatsapp: q.whatsapp, status: "sent" });
         console.log(`✓ Broadcast sent to ${q.recipientName} (${q.whatsapp})`);
         await delay(2000);
       } catch (err) {
         await pool.execute("UPDATE WaQueue SET status = 'failed', error = ? WHERE id = ?", [err.message, q.id]);
+        await appendLog({ type: "broadcast", name: q.recipientName, whatsapp: q.whatsapp, status: "failed", error: err.message });
         console.error(`✗ Broadcast failed for ${q.recipientName}:`, err.message);
       }
     }

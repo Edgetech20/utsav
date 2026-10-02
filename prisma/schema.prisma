@@ -38,6 +38,7 @@ model ClickEvent {
 
 model WaLog {
   id       Int      @id @default(autoincrement())
+  type     String   @default("rsvp_auto")  // rsvp_auto | accommodation_auto | vehicle_auto | broadcast
   name     String
   whatsapp String
   status   String   // 'sent' | 'failed'

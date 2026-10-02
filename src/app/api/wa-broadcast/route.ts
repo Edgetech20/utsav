@@ -8,12 +8,16 @@ export async function GET(req: NextRequest) {
   return NextResponse.json({ count: recipients.length, recipients });
 }
 
-// Adds entries to WaQueue
+// Adds entries to WaQueue — accepts either a group name or an explicit recipients array
 export async function POST(req: NextRequest) {
-  const { group, message } = await req.json();
+  const { group, message, recipients: explicit } = await req.json();
   if (!message?.trim()) return NextResponse.json({ error: "message required" }, { status: 400 });
 
-  const recipients = await getRecipients(group ?? "rsvp");
+  const recipients: { name: string; mobile: string }[] =
+    Array.isArray(explicit) && explicit.length > 0
+      ? explicit
+      : await getRecipients(group ?? "rsvp");
+
   if (!recipients.length) return NextResponse.json({ queued: 0 });
 
   await db.waQueue.createMany({

@@ -3,10 +3,8 @@
 import { useEffect, useState } from "react";
 import { Wifi, QrCode, CheckCircle, XCircle, Clock, RefreshCw, ScrollText, X } from "lucide-react";
 import { C, Button, Badge, PageHeader, Card, Spinner, Table, Thead, Th, Tbody, Td, Tr, Skeleton, Empty } from "../ui";
-type WaStatus  = { status: string; qr?: string; updatedAt?: string };
-type Entry     = { name: string; whatsapp: string; submittedAt: string; waSent: boolean };
-type LogEntry  = { name: string; whatsapp: string; status: "sent" | "failed"; sentAt: string; error?: string };
-type Row       = { name: string; whatsapp: string; submittedAt: string; status: "sent" | "failed" | "pending"; sentAt?: string; error?: string };
+type WaStatus = { status: string; qr?: string; updatedAt?: string };
+type Row      = { id: number; type: string; name: string; whatsapp: string; status: "sent" | "failed" | "pending"; sentAt: string; error?: string | null };
 
 const STATUS_CFG = {
   sent:    { icon: CheckCircle, variant: "green"  as const, label: "Sent"    },
@@ -14,14 +12,21 @@ const STATUS_CFG = {
   pending: { icon: Clock,       variant: "orange" as const, label: "Pending" },
 } as const;
 
+const TYPE_LABEL: Record<string, { label: string; variant: "blue" | "green" | "orange" | "purple" }> = {
+  rsvp_auto:          { label: "RSVP",          variant: "blue"   },
+  accommodation_auto: { label: "Accommodation",  variant: "green"  },
+  vehicle_auto:       { label: "Vehicle",        variant: "orange" },
+  broadcast:          { label: "Broadcast",      variant: "purple" },
+};
+
 function SkeletonRows() {
   return (
     <>{Array.from({ length: 5 }).map((_, i) => (
       <Tr key={i}>
         <Td><Skeleton width={60} height={22} radius={20} /></Td>
+        <Td><Skeleton width={90} height={22} radius={20} /></Td>
         <Td><Skeleton width={120} height={13} /></Td>
         <Td><Skeleton width={100} height={13} /></Td>
-        <Td><Skeleton width={90} height={13} /></Td>
         <Td><Skeleton width={90} height={13} /></Td>
       </Tr>
     ))}</>
@@ -126,20 +131,8 @@ export default function WhatsAppPage() {
 
   async function loadLog() {
     setLogLoading(true);
-    const [rsvpRes, logs]: [{ entries: Entry[] }, LogEntry[]] = await Promise.all([
-      fetch("/api/rsvp").then(r => r.json()),
-      fetch("/api/wa-log").then(r => r.json()),
-    ]);
-    const entries = rsvpRes?.entries ?? [];
-    const logMap  = new Map(logs.map(l => [l.whatsapp, l]));
-    setRows([...entries].reverse().map(e => {
-      const log = logMap.get(e.whatsapp);
-      return {
-        name: e.name, whatsapp: e.whatsapp, submittedAt: e.submittedAt,
-        status: e.waSent ? "sent" : log?.status === "failed" ? "failed" : "pending",
-        sentAt: log?.sentAt, error: log?.error,
-      };
-    }));
+    const data: Row[] = await fetch("/api/wa-log").then(r => r.json());
+    setRows(data);
     setLogLoading(false);
   }
 
@@ -262,10 +255,10 @@ export default function WhatsAppPage() {
           <Thead>
             <Tr>
               <Th>Status</Th>
+              <Th>Type</Th>
               <Th>Name</Th>
               <Th>Phone</Th>
-              <Th>Registered</Th>
-              <Th>Message Sent</Th>
+              <Th>Sent At</Th>
             </Tr>
           </Thead>
           <Tbody>
@@ -274,20 +267,21 @@ export default function WhatsAppPage() {
             ) : rows.length === 0 ? (
               <Tr>
                 <Td style={{ padding: 0, border: "none" }} colSpan={5}>
-                  <Empty icon={<ScrollText size={40} />} title="No registrations yet" />
+                  <Empty icon={<ScrollText size={40} />} title="No messages yet" />
                 </Td>
               </Tr>
             ) : rows.map((r, i) => {
               const { icon: Icon, variant, label } = STATUS_CFG[r.status];
+              const typeMeta = TYPE_LABEL[r.type] ?? { label: r.type, variant: "blue" as const };
               return (
                 <Tr key={i}>
                   <Td><Badge variant={variant} icon={<Icon size={10} />}>{label}</Badge></Td>
+                  <Td><Badge variant={typeMeta.variant}>{typeMeta.label}</Badge></Td>
                   <Td style={{ fontWeight: 600, whiteSpace: "nowrap" }}>{r.name}</Td>
                   <Td>
                     <span style={{ fontFamily: "monospace", fontSize: 12, color: C.textSub }}>{r.whatsapp}</span>
                     {r.error && <p style={{ fontSize: 11, color: C.red, margin: "2px 0 0" }}>{r.error}</p>}
                   </Td>
-                  <Td style={{ fontSize: 12, color: C.textMuted, whiteSpace: "nowrap" }}>{fmtDate(r.submittedAt)}</Td>
                   <Td style={{ fontSize: 12, color: C.textMuted, whiteSpace: "nowrap" }}>{fmtDate(r.sentAt)}</Td>
                 </Tr>
               );
