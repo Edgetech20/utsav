@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { requireAdmin } from "@/lib/auth";
 
 const ALLOWED_KEYS = [
   "social_facebook", "social_instagram", "social_youtube",
@@ -16,6 +17,7 @@ export async function GET() {
 }
 
 export async function PUT(req: NextRequest) {
+  const deny = requireAdmin(req); if (deny) return deny;
   const body: Record<string, string> = await req.json();
   await Promise.all(
     ALLOWED_KEYS

@@ -1,8 +1,10 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { exec } from "child_process";
 import path from "path";
+import { requireAdmin } from "@/lib/auth";
 
-export async function POST() {
+export async function POST(req: NextRequest) {
+  const deny = requireAdmin(req); if (deny) return deny;
   const cwd = process.cwd();
   const botPath = path.join(cwd, "whatsapp-bot.js");
 

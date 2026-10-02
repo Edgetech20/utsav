@@ -3,7 +3,8 @@ import nodemailer from "nodemailer";
 import crypto from "crypto";
 import { db } from "@/lib/db";
 
-const SECRET = process.env.ADMIN_SECRET ?? "admin123";
+const SECRET = process.env.ADMIN_SECRET;
+if (!SECRET) throw new Error("ADMIN_SECRET env var is not set");
 
 async function sendOtpEmail(to: string, otp: string) {
   const transporter = nodemailer.createTransport({

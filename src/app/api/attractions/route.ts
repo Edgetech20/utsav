@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { requireAdmin } from "@/lib/auth";
 
 export async function GET() {
   const rows = await db.attraction.findMany({
@@ -10,6 +11,7 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
+  const deny = requireAdmin(req); if (deny) return deny;
   const { name, url, navigateToVenue } = await req.json();
   if (!name?.trim()) return NextResponse.json({ error: "name required" }, { status: 400 });
   const last = await db.attraction.findFirst({ orderBy: { order: "desc" } });
@@ -21,6 +23,7 @@ export async function POST(req: NextRequest) {
 }
 
 export async function PUT(req: NextRequest) {
+  const deny = requireAdmin(req); if (deny) return deny;
   const body = await req.json();
   // reorder: [{ id, order }]
   if (Array.isArray(body)) {
@@ -40,6 +43,7 @@ export async function PUT(req: NextRequest) {
 }
 
 export async function DELETE(req: NextRequest) {
+  const deny = requireAdmin(req); if (deny) return deny;
   const { id } = await req.json();
   const row = await db.attraction.findUnique({ where: { id } });
   if (row && ["Accommodation", "Bus & Car Parking"].includes(row.name))

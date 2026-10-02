@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { requireAdmin } from "@/lib/auth";
 
-export async function GET() {
+export async function GET(req: NextRequest) {
+  const deny = requireAdmin(req); if (deny) return deny;
   const entries = await db.accommodationRegistration.findMany({ orderBy: { submittedAt: "desc" } });
   return NextResponse.json({ entries });
 }
@@ -51,6 +53,7 @@ export async function POST(req: NextRequest) {
 }
 
 export async function DELETE(req: NextRequest) {
+  const deny = requireAdmin(req); if (deny) return deny;
   const { id } = await req.json();
   await db.accommodationRegistration.delete({ where: { id } });
   return NextResponse.json({ ok: true });

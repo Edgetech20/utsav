@@ -2,7 +2,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import Sidebar from "./Sidebar";
 
-const SECRET = process.env.ADMIN_SECRET || "admin123";
+const SECRET = process.env.ADMIN_SECRET ?? "";
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const jar = await cookies();

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { requireAdmin } from "@/lib/auth";
 
 const DEFAULTS: Record<string, { name: string; body: string }> = {
   rsvp_auto: {
@@ -29,7 +30,8 @@ const DEFAULTS: Record<string, { name: string; body: string }> = {
 };
 
 // GET — return all templates (seed missing ones)
-export async function GET() {
+export async function GET(req: NextRequest) {
+  const deny = requireAdmin(req); if (deny) return deny;
   const templates = await Promise.all(
     Object.entries(DEFAULTS).map(async ([key, def]) => {
       const existing = await db.waTemplate.findUnique({ where: { key } });
@@ -42,6 +44,7 @@ export async function GET() {
 
 // PUT — update body and/or enabled for a given key
 export async function PUT(req: NextRequest) {
+  const deny = requireAdmin(req); if (deny) return deny;
   const { key, body, enabled } = await req.json();
   if (!key || !DEFAULTS[key]) return NextResponse.json({ error: "invalid key" }, { status: 400 });
 

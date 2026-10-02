@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { requireAdmin } from "@/lib/auth";
 
 // Returns recipient list for a given group so the UI can preview counts
 export async function GET(req: NextRequest) {
+  const deny = requireAdmin(req); if (deny) return deny;
   const group = new URL(req.url).searchParams.get("group") ?? "rsvp";
   const recipients = await getRecipients(group);
   return NextResponse.json({ count: recipients.length, recipients });
@@ -10,6 +12,7 @@ export async function GET(req: NextRequest) {
 
 // Adds entries to WaQueue — accepts either a group name or an explicit recipients array
 export async function POST(req: NextRequest) {
+  const deny = requireAdmin(req); if (deny) return deny;
   const { group, message, recipients: explicit } = await req.json();
   if (!message?.trim()) return NextResponse.json({ error: "message required" }, { status: 400 });
 

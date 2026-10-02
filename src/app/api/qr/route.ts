@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { randomBytes } from "crypto";
+import { requireAdmin } from "@/lib/auth";
 
-export async function GET() {
+export async function GET(req: NextRequest) {
+  const deny = requireAdmin(req); if (deny) return deny;
   const links = await db.qrLink.findMany({
     orderBy: { createdAt: "desc" },
     include: { _count: { select: { scans: true } }, scans: { select: { ip: true } } },
@@ -15,6 +17,7 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
+  const deny = requireAdmin(req); if (deny) return deny;
   const { name, targetUrl } = await req.json();
   if (!name?.trim()) return NextResponse.json({ error: "name required" }, { status: 400 });
   if (!targetUrl?.trim()) return NextResponse.json({ error: "url required" }, { status: 400 });
@@ -27,6 +30,7 @@ export async function POST(req: NextRequest) {
 }
 
 export async function DELETE(req: NextRequest) {
+  const deny = requireAdmin(req); if (deny) return deny;
   const { id } = await req.json();
   await db.qrLink.delete({ where: { id } });
   return NextResponse.json({ ok: true });

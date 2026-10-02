@@ -1,7 +1,9 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { requireAdmin } from "@/lib/auth";
 
-export async function GET() {
+export async function GET(req: NextRequest) {
+  const deny = requireAdmin(req); if (deny) return deny;
   const [logs, queue] = await Promise.all([
     db.waLog.findMany({ orderBy: { sentAt: "desc" }, take: 500 }),
     db.waQueue.findMany({ where: { status: "pending" }, orderBy: { createdAt: "desc" } }),

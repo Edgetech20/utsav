@@ -1,7 +1,9 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { requireAdmin } from "@/lib/auth";
 
-export async function GET() {
+export async function GET(req: NextRequest) {
+  const deny = requireAdmin(req); if (deny) return deny;
   const since = new Date();
   since.setDate(since.getDate() - 13);
   since.setHours(0, 0, 0, 0);

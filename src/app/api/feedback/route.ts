@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { requireAdmin } from "@/lib/auth";
 
 const SECRET = process.env.FEEDBACK_WEBHOOK_SECRET;
 
@@ -27,12 +28,14 @@ export async function POST(req: NextRequest) {
   return NextResponse.json({ ok: true });
 }
 
-export async function GET() {
+export async function GET(req: NextRequest) {
+  const deny = requireAdmin(req); if (deny) return deny;
   const entries = await db.feedbackResponse.findMany({ orderBy: { submittedAt: "desc" } });
   return NextResponse.json({ entries });
 }
 
 export async function DELETE(req: NextRequest) {
+  const deny = requireAdmin(req); if (deny) return deny;
   const { id } = await req.json();
   await db.feedbackResponse.delete({ where: { id } });
   return NextResponse.json({ ok: true });
