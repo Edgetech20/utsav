@@ -63,6 +63,37 @@ function ImageStrip({ images, onRemove }: { images: AttractionImage[]; onRemove:
   );
 }
 
+// ── Shared form fields ────────────────────────────────────────────────────────
+type AttractionForm = { name: string; url: string; navigateToVenue: boolean; formSlug: string };
+
+function FormFields({ form, setForm, forms }: { form: AttractionForm; setForm: (f: AttractionForm) => void; forms: FormOption[] }) {
+  const selectStyle: React.CSSProperties = {
+    padding: "9px 12px", border: `1px solid ${C.border}`, borderRadius: 8,
+    fontSize: 13, color: C.text, outline: "none", background: C.surface,
+    width: "100%", boxSizing: "border-box",
+  };
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+      <Input label="Name *" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="e.g. Cultural Events" />
+      <Input label="URL (optional)" value={form.url} onChange={e => setForm({ ...form, url: e.target.value })} placeholder="https://…" />
+      <div>
+        <label style={{ fontSize: 11, fontWeight: 600, color: C.textSub, textTransform: "uppercase", letterSpacing: "0.06em", display: "block", marginBottom: 5 }}>
+          Link a Registration Form (optional)
+        </label>
+        <select style={selectStyle} value={form.formSlug} onChange={e => setForm({ ...form, formSlug: e.target.value })}>
+          <option value="">— no form —</option>
+          {forms.map(f => <option key={f.slug} value={f.slug}>{f.name}</option>)}
+        </select>
+        <p style={{ fontSize: 11, color: C.textMuted, marginTop: 4 }}>Shows a Register button inside this attraction on the public page.</p>
+      </div>
+      <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: C.textSub, cursor: "pointer" }}>
+        <input type="checkbox" checked={form.navigateToVenue} onChange={e => setForm({ ...form, navigateToVenue: e.target.checked })} />
+        Show "Navigate to Venue" button
+      </label>
+    </div>
+  );
+}
+
 // ── Page ──────────────────────────────────────────────────────────────────────
 export default function AttractionsPage() {
   const { toast } = useToast();
@@ -199,35 +230,6 @@ export default function AttractionsPage() {
     setEditForm({ name: a.name, url: a.url ?? "", navigateToVenue: a.navigateToVenue, formSlug: a.formSlug ?? "" });
   }
 
-  // ── Shared form fields ─────────────────────────────────────────────────────
-  function FormFields({ form, setForm }: { form: typeof addForm; setForm: (f: typeof addForm) => void }) {
-    const selectStyle: React.CSSProperties = {
-      padding: "9px 12px", border: `1px solid ${C.border}`, borderRadius: 8,
-      fontSize: 13, color: C.text, outline: "none", background: C.surface,
-      width: "100%", boxSizing: "border-box",
-    };
-    return (
-      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-        <Input label="Name *" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="e.g. Cultural Events" />
-        <Input label="URL (optional)" value={form.url} onChange={e => setForm({ ...form, url: e.target.value })} placeholder="https://…" />
-        <div>
-          <label style={{ fontSize: 11, fontWeight: 600, color: C.textSub, textTransform: "uppercase", letterSpacing: "0.06em", display: "block", marginBottom: 5 }}>
-            Link a Registration Form (optional)
-          </label>
-          <select style={selectStyle} value={form.formSlug} onChange={e => setForm({ ...form, formSlug: e.target.value })}>
-            <option value="">— no form —</option>
-            {forms.map(f => <option key={f.slug} value={f.slug}>{f.name}</option>)}
-          </select>
-          <p style={{ fontSize: 11, color: C.textMuted, marginTop: 4 }}>Shows a Register button inside this attraction on the public page.</p>
-        </div>
-        <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: C.textSub, cursor: "pointer" }}>
-          <input type="checkbox" checked={form.navigateToVenue} onChange={e => setForm({ ...form, navigateToVenue: e.target.checked })} />
-          Show "Navigate to Venue" button
-        </label>
-      </div>
-    );
-  }
-
   return (
     <div>
       <PageHeader
@@ -346,7 +348,7 @@ export default function AttractionsPage() {
       {showAdd && (
         <Modal title="Add Attraction" onClose={() => { setShowAdd(false); setAddFiles([]); }}>
           <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-            <FormFields form={addForm} setForm={setAddForm} />
+            <FormFields form={addForm} setForm={setAddForm} forms={forms} />
 
             <div style={{ borderTop: `1px solid ${C.borderLight}`, paddingTop: 14 }}>
               <p style={{ fontSize: 11, fontWeight: 600, color: C.textSub, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 8 }}>Images (optional)</p>
@@ -382,7 +384,7 @@ export default function AttractionsPage() {
       {editTarget && (
         <Modal title={`Edit — ${editTarget.name}`} onClose={() => setEditTarget(null)}>
           <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-            <FormFields form={editForm} setForm={setEditForm} />
+            <FormFields form={editForm} setForm={setEditForm} forms={forms} />
 
             <div style={{ borderTop: `1px solid ${C.borderLight}`, paddingTop: 14 }}>
               <p style={{ fontSize: 11, fontWeight: 600, color: C.textSub, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 8 }}>Images</p>
