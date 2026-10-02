@@ -42,14 +42,22 @@ function toWaId(raw) {
   return num + "@c.us";
 }
 
-function buildMessage(name) {
+const DEFAULT_TEMPLATE =
+  `Namaskar {name} 🙏\n\n` +
+  `We have received your registration for Priyabodhi Mahotsav on 20 December.\n\n` +
+  `Thank you for letting us know. We look forward to your presence.\n\n` +
+  `Jai Guru!`;
+
+async function getTemplate() {
+  try {
+    const [[row]] = await pool.execute("SELECT body FROM WaTemplate WHERE `key` = 'rsvp_auto' LIMIT 1");
+    return row ? row.body : DEFAULT_TEMPLATE;
+  } catch { return DEFAULT_TEMPLATE; }
+}
+
+function applyTemplate(body, name) {
   const firstName = name.trim().split(" ")[0];
-  return (
-    `Namaskar ${firstName} 🙏\n\n` +
-    `We have received your registration for Priyabodhi Mahotsav on 20 December.\n\n` +
-    `Thank you for letting us know. We look forward to your presence.\n\n` +
-    `Jai Guru!`
-  );
+  return body.replace(/\{name\}/g, firstName);
 }
 
 // Use installed Chrome if available (faster, more reliable on Windows)
@@ -94,18 +102,35 @@ async function sendWithRetry(waId, text, retries = 2) {
 
 function watch() {
   setInterval(async () => {
-    const [rows] = await pool.execute("SELECT * FROM Rsvp WHERE waSent = 0");
+    // ── RSVP auto-messages ──────────────────────────────────────────
+    const [rsvpRows] = await pool.execute("SELECT * FROM Rsvp WHERE waSent = 0");
+    if (rsvpRows.length) {
+      const tplBody = await getTemplate();
+      for (const entry of rsvpRows) {
+        try {
+          await sendWithRetry(toWaId(entry.whatsapp), applyTemplate(tplBody, entry.name));
+          await pool.execute("UPDATE Rsvp SET waSent = 1 WHERE id = ?", [entry.id]);
+          await appendLog({ name: entry.name, whatsapp: entry.whatsapp, status: "sent" });
+          console.log(`✓ RSVP sent to ${entry.name} (${entry.whatsapp})`);
+          await delay(2000);
+        } catch (err) {
+          await appendLog({ name: entry.name, whatsapp: entry.whatsapp, status: "failed", error: err.message });
+          console.error(`✗ RSVP failed for ${entry.name}:`, err.message);
+        }
+      }
+    }
 
-    for (const entry of rows) {
+    // ── Manual broadcast queue ──────────────────────────────────────
+    const [queueRows] = await pool.execute("SELECT * FROM WaQueue WHERE status = 'pending' LIMIT 20");
+    for (const q of queueRows) {
       try {
-        await sendWithRetry(toWaId(entry.whatsapp), buildMessage(entry.name));
-        await pool.execute("UPDATE Rsvp SET waSent = 1 WHERE id = ?", [entry.id]);
-        await appendLog({ name: entry.name, whatsapp: entry.whatsapp, status: "sent" });
-        console.log(`✓ Sent to ${entry.name} (${entry.whatsapp})`);
+        await sendWithRetry(toWaId(q.whatsapp), q.message);
+        await pool.execute("UPDATE WaQueue SET status = 'sent', sentAt = NOW() WHERE id = ?", [q.id]);
+        console.log(`✓ Broadcast sent to ${q.recipientName} (${q.whatsapp})`);
         await delay(2000);
       } catch (err) {
-        await appendLog({ name: entry.name, whatsapp: entry.whatsapp, status: "failed", error: err.message });
-        console.error(`✗ Failed for ${entry.name}:`, err.message);
+        await pool.execute("UPDATE WaQueue SET status = 'failed', error = ? WHERE id = ?", [err.message, q.id]);
+        console.error(`✗ Broadcast failed for ${q.recipientName}:`, err.message);
       }
     }
   }, 5000);

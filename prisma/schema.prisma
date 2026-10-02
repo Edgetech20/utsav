@@ -135,3 +135,22 @@ model QrScan {
 
   @@index([qrLinkId])
 }
+
+model WaTemplate {
+  id        Int      @id @default(autoincrement())
+  key       String   @unique  // e.g. "rsvp_auto"
+  name      String
+  body      String   @db.Text
+  updatedAt DateTime @updatedAt
+}
+
+model WaQueue {
+  id            Int       @id @default(autoincrement())
+  whatsapp      String
+  recipientName String
+  message       String    @db.Text
+  status        String    @default("pending")  // pending | sent | failed
+  error         String?   @db.Text
+  createdAt     DateTime  @default(now())
+  sentAt        DateTime?
+}
