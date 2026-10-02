@@ -4,12 +4,21 @@ const QRCode = require("qrcode");
 const mysql = require("mysql2/promise");
 require("dotenv").config();
 
-// Parse DATABASE_URL: mysql://user:pass@host:port/db
+// Parse DATABASE_URL robustly — split on last @ so passwords containing @ work
 const DB_URL = process.env.DATABASE_URL ?? "mysql://root:@localhost:3306/priobodhi";
-const m = DB_URL.match(/mysql:\/\/([^:]*):([^@]*)@([^:]+):(\d+)\/(.+)/);
+const afterScheme = DB_URL.slice("mysql://".length);
+const atPos      = afterScheme.lastIndexOf("@");
+const userInfo   = afterScheme.slice(0, atPos);          // "user:pass" (pass may contain @)
+const hostInfo   = afterScheme.slice(atPos + 1);         // "host:port/db"
+const colonPos   = userInfo.indexOf(":");
+const dbUser     = colonPos >= 0 ? userInfo.slice(0, colonPos) : userInfo;
+const dbPass     = colonPos >= 0 ? userInfo.slice(colonPos + 1) : "";
+const hm         = hostInfo.match(/^([^:]+):(\d+)\/(.+)/);
+if (!hm) { console.error("[wa-bot] Invalid DATABASE_URL:", DB_URL); process.exit(1); }
+const [, dbHost, dbPort, dbName] = hm;
 const pool = mysql.createPool({
-  host: m[3], port: Number(m[4]), database: m[5],
-  user: m[1], password: m[2],
+  host: dbHost, port: Number(dbPort), database: dbName,
+  user: dbUser, password: dbPass,
   waitForConnections: true, connectionLimit: 5,
 });
 
