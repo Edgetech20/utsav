@@ -72,7 +72,7 @@ export async function POST(req: NextRequest) {
     await db.otpStore.delete({ where: { email } });
 
     const res = NextResponse.json({ ok: true });
-    res.cookies.set("admin_auth", SECRET, {
+    res.cookies.set("admin_auth", SECRET!, {
       httpOnly: true, sameSite: "lax", path: "/", maxAge: 60 * 60 * 24 * 7,
     });
     return res;
