@@ -463,11 +463,14 @@ function BuilderModal({
 }
 
 // ── Responses Modal ───────────────────────────────────────────────────────────
+const PAGE_SIZE = 20;
+
 function ResponsesModal({ form, onClose }: { form: Form; onClose: () => void }) {
   const { toast } = useToast();
   const [responses, setResponses] = useState<Response[]>([]);
   const [loading, setLoading]     = useState(true);
   const [deleting, setDeleting]   = useState<number | null>(null);
+  const [page, setPage]           = useState(1);
   const desktop = useDesktop();
 
   useEffect(() => {
@@ -487,7 +490,9 @@ function ResponsesModal({ form, onClose }: { form: Form; onClose: () => void }) 
   }
 
   // derive column headers from first response
-  const cols = responses.length > 0 ? Object.keys(JSON.parse(responses[0].data)) : [];
+  const cols     = responses.length > 0 ? Object.keys(JSON.parse(responses[0].data)) : [];
+  const totalPages = Math.ceil(responses.length / PAGE_SIZE);
+  const paged    = responses.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   return (
     <div style={{ position: "fixed", inset: 0, zIndex: 100, background: "rgba(15,23,42,0.5)", display: "flex", flexDirection: "column" }}>
@@ -517,7 +522,7 @@ function ResponsesModal({ form, onClose }: { form: Form; onClose: () => void }) 
                 </Tr>
               </Thead>
               <Tbody>
-                {responses.map(r => {
+                {paged.map(r => {
                   const d = JSON.parse(r.data);
                   return (
                     <Tr key={r.id} style={{ opacity: deleting === r.id ? 0.4 : 1 }}>
@@ -544,7 +549,7 @@ function ResponsesModal({ form, onClose }: { form: Form; onClose: () => void }) 
           ) : (
             // mobile cards
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              {responses.map(r => {
+              {paged.map(r => {
                 const d = JSON.parse(r.data);
                 return (
                   <Card key={r.id} padding={14} style={{ opacity: deleting === r.id ? 0.4 : 1 }}>
@@ -568,6 +573,26 @@ function ResponsesModal({ form, onClose }: { form: Form; onClose: () => void }) 
             </div>
           )}
         </div>
+
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <div style={{ padding: "12px 24px", borderTop: `1px solid ${C.border}`, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexShrink: 0 }}>
+            <span style={{ fontSize: 12, color: C.textMuted }}>
+              {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, responses.length)} of {responses.length}
+            </span>
+            <div style={{ display: "flex", gap: 6 }}>
+              <Button variant="secondary" size="sm" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}>← Prev</Button>
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map(p => (
+                <button key={p} onClick={() => setPage(p)} style={{
+                  width: 30, height: 30, borderRadius: 6, border: `1px solid ${p === page ? C.primary : C.border}`,
+                  background: p === page ? C.primary : "#fff", color: p === page ? "#fff" : C.textSub,
+                  fontSize: 12, fontWeight: 600, cursor: "pointer",
+                }}>{p}</button>
+              ))}
+              <Button variant="secondary" size="sm" onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages}>Next →</Button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
