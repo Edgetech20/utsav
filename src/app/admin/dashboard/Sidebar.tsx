@@ -5,7 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import {
   LayoutDashboard, Wifi, Users, ScrollText, LogOut,
-  Car, BedDouble, MessageSquare, ImageIcon, Menu, X,
+  Car, BedDouble, MessageSquare, ImageIcon, Menu, X, QrCode,
 } from "lucide-react";
 
 const NAV = [
@@ -16,6 +16,7 @@ const NAV = [
   { label: "Accommodation", href: "/admin/dashboard/accommodation", icon: BedDouble },
   { label: "Feedback",      href: "/admin/dashboard/feedback",     icon: MessageSquare },
   { label: "Attractions",   href: "/admin/dashboard/attractions",  icon: ImageIcon },
+  { label: "QR Codes",      href: "/admin/dashboard/qr",           icon: QrCode },
   { label: "Message Log",   href: "/admin/dashboard/logs",         icon: ScrollText },
 ];
 

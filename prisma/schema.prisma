@@ -116,3 +116,22 @@ model WaStatus {
   reason    String?
   updatedAt DateTime @updatedAt
 }
+
+model QrLink {
+  id        Int      @id @default(autoincrement())
+  name      String
+  slug      String   @unique
+  targetUrl String   @default("/")
+  createdAt DateTime @default(now())
+  scans     QrScan[]
+}
+
+model QrScan {
+  id        Int      @id @default(autoincrement())
+  qrLinkId  Int
+  qrLink    QrLink   @relation(fields: [qrLinkId], references: [id], onDelete: Cascade)
+  ip        String
+  scannedAt DateTime @default(now())
+
+  @@index([qrLinkId])
+}
