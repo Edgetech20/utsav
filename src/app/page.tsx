@@ -36,9 +36,42 @@ function useCountdown() {
   return t;
 }
 
+function AttendCount({ className }: { className?: string }) {
+  const [count, setCount]     = useState<number | null>(null);
+  const [display, setDisplay] = useState(0);
+  const prev = useRef(0);
+
+  // Poll every 30 s — state is local so only this element re-renders
+  useEffect(() => {
+    const tick = () =>
+      fetch("/api/track").then(r => r.json()).then(d => setCount(d.attending ?? null)).catch(() => {});
+    tick();
+    const id = setInterval(tick, 30000);
+    return () => clearInterval(id);
+  }, []);
+
+  // Animate on change
+  useEffect(() => {
+    if (count === null) return;
+    const from = prev.current, to = count;
+    prev.current = to;
+    if (from === to) return;
+    const start = performance.now();
+    function step(now: number) {
+      const p    = Math.min((now - start) / 700, 1);
+      const ease = 1 - Math.pow(1 - p, 3);
+      setDisplay(Math.round(from + (to - from) * ease));
+      if (p < 1) requestAnimationFrame(step);
+    }
+    requestAnimationFrame(step);
+  }, [count]);
+
+  if (count === null) return null;
+  return <span className={className}>({display} attending)</span>;
+}
+
 export default function Home() {
   const [attended, setAttended] = useState(false);
-  const [attendCount, setAttendCount] = useState<number | null>(null);
   const [expanded, setExpanded] = useState<number | null>(null);
   const [mounted, setMounted] = useState(false);
   const [rsvpForm, setRsvpForm] = useState({ name: "", whatsapp: "", address: "" });
@@ -102,6 +135,7 @@ export default function Home() {
     fetch("/api/track?type=view", { method: "POST" }).catch(() => {});
   }, []);
 
+
   useEffect(() => {
     const els = document.querySelectorAll("[data-reveal]");
     const io = new IntersectionObserver(
@@ -126,10 +160,8 @@ export default function Home() {
 
   async function handleAttend() {
     if (attended) return;
-    const res = await fetch("/api/track?type=attend", { method: "POST" });
-    const data = await res.json();
+    await fetch("/api/track?type=attend", { method: "POST" });
     setAttended(true);
-    setAttendCount(data.unique);
   }
 
   return (
@@ -429,9 +461,7 @@ export default function Home() {
             <>
               <CheckCircle className="w-4 h-4" />
               Jai Guru! Marked as Attending
-              {attendCount !== null && (
-                <span className="ml-1 text-xs text-green-400">({attendCount} attending)</span>
-              )}
+              <AttendCount className="ml-1 text-xs text-green-400" />
             </>
           ) : (
             "জয় গুরু — আমি উৎসবে উপস্থিত থাকব"
