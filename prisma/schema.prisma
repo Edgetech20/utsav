@@ -1,0 +1,173 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model AdminUser {
+  email     String   @id
+  createdAt DateTime @default(now())
+}
+
+model OtpStore {
+  email     String   @id
+  otp       String
+  expiresAt DateTime
+}
+
+model Rsvp {
+  id          Int      @id @default(autoincrement())
+  name        String
+  whatsapp    String
+  address     String
+  submittedAt DateTime @default(now())
+  waSent      Boolean  @default(false)
+}
+
+model ClickEvent {
+  id        Int      @id @default(autoincrement())
+  type      String   // 'view' | 'attend' | 'map'
+  ip        String
+  createdAt DateTime @default(now())
+
+  @@index([type, ip])
+}
+
+model WaLog {
+  id       Int      @id @default(autoincrement())
+  type     String   @default("rsvp_auto")  // rsvp_auto | accommodation_auto | vehicle_auto | broadcast
+  name     String
+  whatsapp String
+  status   String   // 'sent' | 'failed'
+  error    String?
+  sentAt   DateTime @default(now())
+}
+
+
+model FeedbackResponse {
+  id          Int      @id @default(autoincrement())
+  name        String
+  mobile      String
+  responses   String   @db.LongText  // JSON blob of all Q&A pairs
+  submittedAt DateTime @default(now())
+}
+
+model Attraction {
+  id              Int               @id @default(autoincrement())
+  name            String
+  description     String?
+  order           Int               @default(0)
+  url             String?
+  navigateToVenue Boolean           @default(false)
+  formSlug        String?           // link to a DynamicForm slug
+  images          AttractionImage[]
+  createdAt       DateTime          @default(now())
+}
+
+model AttractionImage {
+  id           Int        @id @default(autoincrement())
+  attractionId Int
+  attraction   Attraction @relation(fields: [attractionId], references: [id], onDelete: Cascade)
+  imageUrl     String
+  createdAt    DateTime   @default(now())
+
+  @@index([attractionId])
+}
+
+model WaStatus {
+  id        Int      @id @default(autoincrement())
+  status    String
+  qr        String?  @db.Text
+  message   String?
+  reason    String?
+  updatedAt DateTime @updatedAt
+}
+
+model QrLink {
+  id        Int      @id @default(autoincrement())
+  name      String
+  slug      String   @unique
+  targetUrl String   @default("/")
+  createdAt DateTime @default(now())
+  scans     QrScan[]
+}
+
+model QrScan {
+  id        Int      @id @default(autoincrement())
+  qrLinkId  Int
+  qrLink    QrLink   @relation(fields: [qrLinkId], references: [id], onDelete: Cascade)
+  ip        String
+  scannedAt DateTime @default(now())
+
+  @@index([qrLinkId])
+}
+
+model WaTemplate {
+  id        Int      @id @default(autoincrement())
+  key       String   @unique  // rsvp_auto | accommodation_auto | vehicle_auto
+  name      String
+  body      String   @db.Text
+  enabled   Boolean  @default(true)
+  updatedAt DateTime @updatedAt
+}
+
+model Setting {
+  key       String   @id
+  value     String   @db.Text
+  updatedAt DateTime @updatedAt
+}
+
+model WaQueue {
+  id            Int       @id @default(autoincrement())
+  whatsapp      String
+  recipientName String
+  message       String    @db.Text
+  status        String    @default("pending")  // pending | sent | failed
+  error         String?   @db.Text
+  createdAt     DateTime  @default(now())
+  sentAt        DateTime?
+}
+
+model DynamicForm {
+  id           Int                   @id @default(autoincrement())
+  name         String
+  slug         String                @unique
+  description  String?               @db.Text
+  enabled      Boolean               @default(true)
+  waEnabled    Boolean               @default(false)
+  waTemplate   String?               @db.Text   // message body, supports {name} {FieldLabel}
+  waNameField  String?               // label of the name field for WA recipient name
+  waPhoneField String?               // label of the phone field for WA delivery
+  fields       DynamicFormField[]
+  responses    DynamicFormResponse[]
+  createdAt    DateTime              @default(now())
+  updatedAt    DateTime              @updatedAt
+}
+
+model DynamicFormField {
+  id          Int         @id @default(autoincrement())
+  formId      Int
+  form        DynamicForm @relation(fields: [formId], references: [id], onDelete: Cascade)
+  label       String
+  type        String      // text | date | textarea | select
+  placeholder String?
+  options     String?     @db.Text  // JSON string[] — only for select
+  validation  String?     @db.Text  // JSON FieldValidation object
+  required    Boolean     @default(true)
+  order       Int         @default(0)
+
+  @@index([formId])
+}
+
+model DynamicFormResponse {
+  id          Int         @id @default(autoincrement())
+  formId      Int
+  form        DynamicForm @relation(fields: [formId], references: [id], onDelete: Cascade)
+  data        String      @db.LongText  // JSON { fieldLabel: value }
+  submittedAt DateTime    @default(now())
+
+  @@index([formId])
+}
