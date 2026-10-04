@@ -84,7 +84,7 @@ export default function HomeClient({ initialSettings }: { initialSettings: Recor
   const [attended, setAttended] = useState(false);
   const [expanded, setExpanded] = useState<number | null>(null);
   const [mounted, setMounted] = useState(false);
-  const [rsvpForm, setRsvpForm] = useState({ name: "", whatsapp: "", address: "" });
+  const [rsvpForm, setRsvpForm] = useState({ name: "", whatsapp: "", village: "", postOffice: "", district: "", pinCode: "" });
   const [rsvpState, setRsvpState] = useState<"idle" | "loading" | "done" | "error">("idle");
   const [showRsvpModal, setShowRsvpModal] = useState(false);
   // dynamic form modal
@@ -724,30 +724,26 @@ export default function HomeClient({ initialSettings }: { initialSettings: Recor
                 }}
                 className="flex flex-col gap-4"
               >
-                {(["name", "whatsapp", "address"] as const).map((field) => (
-                  <div key={field} className="flex flex-col gap-1.5">
+                {([
+                  { key: "name",       label: "Full Name",     type: "text", required: true },
+                  { key: "whatsapp",   label: "WhatsApp No.",  type: "tel",  required: true },
+                  { key: "village",    label: "Village / Town / Area", type: "text", required: true },
+                  { key: "postOffice", label: "Post Office",   type: "text", required: false },
+                  { key: "pinCode",    label: "PIN Code",      type: "text", required: true },
+                  { key: "district",   label: "District",      type: "text", required: false },
+                ] as const).map(({ key, label, type, required }) => (
+                  <div key={key} className="flex flex-col gap-1.5">
                     <label className="text-xs uppercase tracking-widest" style={{ color: "#C9A96E", opacity: 0.55 }}>
-                      {field === "name" ? "Full Name" : field === "whatsapp" ? "WhatsApp No." : "Address"}
+                      {label}{required ? <span style={{ color: "#f87171" }}> *</span> : <span style={{ opacity: 0.5 }}> (optional)</span>}
                     </label>
-                    {field === "address" ? (
-                      <textarea
-                        rows={3}
-                        required
-                        value={rsvpForm[field]}
-                        onChange={(e) => setRsvpForm(p => ({ ...p, [field]: e.target.value }))}
-                        className="rounded-xl px-4 py-3 text-sm resize-none outline-none"
-                        style={{ background: "#0E0E0E", border: "1px solid rgba(201,169,110,0.2)", color: "#E8D5B0", caretColor: "#C9A96E" }}
-                      />
-                    ) : (
-                      <input
-                        type={field === "whatsapp" ? "tel" : "text"}
-                        required
-                        value={rsvpForm[field]}
-                        onChange={(e) => setRsvpForm(p => ({ ...p, [field]: e.target.value }))}
-                        className="rounded-xl px-4 py-3 text-sm outline-none"
-                        style={{ background: "#0E0E0E", border: "1px solid rgba(201,169,110,0.2)", color: "#E8D5B0", caretColor: "#C9A96E" }}
-                      />
-                    )}
+                    <input
+                      type={type}
+                      required={required}
+                      value={rsvpForm[key]}
+                      onChange={(e) => setRsvpForm(p => ({ ...p, [key]: e.target.value }))}
+                      className="rounded-xl px-4 py-3 text-sm outline-none"
+                      style={{ background: "#0E0E0E", border: "1px solid rgba(201,169,110,0.2)", color: "#E8D5B0", caretColor: "#C9A96E" }}
+                    />
                   </div>
                 ))}
                 {rsvpState === "error" && (

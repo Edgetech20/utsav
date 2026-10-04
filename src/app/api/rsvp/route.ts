@@ -9,12 +9,16 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const { name, whatsapp, address } = await req.json();
-  if (!name?.trim() || !whatsapp?.trim() || !address?.trim())
+  const { name, whatsapp, village, postOffice, district, pinCode } = await req.json();
+  if (!name?.trim() || !whatsapp?.trim() || !village?.trim() || !pinCode?.trim())
     return NextResponse.json({ error: "All fields required" }, { status: 400 });
 
   await db.rsvp.create({
-    data: { name: name.trim(), whatsapp: whatsapp.trim(), address: address.trim() },
+    data: {
+      name: name.trim(), whatsapp: whatsapp.trim(), address: "",
+      village: village.trim(), postOffice: postOffice?.trim() || null,
+      district: district?.trim() || null, pinCode: pinCode.trim(),
+    },
   });
   return NextResponse.json({ ok: true });
 }

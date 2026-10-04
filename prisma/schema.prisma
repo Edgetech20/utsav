@@ -23,6 +23,10 @@ model Rsvp {
   name        String
   whatsapp    String
   address     String
+  village     String?
+  postOffice  String?
+  district    String?
+  pinCode     String?
   submittedAt DateTime @default(now())
   waSent      Boolean  @default(false)
 }
