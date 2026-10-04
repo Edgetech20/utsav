@@ -338,7 +338,11 @@ export default function HomeClient({ initialSettings }: { initialSettings: Recor
       if (!blob) return;
       const file = new File([blob], "priyabodhi-invitation.png", { type: "image/png" });
       if (navigator.canShare?.({ files: [file] })) {
-        await navigator.share({ files: [file], title: "প্রিয়বোধী মহোৎসব · 20 December 2026" });
+        await navigator.share({
+          files: [file],
+          title: "প্রিয়বোধী মহোৎসব",
+          text: `জয় গুরু! 🙏\nআমি প্রিয়বোধী মহোৎসব-এ উপস্থিত থাকব।\n📅 20 December 2026\n📍 Alinagar Playground, Bhatar, Purba Burdwan\n\nআপনিও আসুন 👇\nhttps://utsav.databind.in`,
+        });
       } else {
         const a = document.createElement("a");
         a.download = "priyabodhi-invitation.png";
