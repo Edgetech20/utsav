@@ -25,6 +25,115 @@ const DEFAULT_CONTACTS = [
   { label: "Email",     key: "contact_email",     fallback: "priyabodhimahotsav@gmail.com" },
 ];
 
+function drawShareCard(canvas: HTMLCanvasElement, name: string, venue: string) {
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return;
+  const W = 1080, H = 1080;
+  canvas.width = W; canvas.height = H;
+  const cx = W / 2;
+
+  // Background
+  ctx.fillStyle = "#0E0E0E";
+  ctx.fillRect(0, 0, W, H);
+
+  // Gold radial glow
+  const glow = ctx.createRadialGradient(cx, H * 0.44, 0, cx, H * 0.44, 640);
+  glow.addColorStop(0, "rgba(44,26,0,0.95)");
+  glow.addColorStop(1, "rgba(14,14,14,0)");
+  ctx.fillStyle = glow;
+  ctx.fillRect(0, 0, W, H);
+
+  // Borders
+  ctx.strokeStyle = "rgba(201,169,110,0.45)";
+  ctx.lineWidth = 2;
+  ctx.strokeRect(44, 44, W - 88, H - 88);
+  ctx.strokeStyle = "rgba(201,169,110,0.15)";
+  ctx.lineWidth = 1;
+  ctx.strokeRect(58, 58, W - 116, H - 116);
+
+  function goldGrad(x1: number, x2: number) {
+    const g = ctx.createLinearGradient(x1, 0, x2, 0);
+    g.addColorStop(0, "#9A7840");
+    g.addColorStop(0.35, "#C9A96E");
+    g.addColorStop(0.5, "#E8D5B0");
+    g.addColorStop(0.65, "#C9A96E");
+    g.addColorStop(1, "#9A7840");
+    return g;
+  }
+
+  ctx.textAlign = "center";
+
+  // Top ornament
+  ctx.strokeStyle = "rgba(201,169,110,0.35)";
+  ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(cx - 180, 138); ctx.lineTo(cx - 26, 138); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(cx + 26, 138); ctx.lineTo(cx + 180, 138); ctx.stroke();
+  ctx.fillStyle = "#C9A96E";
+  ctx.font = "22px sans-serif";
+  ctx.textBaseline = "middle";
+  ctx.fillText("✦", cx, 138);
+
+  // "JAI GURU"
+  ctx.font = "600 26px 'Geist', system-ui, sans-serif";
+  ctx.fillStyle = "rgba(201,169,110,0.55)";
+  ctx.textBaseline = "alphabetic";
+  ctx.fillText("J A I   G U R U", cx, 205);
+
+  // Name
+  const fs = name.length > 18 ? 68 : name.length > 12 ? 82 : 96;
+  ctx.font = `700 ${fs}px 'Geist', system-ui, sans-serif`;
+  ctx.fillStyle = goldGrad(cx - 400, cx + 400);
+  ctx.fillText(name.toUpperCase(), cx, 330);
+
+  // Subtitle
+  ctx.font = "400 30px 'Geist', system-ui, sans-serif";
+  ctx.fillStyle = "rgba(232,213,176,0.55)";
+  ctx.fillText("উৎসবে উপস্থিত থাকবেন", cx, 392);
+
+  // Divider
+  const div = ctx.createLinearGradient(cx - 320, 0, cx + 320, 0);
+  div.addColorStop(0, "transparent");
+  div.addColorStop(0.5, "rgba(201,169,110,0.35)");
+  div.addColorStop(1, "transparent");
+  ctx.strokeStyle = div;
+  ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(cx - 320, 442); ctx.lineTo(cx + 320, 442); ctx.stroke();
+
+  // Event name
+  ctx.font = "400 136px 'Galada', serif";
+  ctx.fillStyle = goldGrad(cx - 400, cx + 400);
+  ctx.fillText("প্ৰিয়বোধী", cx, 592);
+
+  ctx.font = "400 68px 'Galada', serif";
+  ctx.fillStyle = "rgba(201,169,110,0.85)";
+  ctx.fillText("মহোৎসব", cx, 672);
+
+  // Date & venue
+  ctx.font = "600 30px 'Geist', system-ui, sans-serif";
+  ctx.fillStyle = "rgba(232,213,176,0.7)";
+  ctx.fillText("20 December 2026  ·  ৪ পৌষ ১৪৩৩", cx, 752);
+
+  ctx.font = "400 24px 'Geist', system-ui, sans-serif";
+  ctx.fillStyle = "rgba(201,169,110,0.45)";
+  ctx.fillText(venue, cx, 800);
+
+  // Bottom ornament
+  ctx.strokeStyle = "rgba(201,169,110,0.35)";
+  ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(cx - 180, 900); ctx.lineTo(cx - 26, 900); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(cx + 26, 900); ctx.lineTo(cx + 180, 900); ctx.stroke();
+  ctx.fillStyle = "rgba(201,169,110,0.5)";
+  ctx.font = "22px sans-serif";
+  ctx.textBaseline = "middle";
+  ctx.fillText("✦", cx, 900);
+
+  // Watermark
+  ctx.font = "400 20px 'Geist', system-ui, sans-serif";
+  ctx.fillStyle = "rgba(201,169,110,0.25)";
+  ctx.textBaseline = "alphabetic";
+  ctx.fillText("utsav.databind.in", cx, 970);
+}
+
 function useCountdown(isoDate: string) {
   const [t, setT] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 });
   useEffect(() => {
@@ -165,6 +274,7 @@ export default function HomeClient({ initialSettings }: { initialSettings: Recor
   }));
   const settings = initialSettings;
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
   useEffect(() => {
     fetch("/api/attractions").then(r => r.ok ? r.json() : Promise.reject()).then(setDbAttractions).catch(() => {});
@@ -215,6 +325,20 @@ export default function HomeClient({ initialSettings }: { initialSettings: Recor
     els.forEach((el) => io.observe(el));
     return () => io.disconnect();
   }, [dbAttractions]);
+
+  useEffect(() => {
+    if (rsvpState !== "done" || !canvasRef.current) return;
+    const canvas = canvasRef.current;
+    document.fonts.ready.then(() => drawShareCard(canvas, rsvpForm.name, event.venue));
+  }, [rsvpState]);
+
+  function downloadCard() {
+    if (!canvasRef.current) return;
+    const a = document.createElement("a");
+    a.download = "priyabodhi-invitation.png";
+    a.href = canvasRef.current.toDataURL("image/png");
+    a.click();
+  }
 
   function handleMap() {
     fetch("/api/track?type=map", { method: "POST" }).catch(() => {});
@@ -701,14 +825,24 @@ export default function HomeClient({ initialSettings }: { initialSettings: Recor
             </div>
 
             {rsvpState === "done" ? (
-              <div className="flex flex-col items-center gap-3 py-6 text-center">
-                <CheckCircle className="w-10 h-10" style={{ color: "#C9A96E" }} />
-                <p className="font-bold text-base" style={{ color: "#E8D5B0" }}>Thank you! We'll be in touch.</p>
-                <p className="text-xs" style={{ color: "#C9A96E", opacity: 0.55 }}>Your details have been recorded.</p>
+              <div className="flex flex-col items-center gap-4 text-center">
+                <div className="flex flex-col items-center gap-1">
+                  <CheckCircle className="w-8 h-8" style={{ color: "#C9A96E" }} />
+                  <p className="font-bold text-base" style={{ color: "#E8D5B0" }}>Thank you! We'll be in touch.</p>
+                  <p className="text-xs" style={{ color: "#C9A96E", opacity: 0.55 }}>Save this card and share on WhatsApp</p>
+                </div>
+                <div style={{ width: "100%", borderRadius: 12, overflow: "hidden", border: "1px solid rgba(201,169,110,0.25)" }}>
+                  <canvas ref={canvasRef} style={{ display: "block", width: "100%", aspectRatio: "1 / 1" }} />
+                </div>
+                <button
+                  onClick={downloadCard}
+                  className="w-full py-3.5 rounded-xl font-bold text-sm"
+                  style={{ background: "linear-gradient(135deg, #C9A96E, #9A7840)", color: "#0E0E0E" }}
+                >Save & Share on WhatsApp</button>
                 <button
                   onClick={() => setShowRsvpModal(false)}
-                  className="mt-3 px-6 py-2.5 rounded-xl text-xs font-bold uppercase tracking-widest"
-                  style={{ background: "rgba(201,169,110,0.15)", color: "#C9A96E" }}
+                  className="text-xs pb-2"
+                  style={{ color: "#C9A96E", opacity: 0.45 }}
                 >Close</button>
               </div>
             ) : (
