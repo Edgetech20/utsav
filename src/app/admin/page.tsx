@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 
-type Stats = { views: number; viewHits: number; attending: number; mapClicks: number; mapHits: number };
+type Stats = { views: number; viewHits: number; attending: number; mapClicks: number; mapHits: number; rsvp: number };
 
 function useAnimatedValue(target: number, duration = 600) {
   const [display, setDisplay] = useState(target);
@@ -37,7 +37,7 @@ function StatRow({ label, value, color }: { label: string; value: number; color:
 }
 
 export default function AdminPage() {
-  const [stats, setStats] = useState<Stats>({ views: 0, viewHits: 0, attending: 0, mapClicks: 0, mapHits: 0 });
+  const [stats, setStats] = useState<Stats>({ views: 0, viewHits: 0, attending: 0, mapClicks: 0, mapHits: 0, rsvp: 0 });
 
   useEffect(() => {
     const tick = () =>
@@ -53,6 +53,7 @@ export default function AdminPage() {
     { label: "Map Clicks (Unique)", value: stats.mapClicks ?? 0,                                            color: "#8B5CF6" },
     { label: "Map Clicks (Repeat)", value: Math.max(0, (stats.mapHits ?? 0) - (stats.mapClicks ?? 0)),     color: "#EC4899" },
     { label: "Attending",           value: stats.attending,                                                 color: "#10B981" },
+    { label: "RSVP Registrations", value: stats.rsvp,                                                       color: "#C9A96E" },
   ];
 
   return (

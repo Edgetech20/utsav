@@ -27,12 +27,13 @@ export async function POST(req: NextRequest) {
 }
 
 export async function GET(_req: NextRequest) {
-  const [views, viewHits, attending, mapClicks, mapHits] = await Promise.all([
+  const [views, viewHits, attending, mapClicks, mapHits, rsvp] = await Promise.all([
     db.clickEvent.groupBy({ by: ["ip"], where: { type: "view" } }).then(r => r.length),
     db.clickEvent.count({ where: { type: "view" } }),
     db.clickEvent.groupBy({ by: ["ip"], where: { type: "attend" } }).then(r => r.length),
     db.clickEvent.groupBy({ by: ["ip"], where: { type: "map" } }).then(r => r.length),
     db.clickEvent.count({ where: { type: "map" } }),
+    db.rsvp.count(),
   ]);
-  return NextResponse.json({ views, viewHits, attending, mapClicks, mapHits });
+  return NextResponse.json({ views, viewHits, attending, mapClicks, mapHits, rsvp });
 }
