@@ -86,9 +86,9 @@ function drawShareCard(canvas: HTMLCanvasElement, name: string, venue: string) {
   ctx.fillText(name.toUpperCase(), cx, 330);
 
   // Subtitle
-  ctx.font = "400 30px 'Geist', system-ui, sans-serif";
+  ctx.font = "400 24px 'Geist', system-ui, sans-serif";
   ctx.fillStyle = "rgba(232,213,176,0.55)";
-  ctx.fillText("উৎসবে উপস্থিত থাকবেন", cx, 392);
+  ctx.fillText("উৎসবে আপনার উপস্থিতি নিশ্চিত করার জন্য ধন্যবাদ 🙏🏻", cx, 392);
 
   // Divider
   const div = ctx.createLinearGradient(cx - 320, 0, cx + 320, 0);
