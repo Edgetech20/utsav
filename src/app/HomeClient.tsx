@@ -806,7 +806,7 @@ export default function HomeClient({ initialSettings }: { initialSettings: Recor
                 <button onClick={() => setDynFormSlug(null)} className="mt-2 px-6 py-2.5 rounded-xl font-bold text-sm" style={{ background: "rgba(201,169,110,0.15)", border: "1px solid rgba(201,169,110,0.3)", color: "#C9A96E" }}>Close</button>
               </div>
             ) : (
-              <form onSubmit={dynSubmit} style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+              <form onSubmit={dynSubmit} style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) minmax(0,1fr)", gap: 16 }}>
                 {dynFormState === "error" && (
                   <p className="text-xs text-center py-2 rounded-lg" style={{ gridColumn: "span 2", background: "rgba(239,68,68,0.1)", color: "#f87171" }}>Something went wrong. Please try again.</p>
                 )}
@@ -821,13 +821,13 @@ export default function HomeClient({ initialSettings }: { initialSettings: Recor
                     color: "#E8D5B0", fontFamily: "inherit",
                   };
                   if (field.type === "section") return (
-                    <div key={field.id} style={{ borderTop: "1px solid rgba(201,169,110,0.2)", paddingTop: 14, marginTop: 4 }}>
+                    <div key={field.id} style={{ gridColumn: "span 2", borderTop: "1px solid rgba(201,169,110,0.2)", paddingTop: 14, marginTop: 4 }}>
                       <p style={{ fontSize: 12, fontWeight: 700, color: "#C9A96E", margin: 0, letterSpacing: "0.06em", textTransform: "uppercase" }}>{field.label}</p>
                       {field.placeholder && <p style={{ fontSize: 11, color: "#666", margin: "3px 0 0" }}>{field.placeholder}</p>}
                     </div>
                   );
                   return (
-                    <div key={field.id} className="flex flex-col gap-1.5">
+                    <div key={field.id} className="flex flex-col gap-1.5" style={colSpan}>
                       {field.type !== "checkbox" && field.type !== "file" && (
                         <label className="text-xs uppercase tracking-widest" style={{ color: "#C9A96E", opacity: 0.5 }}>
                           {field.label}{field.required && <span style={{ color: "#f87171" }}> *</span>}

@@ -18,6 +18,15 @@ function validateField(
   rawValidation: string | null,
   label: string
 ): string | null {
+  if (type === "section") return null;
+  if (type === "checkbox") {
+    if (required && value !== "true") return `${label} must be confirmed`;
+    return null;
+  }
+  if (type === "file") {
+    if (required && !value?.trim()) return `${label}: file is required`;
+    return null;
+  }
   const trimmed = value?.trim() ?? "";
   if (required && !trimmed) return `${label} is required`;
   if (!trimmed) return null;

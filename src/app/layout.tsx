@@ -40,6 +40,11 @@ export default function RootLayout({
     <html lang="en" className={`${geist.variable} ${galada.variable}`}>
       <body className="antialiased">
         {children}
+        <script dangerouslySetInnerHTML={{ __html: `
+          if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.getRegistrations().then(regs => regs.forEach(r => r.unregister()));
+          }
+        ` }} />
       </body>
     </html>
   );

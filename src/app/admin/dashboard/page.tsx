@@ -9,6 +9,7 @@ type TrackStats  = { views: number; viewHits: number; attending: number; mapClic
 type Entry       = { submittedAt: string };
 type LogEntry    = { status: string; type: string };
 type DaySeries   = { day: string; total: number; unique: number; repeat: number };
+type FormSummary = { id: number; name: string; responseCount: number };
 
 // ── SVG Line Chart ────────────────────────────────────────────────────────────
 function LineChart({ series, labels }: {
@@ -217,10 +218,11 @@ function sectionLabel(s: string) {
 // ── Dashboard ─────────────────────────────────────────────────────────────────
 export default function DashboardPage() {
   const desktop = useDesktop();
-  const [track,     setTrack]     = useState<TrackStats | null>(null);
-  const [rsvp,      setRsvp]      = useState<Entry[]>([]);
-  const [waLog,     setWaLog]     = useState<LogEntry[]>([]);
+  const [track,      setTrack]      = useState<TrackStats | null>(null);
+  const [rsvp,       setRsvp]       = useState<Entry[]>([]);
+  const [waLog,      setWaLog]      = useState<LogEntry[]>([]);
   const [viewSeries, setViewSeries] = useState<DaySeries[]>([]);
+  const [forms,      setForms]      = useState<FormSummary[]>([]);
 
   useEffect(() => {
     function tick() {
@@ -229,11 +231,13 @@ export default function DashboardPage() {
         fetch("/api/rsvp").then(r => r.json()),
         fetch("/api/wa-log").then(r => r.json()),
         fetch("/api/track/series").then(r => r.json()),
-      ]).then(([t, rv, wl, vs]) => {
+        fetch("/api/forms").then(r => r.json()),
+      ]).then(([t, rv, wl, vs, fm]) => {
         setTrack(t);
         setRsvp(rv?.entries ?? []);
         setWaLog(Array.isArray(wl) ? wl : []);
         setViewSeries(Array.isArray(vs) ? vs : []);
+        setForms(Array.isArray(fm) ? fm : []);
       }).catch(() => {});
     }
     tick();
@@ -372,6 +376,11 @@ export default function DashboardPage() {
           </p>
           <DonutChart segments={[
             { label: "RSVP", value: rsvp.length, color: C.orange },
+            ...forms.map((f, i) => ({
+              label: f.name,
+              value: f.responseCount,
+              color: [C.blue, C.green, C.purple, C.pink, C.gold, C.red][i % 6],
+            })),
           ]} />
         </Card>
 

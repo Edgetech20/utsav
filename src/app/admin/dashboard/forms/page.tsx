@@ -385,7 +385,7 @@ function FormPreview({ name, description, fields }: { name: string; description:
             Fields will appear here
           </p>
         ) : (
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) minmax(0,1fr)", gap: 14 }}>
             {fields.map((f, i) => (
               <div key={i} style={{ gridColumn: (f.type === "section" || (f.validation.colSpan ?? "full") === "full") ? "span 2" : "span 1" }}>
                 {f.type === "section" ? (

@@ -57,6 +57,16 @@ function parseValidation(raw: string | null): FieldValidation {
 }
 
 function clientValidate(value: string, field: Field): string | null {
+  if (field.type === "section") return null;
+  if (field.type === "checkbox") {
+    if (field.required && value !== "true") return `You must confirm: ${field.label}`;
+    return null;
+  }
+  if (field.type === "file") {
+    if (field.required && !value?.trim()) return `Please upload a file for: ${field.label}`;
+    return null;
+  }
+
   const trimmed = value?.trim() ?? "";
   if (field.required && !trimmed) return `${field.label} is required`;
   if (!trimmed) return null;
@@ -76,14 +86,12 @@ function clientValidate(value: string, field: Field): string | null {
       return `Maximum ${v.maxLength} characters allowed`;
   }
 
-  if (field.type === "date") {
+  if (field.type === "date" || field.type === "datetime") {
     const d = new Date(value);
     if (isNaN(d.getTime())) return "Please select a valid date";
     const today = new Date(); today.setHours(0, 0, 0, 0);
     if (v.disallowPast && d < today) return "Date cannot be in the past";
     if (v.disallowFuture && d > today) return "Date cannot be in the future";
-    if (v.minDate && value < v.minDate) return `Date must be on or after ${v.minDate}`;
-    if (v.maxDate && value > v.maxDate) return `Date must be on or before ${v.maxDate}`;
   }
 
   return null;
@@ -97,6 +105,7 @@ export default function PublicFormPage({ params }: { params: Promise<{ slug: str
   const [errors, setErrors]   = useState<Record<string, string>>({});
   const [submitting, setSub]  = useState(false);
   const [serverErrors, setSE] = useState<string[]>([]);
+  const [uploading, setUploading] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     fetch(`/api/forms/${slug}`)
@@ -112,6 +121,20 @@ export default function PublicFormPage({ params }: { params: Promise<{ slug: str
       })
       .catch(() => setStatus("notfound"));
   }, [slug]);
+
+  async function uploadFile(label: string, file: File) {
+    setUploading(prev => ({ ...prev, [label]: true }));
+    const fd = new FormData();
+    fd.append("file", file);
+    const res = await fetch("/api/form-upload", { method: "POST", body: fd });
+    setUploading(prev => ({ ...prev, [label]: false }));
+    if (res.ok) {
+      const { url } = await res.json();
+      set(label, url);
+    } else {
+      setErrors(prev => ({ ...prev, [label]: "Upload failed. Try again." }));
+    }
+  }
 
   function set(label: string, val: string) {
     setValues(prev => ({ ...prev, [label]: val }));
@@ -211,10 +234,10 @@ export default function PublicFormPage({ params }: { params: Promise<{ slug: str
     <div style={{ minHeight: "100vh", background: "#F8FAFC", padding: "32px 16px 64px" }}>
       <style>{`
         @keyframes spin { to { transform: rotate(360deg) } }
-        input:focus, textarea:focus, select:focus { border-color: ${GOLD} !important; box-shadow: 0 0 0 3px rgba(201,169,110,0.15); }
+        .pub-input:focus { border-color: ${GOLD} !important; box-shadow: 0 0 0 3px rgba(201,169,110,0.15); }
       `}</style>
 
-      <div style={{ maxWidth: 560, margin: "0 auto" }}>
+      <div style={{ maxWidth: 640, margin: "0 auto" }}>
         {/* Header */}
         <div style={{ textAlign: "center", marginBottom: 32 }}>
           <div style={{
@@ -248,10 +271,10 @@ export default function PublicFormPage({ params }: { params: Promise<{ slug: str
               const err = errors[field.label];
               const v = parseValidation(field.validation);
               const opts = parseOptions(field.options);
-              const colStyle: React.CSSProperties = { gridColumn: (field.type === "section" || (v.colSpan ?? "full") === "full") ? "span 2" : "span 1" };
+              const span = (field.type === "section" || (v.colSpan ?? "full") === "full") ? "span 2" : "span 1";
 
               return (
-                <div key={field.id} style={colStyle}>
+                <div key={field.id} style={{ gridColumn: span }}>
                   {field.type === "section" ? (
                     <div style={{ borderTop: `2px solid #E2E8F0`, paddingTop: 16, marginTop: 4 }}>
                       <p style={{ fontSize: 14, fontWeight: 700, color: DARK, margin: 0 }}>{field.label}</p>
@@ -259,10 +282,12 @@ export default function PublicFormPage({ params }: { params: Promise<{ slug: str
                     </div>
                   ) : (
                   <>
-                  <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: DARK, marginBottom: 6 }}>
-                    {field.label}
-                    {field.required && <span style={{ color: "#EF4444", marginLeft: 3 }}>*</span>}
-                  </label>
+                  {field.type !== "checkbox" && (
+                    <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: DARK, marginBottom: 6 }}>
+                      {field.label}
+                      {field.required && <span style={{ color: "#EF4444", marginLeft: 3 }}>*</span>}
+                    </label>
+                  )}
 
                   {field.type === "text" && (
                     <input
@@ -293,6 +318,48 @@ export default function PublicFormPage({ params }: { params: Promise<{ slug: str
                       onChange={e => set(field.label, e.target.value)}
                     />
                   )}
+
+                  {field.type === "datetime" && (
+                    <input
+                      type="datetime-local"
+                      style={{ ...inputBase, borderColor: err ? "#FECACA" : "#E2E8F0" }}
+                      min={v.disallowPast ? new Date().toISOString().slice(0, 16) : undefined}
+                      max={v.disallowFuture ? new Date().toISOString().slice(0, 16) : undefined}
+                      value={values[field.label] ?? ""}
+                      onChange={e => set(field.label, e.target.value)}
+                    />
+                  )}
+
+                  {field.type === "checkbox" && (
+                    <label style={{ display: "flex", alignItems: "flex-start", gap: 10, cursor: "pointer", padding: "12px 14px", borderRadius: 10, border: `1.5px solid ${err ? "#FECACA" : values[field.label] === "true" ? GOLD : "#E2E8F0"}`, background: values[field.label] === "true" ? "rgba(201,169,110,0.06)" : "#fff" }}>
+                      <input type="checkbox"
+                        checked={values[field.label] === "true"}
+                        onChange={e => set(field.label, e.target.checked ? "true" : "")}
+                        style={{ marginTop: 2, accentColor: GOLD, width: 16, height: 16, flexShrink: 0 }} />
+                      <span style={{ fontSize: 14, color: DARK, lineHeight: 1.5 }}>{field.label}{field.required && <span style={{ color: "#EF4444", marginLeft: 3 }}>*</span>}</span>
+                    </label>
+                  )}
+
+                  {field.type === "file" && (() => {
+                    const v2 = v as { accept?: string };
+                    const accept = v2.accept === "image" ? "image/*" : v2.accept === "pdf" ? "application/pdf" : v2.accept === "doc" ? ".doc,.docx,application/pdf" : "*";
+                    const uploaded = values[field.label];
+                    return (
+                      <label style={{ display: "block", cursor: uploading[field.label] ? "wait" : "pointer" }}>
+                        <input type="file" accept={accept} style={{ display: "none" }}
+                          onChange={e => { const f = e.target.files?.[0]; if (f) uploadFile(field.label, f); }} />
+                        <div style={{ border: `2px dashed ${err ? "#FECACA" : uploaded ? GOLD : "#CBD5E1"}`, borderRadius: 10, padding: 16, textAlign: "center", background: uploaded ? "rgba(201,169,110,0.05)" : "#F8FAFC" }}>
+                          {uploading[field.label] ? (
+                            <span style={{ fontSize: 13, color: "#94A3B8" }}>Uploading…</span>
+                          ) : uploaded ? (
+                            <span style={{ fontSize: 13, color: GOLD, fontWeight: 600 }}>✓ File uploaded — tap to change</span>
+                          ) : (
+                            <span style={{ fontSize: 13, color: "#94A3B8" }}>📎 Tap to choose file</span>
+                          )}
+                        </div>
+                      </label>
+                    );
+                  })()}
 
                   {field.type === "select" && (v.selectStyle ?? "pills") === "pills" && (
                     <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
