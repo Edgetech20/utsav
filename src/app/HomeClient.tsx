@@ -26,8 +26,9 @@ const DEFAULT_CONTACTS = [
 ];
 
 function drawShareCard(canvas: HTMLCanvasElement, name: string, venue: string) {
-  const ctx = canvas.getContext("2d");
-  if (!ctx) return;
+  const maybeCtx = canvas.getContext("2d");
+  if (!maybeCtx) return;
+  const ctx: CanvasRenderingContext2D = maybeCtx;
   const W = 1080, H = 1080;
   canvas.width = W; canvas.height = H;
   const cx = W / 2;
