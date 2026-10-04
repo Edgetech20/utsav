@@ -332,12 +332,20 @@ export default function HomeClient({ initialSettings }: { initialSettings: Recor
     document.fonts.ready.then(() => drawShareCard(canvas, rsvpForm.name, event.venue));
   }, [rsvpState]);
 
-  function downloadCard() {
+  function shareCard() {
     if (!canvasRef.current) return;
-    const a = document.createElement("a");
-    a.download = "priyabodhi-invitation.png";
-    a.href = canvasRef.current.toDataURL("image/png");
-    a.click();
+    canvasRef.current.toBlob(async (blob) => {
+      if (!blob) return;
+      const file = new File([blob], "priyabodhi-invitation.png", { type: "image/png" });
+      if (navigator.canShare?.({ files: [file] })) {
+        await navigator.share({ files: [file], title: "প্রিয়বোধী মহোৎসব · 20 December 2026" });
+      } else {
+        const a = document.createElement("a");
+        a.download = "priyabodhi-invitation.png";
+        a.href = URL.createObjectURL(blob);
+        a.click();
+      }
+    }, "image/png");
   }
 
   function handleMap() {
@@ -835,10 +843,10 @@ export default function HomeClient({ initialSettings }: { initialSettings: Recor
                   <canvas ref={canvasRef} style={{ display: "block", width: "100%", aspectRatio: "1 / 1" }} />
                 </div>
                 <button
-                  onClick={downloadCard}
+                  onClick={shareCard}
                   className="w-full py-3.5 rounded-xl font-bold text-sm"
                   style={{ background: "linear-gradient(135deg, #C9A96E, #9A7840)", color: "#0E0E0E" }}
-                >Save & Share on WhatsApp</button>
+                >Share on WhatsApp</button>
                 <button
                   onClick={() => setShowRsvpModal(false)}
                   className="text-xs pb-2"
