@@ -203,7 +203,6 @@ function StatsPage() {
                 {[
                   { label: "Villages / Areas", value: villages.length },
                   { label: "Total RSVPs",      value: totalRsvps       },
-                  { label: "Total Attending",  value: totalAtt         },
                 ].map(({ label, value }) => <StatChip key={label} label={label} value={value} />)}
               </div>
             )}
