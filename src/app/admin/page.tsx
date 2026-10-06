@@ -23,16 +23,22 @@ function useAnimatedValue(target: number, duration = 600) {
   return display;
 }
 
-function StatRow({ label, value, color }: { label: string; value: number; color: string }) {
+function StatRow({ label, value, color, href }: { label: string; value: number; color: string; href: string }) {
   const display = useAnimatedValue(value);
   return (
-    <div style={{
-      display: "flex", alignItems: "center", justifyContent: "space-between",
-      padding: "12px 16px", borderRadius: 10, background: "#F8FAFC",
-    }}>
-      <span style={{ fontSize: 13, color: "#475569", fontWeight: 500 }}>{label}</span>
-      <span style={{ fontSize: 20, fontWeight: 800, color, transition: "color 0.2s" }}>{display}</span>
-    </div>
+    <a href={href} style={{ textDecoration: "none" }}>
+      <div style={{
+        display: "flex", alignItems: "center", justifyContent: "space-between",
+        padding: "12px 16px", borderRadius: 10, background: "#F8FAFC",
+        cursor: "pointer", transition: "background 0.15s",
+      }}
+        onMouseEnter={e => (e.currentTarget.style.background = "#EFF6FF")}
+        onMouseLeave={e => (e.currentTarget.style.background = "#F8FAFC")}
+      >
+        <span style={{ fontSize: 13, color: "#475569", fontWeight: 500 }}>{label}</span>
+        <span style={{ fontSize: 20, fontWeight: 800, color, transition: "color 0.2s" }}>{display}</span>
+      </div>
+    </a>
   );
 }
 
@@ -48,12 +54,12 @@ export default function AdminPage() {
   }, []);
 
   const rows = [
-    { label: "Unique Views",        value: stats.views,                                                    color: "#3B82F6" },
-    { label: "Repeat Views",        value: Math.max(0, (stats.viewHits ?? 0) - stats.views),               color: "#F97316" },
-    { label: "Map Clicks (Unique)", value: stats.mapClicks ?? 0,                                            color: "#8B5CF6" },
-    { label: "Map Clicks (Repeat)", value: Math.max(0, (stats.mapHits ?? 0) - (stats.mapClicks ?? 0)),     color: "#EC4899" },
-    { label: "Attending",           value: stats.attending,                                                 color: "#10B981" },
-    { label: "RSVP Registrations", value: stats.rsvp,                                                       color: "#C9A96E" },
+    { label: "Unique Views",        value: stats.views,                                                    color: "#3B82F6", href: "/stats?tab=geo"  },
+    { label: "Repeat Views",        value: Math.max(0, (stats.viewHits ?? 0) - stats.views),               color: "#F97316", href: "/stats?tab=geo"  },
+    { label: "Map Clicks (Unique)", value: stats.mapClicks ?? 0,                                            color: "#8B5CF6", href: "/stats?tab=geo"  },
+    { label: "Map Clicks (Repeat)", value: Math.max(0, (stats.mapHits ?? 0) - (stats.mapClicks ?? 0)),     color: "#EC4899", href: "/stats?tab=geo"  },
+    { label: "Attending",           value: stats.attending,                                                 color: "#10B981", href: "/stats?tab=rsvp" },
+    { label: "RSVP Registrations",  value: stats.rsvp,                                                     color: "#C9A96E", href: "/stats?tab=rsvp" },
   ];
 
   return (

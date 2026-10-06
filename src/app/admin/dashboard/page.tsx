@@ -408,10 +408,10 @@ export default function DashboardPage() {
             Quick Links
           </p>
           {[
-            { label: "RSVP Registrations",  href: "/admin/dashboard/rsvp"          },
-            { label: "Vehicle Management",   href: "/admin/dashboard/vehicles"      },
-            { label: "Accommodation",        href: "/admin/dashboard/accommodation" },
-            { label: "Feedback Responses",   href: "/admin/dashboard/feedback"      },
+            { label: "RSVP Registrations",  href: "/admin/dashboard/rsvp"            },
+            { label: "Location Stats",      href: "/admin/dashboard/detailstats"    },
+            { label: "Public Stats Page",   href: "/stats"                          },
+            { label: "Feedback Responses",  href: "/admin/dashboard/feedback"       },
             { label: "Message Templates",    href: "/admin/dashboard/templates"     },
           ].map(({ label, href }) => (
             <a key={href} href={href} style={{

@@ -194,8 +194,9 @@ export default function HomeClient({ initialSettings }: { initialSettings: Recor
   const [attended, setAttended] = useState(false);
   const [expanded, setExpanded] = useState<number | null>(null);
   const [mounted, setMounted] = useState(false);
-  const [rsvpForm, setRsvpForm] = useState({ name: "", whatsapp: "", village: "", postOffice: "", district: "", pinCode: "" });
+  const [rsvpForm, setRsvpForm] = useState({ name: "", whatsapp: "", village: "", postOffice: "", district: "", pinCode: "", totalAttending: "" });
   const [rsvpState, setRsvpState] = useState<"idle" | "loading" | "done" | "error">("idle");
+  const [rsvpError, setRsvpError] = useState("");
   const [showRsvpModal, setShowRsvpModal] = useState(false);
   // dynamic form modal
   const [dynFormSlug, setDynFormSlug]   = useState<string | null>(null);
@@ -866,18 +867,23 @@ export default function HomeClient({ initialSettings }: { initialSettings: Recor
                   try {
                     const res = await fetch("/api/rsvp", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(rsvpForm) });
                     if (res.ok) { setRsvpState("done"); handleAttend(); }
-                    else setRsvpState("error");
-                  } catch { setRsvpState("error"); }
+                    else {
+                      const body = await res.json().catch(() => ({}));
+                      setRsvpError(body.error || "Something went wrong. Please try again.");
+                      setRsvpState("error");
+                    }
+                  } catch { setRsvpError("Something went wrong. Please try again."); setRsvpState("error"); }
                 }}
                 className="flex flex-col gap-4"
               >
                 {([
-                  { key: "name",       label: "Full Name",     type: "text", required: true },
-                  { key: "whatsapp",   label: "WhatsApp No.",  type: "tel",  required: true },
-                  { key: "village",    label: "Village / Town / Area", type: "text", required: true },
-                  { key: "postOffice", label: "Post Office",   type: "text", required: false },
-                  { key: "pinCode",    label: "PIN Code",      type: "text", required: true },
-                  { key: "district",   label: "District",      type: "text", required: false },
+                  { key: "name",           label: "Full Name",              type: "text",   required: true  },
+                  { key: "whatsapp",       label: "WhatsApp No.",           type: "tel",    required: true  },
+                  { key: "village",        label: "Village / Town / Area",  type: "text",   required: true  },
+                  { key: "postOffice",     label: "Post Office",            type: "text",   required: false },
+                  { key: "pinCode",        label: "PIN Code",               type: "text",   required: true  },
+                  { key: "district",       label: "District",               type: "text",   required: false },
+                  { key: "totalAttending", label: "Total Attending",        type: "number", required: true  },
                 ] as const).map(({ key, label, type, required }) => (
                   <div key={key} className="flex flex-col gap-1.5">
                     <label className="text-xs uppercase tracking-widest" style={{ color: "#C9A96E", opacity: 0.55 }}>
@@ -894,7 +900,7 @@ export default function HomeClient({ initialSettings }: { initialSettings: Recor
                   </div>
                 ))}
                 {rsvpState === "error" && (
-                  <p className="text-xs text-center" style={{ color: "#ff6b6b" }}>Something went wrong. Please try again.</p>
+                  <p className="text-xs text-center" style={{ color: "#ff6b6b" }}>{rsvpError}</p>
                 )}
                 <button
                   type="submit"

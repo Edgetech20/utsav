@@ -21,13 +21,14 @@ model OtpStore {
 model Rsvp {
   id          Int      @id @default(autoincrement())
   name        String
-  whatsapp    String
+  whatsapp    String  @unique
   address     String
   village     String?
   postOffice  String?
   district    String?
-  pinCode     String?
-  submittedAt DateTime @default(now())
+  pinCode        String?
+  totalAttending Int?
+  submittedAt    DateTime @default(now())
   waSent      Boolean  @default(false)
 }
 

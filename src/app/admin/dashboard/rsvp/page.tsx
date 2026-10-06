@@ -5,7 +5,7 @@ import { Trash2, RefreshCw, CheckCircle, Clock, Users } from "lucide-react";
 import { C, Badge, Button, Search, PageHeader, Table, Thead, Th, Tbody, Td, Tr, Skeleton, Empty, Avatar, Pagination, Card, useDesktop } from "../ui";
 import { useToast } from "../toast";
 
-type Entry = { id: number; name: string; whatsapp: string; address: string; village: string | null; postOffice: string | null; district: string | null; pinCode: string | null; submittedAt: string; waSent: boolean };
+type Entry = { id: number; name: string; whatsapp: string; address: string; village: string | null; postOffice: string | null; district: string | null; pinCode: string | null; totalAttending: number | null; submittedAt: string; waSent: boolean };
 
 function SkeletonRows() {
   return (
@@ -90,13 +90,13 @@ export default function RsvpPage() {
         <Table>
           <Thead>
             <Tr>
-              <Th>Name</Th><Th>Phone</Th><Th>Address</Th><Th>Status</Th><Th>Registered</Th>
+              <Th>Name</Th><Th>Phone</Th><Th>Address</Th><Th>Attending</Th><Th>Status</Th><Th>Registered</Th>
               <Th style={{ textAlign: "right" }}>Actions</Th>
             </Tr>
           </Thead>
           <tbody>
             {loading ? <SkeletonRows /> : filtered.length === 0 ? (
-              <Tr><Td style={{ padding: 0, border: "none" }} colSpan={6}>
+              <Tr><Td style={{ padding: 0, border: "none" }} colSpan={7}>
                 <Empty icon={<Users size={40} />} title={search ? "No results" : "No registrations yet"} sub={search ? "Try a different search term" : "Registrations will appear here"} />
               </Td></Tr>
             ) : paginated.map(e => {
@@ -105,7 +105,8 @@ export default function RsvpPage() {
                 <Tr key={e.id} style={{ opacity: busy ? 0.5 : 1 }}>
                   <Td><div style={{ display: "flex", alignItems: "center", gap: 10 }}><Avatar name={e.name} size={32} /><span style={{ fontWeight: 600, whiteSpace: "nowrap" }}>{e.name}</span></div></Td>
                   <Td><span style={{ fontFamily: "monospace", fontSize: 12, color: C.textSub }}>{e.whatsapp}</span></Td>
-                  <Td style={{ maxWidth: 220 }}><span style={{ display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: C.textSub, fontSize: 12 }}>{e.village ? [e.village, e.postOffice, e.district, e.pinCode].filter(Boolean).join(", ") : e.address}</span></Td>
+                  <Td style={{ maxWidth: 220 }}><span style={{ display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: C.textSub, fontSize: 12 }}>{[e.village, e.postOffice, e.district, e.pinCode].filter(Boolean).join(", ") || e.address}</span></Td>
+                  <Td style={{ textAlign: "center", fontWeight: 600, fontSize: 13 }}>{e.totalAttending ?? "—"}</Td>
                   <Td>{e.waSent ? <Badge variant="green" icon={<CheckCircle size={10} />}>Sent</Badge> : <Badge variant="orange" icon={<Clock size={10} />}>Pending</Badge>}</Td>
                   <Td style={{ color: C.textMuted, fontSize: 12, whiteSpace: "nowrap" }}>{new Date(e.submittedAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}</Td>
                   <Td><div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
@@ -132,7 +133,8 @@ export default function RsvpPage() {
                   </div>
                   {e.waSent ? <Badge variant="green" icon={<CheckCircle size={10} />}>Sent</Badge> : <Badge variant="orange" icon={<Clock size={10} />}>Pending</Badge>}
                 </div>
-                <p style={{ fontSize: 12, color: C.textSub, margin: "0 0 10px", lineHeight: 1.5 }}>{e.village ? [e.village, e.postOffice, e.district, e.pinCode].filter(Boolean).join(", ") : e.address}</p>
+                <p style={{ fontSize: 12, color: C.textSub, margin: "0 0 6px", lineHeight: 1.5 }}>{[e.village, e.postOffice, e.district, e.pinCode].filter(Boolean).join(", ") || e.address}</p>
+                {e.totalAttending && <p style={{ fontSize: 11, color: C.textMuted, margin: "0 0 10px" }}>Attending: <strong>{e.totalAttending}</strong></p>}
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                   <span style={{ fontSize: 11, color: C.textMuted }}>{new Date(e.submittedAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}</span>
                   <div style={{ display: "flex", gap: 6 }}>
