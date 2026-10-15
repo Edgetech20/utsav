@@ -103,8 +103,9 @@ function StatsPage() {
               { label: "Repeat Views",        value: repeat,          tab: "geo"  as Tab },
               { label: "Map Clicks (Unique)", value: track.mapClicks, tab: "geo"  as Tab },
               { label: "Map Clicks (Repeat)", value: mapRepeat,       tab: "geo"  as Tab },
-              { label: "Attending",           value: track.attending, tab: "rsvp" as Tab },
+              { label: "Clicked Attending",    value: track.attending, tab: "rsvp" as Tab },
               { label: "RSVP Registrations",  value: track.rsvp,      tab: "rsvp" as Tab },
+              { label: "Total Attending",      value: totalAtt,        tab: "rsvp" as Tab },
             ].map(({ label, value, tab: t }) => (
               <button key={label} onClick={() => { setTab(t); document.getElementById("table-section")?.scrollIntoView({ behavior: "smooth" }); }} style={{
                 background: DIM, border: `1px solid rgba(201,169,110,0.18)`,
