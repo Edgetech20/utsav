@@ -26,11 +26,15 @@ git stash 2>/dev/null || true
 git pull origin master
 
 # ── Node deps ───────────────────────────────────────────────
-echo "==> Installing dependencies..."
-npm install --production=false
+if [ ! -d "node_modules" ]; then
+  echo "==> Installing dependencies..."
+  npm install --production=false
 
-echo "==> Installing WhatsApp bot dependencies..."
-npm install whatsapp-web.js qrcode-terminal qrcode nodemailer mysql2
+  echo "==> Installing WhatsApp bot dependencies..."
+  npm install whatsapp-web.js qrcode-terminal qrcode nodemailer mysql2
+else
+  echo "==> node_modules already present, skipping install."
+fi
 
 # ── Prisma ──────────────────────────────────────────────────
 echo "==> Generating Prisma client..."
