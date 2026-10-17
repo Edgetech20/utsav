@@ -89,7 +89,7 @@ async function sendQueue(client) {
 
 // ── WhatsApp client ───────────────────────────────────────────────────────────
 const client = new Client({
-  authStrategy: new LocalAuth({ dataPath: ".wwebjs_auth" }),
+  authStrategy: new LocalAuth({ dataPath: "/var/wwebjs_auth_utsav" }),
   puppeteer: {
     headless: true,
     args: [
