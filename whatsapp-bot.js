@@ -21,6 +21,7 @@ function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 
 // ── WaStatus ─────────────────────────────────────────────────────────────────
 let statusRowId = null;
+let lastQr = null;
 
 async function setStatus(status, qr = null) {
   if (statusRowId) {
@@ -109,6 +110,8 @@ const client = new Client({
 });
 
 client.on("qr", async qr => {
+  if (qr === lastQr) return;
+  lastQr = qr;
   const dataUrl = await qrcode.toDataURL(qr);
   await setStatus("qr", dataUrl).catch(console.error);
 });
@@ -139,7 +142,11 @@ client.on("auth_failure", async msg => {
 });
 
 // ── Start ─────────────────────────────────────────────────────────────────────
+let botStarted = false;
+
 async function start() {
+  if (botStarted) return;
+  botStarted = true;
   await setStatus("starting");
   console.log("[wa-bot] initializing…");
   client.initialize();

@@ -5,12 +5,29 @@ try { require("dotenv").config(); } catch {}
 
 // ── Start WhatsApp bot inline (same process as Next.js) ───────────────────────
 const { start: startBot, client: waClient } = require("./whatsapp-bot");
+const { PrismaClient } = require("@prisma/client");
 
-// Expose on globalThis so wa-start API route knows bot is inline
 globalThis.__waInline = true;
 globalThis.__waClient = waClient;
+globalThis.__waStart  = startBot; // admin can trigger via /api/wa-start
 
-startBot().catch(e => console.error("[wa-bot] start error:", e.message));
+// Auto-reconnect only if bot was previously connected
+(async () => {
+  const prisma = new PrismaClient();
+  try {
+    const row = await prisma.waStatus.findFirst({ orderBy: { id: "desc" } });
+    if (row?.status === "connected") {
+      console.log("[wa-bot] was connected, auto-reconnecting…");
+      startBot().catch(e => console.error("[wa-bot] start error:", e.message));
+    } else {
+      console.log("[wa-bot] idle — trigger via admin panel to connect");
+    }
+  } catch (e) {
+    console.error("[wa-bot] DB check failed:", e.message);
+  } finally {
+    await prisma.$disconnect();
+  }
+})();
 
 // ── Start Next.js custom server ───────────────────────────────────────────────
 const { createServer } = require("http");
