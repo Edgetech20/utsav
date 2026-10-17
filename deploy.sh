@@ -61,7 +61,7 @@ echo "==> Starting / restarting combined server (Next.js + WA bot)..."
 if pm2 describe utsav &> /dev/null; then
   pm2 restart utsav
 else
-  NODE_OPTIONS="--max-old-space-size=256 --max-semi-space-size=2 --optimize-for-size" \
+  NODE_OPTIONS="--max-old-space-size=256" \
   pm2 start utsav-start.js --name utsav \
     --max-memory-restart 700M
 fi
