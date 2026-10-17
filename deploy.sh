@@ -53,22 +53,17 @@ if ! command -v pm2 &> /dev/null; then
   npm install -g pm2
 fi
 
-echo "==> Starting / restarting Next.js app..."
+# Clean up old separate wa-bot processes if they exist
+pm2 delete wa-bot 2>/dev/null || true
+pm2 delete wa-bot-utsav 2>/dev/null || true
+
+echo "==> Starting / restarting combined server (Next.js + WA bot)..."
 if pm2 describe utsav &> /dev/null; then
   pm2 restart utsav
 else
-  NODE_OPTIONS="--max-old-space-size=128 --max-semi-space-size=2 --optimize-for-size" \
-  pm2 start npm --name utsav -- start \
-    --max-memory-restart 200M
-fi
-
-echo "==> Starting / restarting WhatsApp bot..."
-if pm2 describe wa-bot &> /dev/null; then
-  pm2 restart wa-bot
-else
-  pm2 start whatsapp-bot.js --name wa-bot \
-    --node-args="--max-old-space-size=96 --max-semi-space-size=2 --optimize-for-size" \
-    --max-memory-restart 600M
+  NODE_OPTIONS="--max-old-space-size=256 --max-semi-space-size=2 --optimize-for-size" \
+  pm2 start utsav-start.js --name utsav \
+    --max-memory-restart 700M
 fi
 
 echo "==> Saving PM2 process list..."
@@ -76,7 +71,6 @@ pm2 save
 
 echo ""
 echo "==> Done."
-echo "    Next.js → pm2 logs utsav"
-echo "    WA Bot  → pm2 logs wa-bot"
+echo "    Logs → pm2 logs utsav"
 echo ""
 echo "    To auto-start on server reboot: pm2 startup"
