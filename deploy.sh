@@ -57,9 +57,9 @@ echo "==> Starting / restarting Next.js app..."
 if pm2 describe utsav &> /dev/null; then
   pm2 restart utsav
 else
-  NODE_OPTIONS="--max-old-space-size=384" \
+  NODE_OPTIONS="--max-old-space-size=128 --max-semi-space-size=2 --optimize-for-size" \
   pm2 start npm --name utsav -- start \
-    --max-memory-restart 450M
+    --max-memory-restart 200M
 fi
 
 echo "==> Starting / restarting WhatsApp bot..."
@@ -67,8 +67,8 @@ if pm2 describe wa-bot &> /dev/null; then
   pm2 restart wa-bot
 else
   pm2 start whatsapp-bot.js --name wa-bot \
-    --node-args="--max-old-space-size=192" \
-    --max-memory-restart 250M
+    --node-args="--max-old-space-size=96 --max-semi-space-size=2 --optimize-for-size" \
+    --max-memory-restart 600M
 fi
 
 echo "==> Saving PM2 process list..."
