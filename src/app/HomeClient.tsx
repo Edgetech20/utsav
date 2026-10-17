@@ -715,7 +715,7 @@ export default function HomeClient({ initialSettings }: { initialSettings: Recor
                     <ChevronDown className="w-4 h-4 flex-shrink-0" style={{ color: "#C9A96E", opacity: 0.6, transition: "transform 0.35s cubic-bezier(0.16,1,0.3,1)", transform: open ? "rotate(180deg)" : "rotate(0deg)" }} />
                   </button>
 
-                  <div style={{ maxHeight: open ? "500px" : "0px", overflow: "hidden", transition: "max-height 0.45s cubic-bezier(0.16,1,0.3,1)" }}>
+                  <div style={{ maxHeight: open ? "700px" : "0px", overflow: "hidden", transition: "max-height 0.45s cubic-bezier(0.16,1,0.3,1)" }}>
                     {open && (
                     <div className="mx-6 mb-4 flex flex-col gap-2">
                       {a.description && <p className="text-xs leading-relaxed" style={{ color: "#C9A96E", opacity: 0.55 }}>{a.description}</p>}
