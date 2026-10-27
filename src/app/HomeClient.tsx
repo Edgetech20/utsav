@@ -228,7 +228,7 @@ function useCountdown(isoDate: string) {
   return t;
 }
 
-function AttendCount({ className, style, variant }: { className?: string; style?: React.CSSProperties; variant?: 'splash' | 'inline' }) {
+function AttendCount({ className, style, variant, isDark = true }: { className?: string; style?: React.CSSProperties; variant?: 'splash' | 'inline'; isDark?: boolean }) {
   const [count, setCount]     = useState<number | null>(null);
   const [display, setDisplay] = useState(0);
   const prev = useRef(0);
@@ -258,15 +258,18 @@ function AttendCount({ className, style, variant }: { className?: string; style?
     requestAnimationFrame(step);
   }, [count]);
 
+  const numColor  = isDark ? "#E8D5B0" : "#3D2800";
+  const goldColor = isDark ? "#C9A96E" : "#7A5818";
+
   if (count === null) return null;
   if (variant === 'splash') return (
     <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 3, marginTop: 20 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-        <span style={{ color: "#C9A96E", opacity: 0.4, fontSize: 12 }}>✦</span>
-        <span style={{ fontSize: "clamp(1.1rem, 4vw, 1.4rem)", fontWeight: 800, color: "#E8D5B0", letterSpacing: "0.05em" }}>{display.toLocaleString()}</span>
-        <span style={{ color: "#C9A96E", opacity: 0.4, fontSize: 12 }}>✦</span>
+        <span style={{ color: goldColor, opacity: 0.5, fontSize: 12 }}>✦</span>
+        <span style={{ fontSize: "clamp(1.1rem, 4vw, 1.4rem)", fontWeight: 800, color: numColor, letterSpacing: "0.05em" }}>{display.toLocaleString()}</span>
+        <span style={{ color: goldColor, opacity: 0.5, fontSize: 12 }}>✦</span>
       </div>
-      <span style={{ fontSize: "0.55rem", letterSpacing: "0.25em", textTransform: "uppercase", color: "#C9A96E", opacity: 0.45 }}>people attending</span>
+      <span style={{ fontSize: "0.55rem", letterSpacing: "0.25em", textTransform: "uppercase", color: goldColor, opacity: 0.6 }}>people attending</span>
     </div>
   );
   return <span className={className} style={style}>{display} attending</span>;
@@ -611,7 +614,7 @@ export default function HomeClient({ initialSettings }: { initialSettings: Recor
             </div>
           </div>
 
-          <AttendCount variant="splash" />
+          <AttendCount variant="splash" isDark={theme === 'dark'} />
 
         </div>
       ) : null}
