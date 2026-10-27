@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { MapPin, Calendar, Navigation, CheckCircle, ChevronDown, Stethoscope, UtensilsCrossed, Footprints, BookOpen, Camera, ShoppingBag, Music, Mic, Palette, Theater, Sparkles } from "lucide-react";
+import { MapPin, Calendar, Navigation, CheckCircle, ChevronDown, Stethoscope, UtensilsCrossed, Footprints, BookOpen, Camera, ShoppingBag, Music, Mic, Palette, Theater, Sparkles, Sun, Moon } from "lucide-react";
 import * as Icons from "lucide-react";
 function LucideIcon({ name, size = 14 }: { name: string; size?: number }) {
   if (!name?.trim()) return null;
@@ -9,6 +9,78 @@ function LucideIcon({ name, size = 14 }: { name: string; size?: number }) {
   const Icon = (Icons as Record<string, unknown>)[key] as React.ComponentType<{ size?: number }> | undefined;
   return Icon ? <Icon size={size} /> : null;
 }
+
+const DARK = {
+  bg:      '#0E0E0E',
+  bg2:     '#141414',
+  bg3:     '#1A1A1A',
+  text:    '#E8D5B0',
+  textB:   'rgba(232,213,176,0.7)',
+  textC:   'rgba(232,213,176,0.55)',
+  textPh:  'rgba(232,213,176,0.22)',
+  gold:    '#C9A96E',
+  goldDk:  '#9A7840',
+  g55:     'rgba(201,169,110,0.55)',
+  g45:     'rgba(201,169,110,0.45)',
+  g35:     'rgba(201,169,110,0.35)',
+  g25:     'rgba(201,169,110,0.25)',
+  g22:     'rgba(201,169,110,0.22)',
+  g20:     'rgba(201,169,110,0.20)',
+  g18:     'rgba(201,169,110,0.18)',
+  g15:     'rgba(201,169,110,0.15)',
+  g12:     'rgba(201,169,110,0.12)',
+  g08:     'rgba(201,169,110,0.08)',
+  g06:     'rgba(201,169,110,0.06)',
+  g04:     'rgba(201,169,110,0.04)',
+  onGold:  '#0E0E0E',
+  overlay:  'rgba(0,0,0,0.75)',
+  overlay2: 'rgba(0,0,0,0.45)',
+  heroBg:   'radial-gradient(ellipse 80% 60% at 50% 0%, #2C2010 0%, #0E0E0E 70%)',
+  splashBg: 'radial-gradient(ellipse 80% 80% at 50% 40%, #2C1A00 0%, #0E0E0E 70%)',
+  gradBtn:  'linear-gradient(90deg, #9A7840, #C9A96E, #E8D5B0, #C9A96E, #9A7840)',
+  gradBtn2: 'linear-gradient(135deg, #C9A96E, #9A7840)',
+  gradReg:  'linear-gradient(135deg, rgba(201,169,110,0.22), rgba(154,120,64,0.16))',
+  inputBg:  '#0E0E0E',
+  inputBdr: 'rgba(201,169,110,0.2)',
+  inputText:'#E8D5B0',
+  formBg:   '#141414',
+} as const;
+
+const LIGHT = {
+  bg:      '#F5F0E8',
+  bg2:     '#EDE8DF',
+  bg3:     '#FFFFFF',
+  text:    '#1C1C1E',          // clean near-black, no warm tint
+  textB:   '#3A3A3C',          // neutral dark gray
+  textC:   '#6C6C70',          // neutral mid gray
+  textPh:  'rgba(28,28,30,0.3)',
+  gold:    '#A07828',          // rich dark gold — readable on cream, clearly gold
+  goldDk:  '#7A5818',          // deeper gold for hover/darks
+  g55:     'rgba(160,120,40,0.55)',
+  g45:     'rgba(160,120,40,0.45)',
+  g35:     'rgba(160,120,40,0.35)',
+  g25:     'rgba(160,120,40,0.25)',
+  g22:     'rgba(160,120,40,0.22)',
+  g20:     'rgba(160,120,40,0.20)',
+  g18:     'rgba(160,120,40,0.18)',
+  g15:     '#E4DDD3',
+  g12:     '#EDE8E0',
+  g08:     '#F3EFE8',
+  g06:     '#F8F5F0',
+  g04:     '#FDFCFA',
+  onGold:  '#FFFFFF',
+  overlay:  'rgba(28,28,30,0.55)',
+  overlay2: 'rgba(28,28,30,0.35)',
+  heroBg:   'radial-gradient(ellipse 80% 60% at 50% 0%, #D8C89A 0%, #F5F0E8 70%)',
+  splashBg: 'radial-gradient(ellipse 80% 80% at 50% 40%, #C8B888 0%, #F5F0E8 70%)',
+  gradBtn:  'linear-gradient(90deg, #7A5818, #A07828, #C8A050, #A07828, #7A5818)',
+  gradBtn2: 'linear-gradient(135deg, #A07828, #7A5818)',
+  gradReg:  'linear-gradient(135deg, rgba(160,120,40,0.18), rgba(122,88,24,0.12))',
+  inputBg:  '#FFFFFF',
+  inputBdr: 'rgba(160,120,40,0.3)',
+  inputText:'#1C1C1E',
+  formBg:   '#EDE8DF',
+} as const;
 
 const DEFAULT_EVENT = {
   date: "Sunday, 20 December 2026 | ৪ ই পৌষ, ১৪৩৩",
@@ -156,7 +228,7 @@ function useCountdown(isoDate: string) {
   return t;
 }
 
-function AttendCount({ className }: { className?: string }) {
+function AttendCount({ className, style, variant }: { className?: string; style?: React.CSSProperties; variant?: 'splash' | 'inline' }) {
   const [count, setCount]     = useState<number | null>(null);
   const [display, setDisplay] = useState(0);
   const prev = useRef(0);
@@ -164,7 +236,7 @@ function AttendCount({ className }: { className?: string }) {
   // Poll every 30 s — state is local so only this element re-renders
   useEffect(() => {
     const tick = () =>
-      fetch("/api/track").then(r => r.json()).then(d => setCount(d.attending ?? null)).catch(() => {});
+      fetch("/api/track").then(r => r.json()).then(d => setCount(d.totalAttending ?? null)).catch(() => {});
     tick();
     const id = setInterval(tick, 30000);
     return () => clearInterval(id);
@@ -187,7 +259,17 @@ function AttendCount({ className }: { className?: string }) {
   }, [count]);
 
   if (count === null) return null;
-  return <span className={className}>({display} attending)</span>;
+  if (variant === 'splash') return (
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 3, marginTop: 20 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        <span style={{ color: "#C9A96E", opacity: 0.4, fontSize: 12 }}>✦</span>
+        <span style={{ fontSize: "clamp(1.1rem, 4vw, 1.4rem)", fontWeight: 800, color: "#E8D5B0", letterSpacing: "0.05em" }}>{display.toLocaleString()}</span>
+        <span style={{ color: "#C9A96E", opacity: 0.4, fontSize: 12 }}>✦</span>
+      </div>
+      <span style={{ fontSize: "0.55rem", letterSpacing: "0.25em", textTransform: "uppercase", color: "#C9A96E", opacity: 0.45 }}>people attending</span>
+    </div>
+  );
+  return <span className={className} style={style}>{display} attending</span>;
 }
 
 export default function HomeClient({ initialSettings }: { initialSettings: Record<string, string> }) {
@@ -204,6 +286,23 @@ export default function HomeClient({ initialSettings }: { initialSettings: Recor
   const [dynFormValues, setDynFormValues]   = useState<Record<string, string>>({});
   const [dynFormErrors, setDynFormErrors]   = useState<Record<string, string>>({});
   const [dynFormState, setDynFormState]     = useState<"idle" | "loading" | "done" | "error">("idle");
+
+  const [theme, setTheme] = useState<'dark'|'light'>('dark'); // always dark on SSR
+  const T = theme === 'dark' ? DARK : LIGHT;
+
+  // apply stored theme after hydration — avoids SSR/client mismatch
+  useEffect(() => {
+    const stored = localStorage.getItem('theme') as 'dark'|'light' | null;
+    if (stored && stored !== 'dark') setTheme(stored);
+  }, []);
+
+  function toggleTheme() {
+    setTheme(t => {
+      const next = t === 'dark' ? 'light' : 'dark';
+      localStorage.setItem('theme', next);
+      return next;
+    });
+  }
 
   useEffect(() => {
     if (!dynFormSlug) { setDynFormData(null); setDynFormValues({}); setDynFormErrors({}); setDynFormState("idle"); return; }
@@ -267,6 +366,7 @@ export default function HomeClient({ initialSettings }: { initialSettings: Recor
   const [entered, setEntered] = useState(false);
   const [playing, setPlaying] = useState(false);
   const [dbAttractions, setDbAttractions] = useState<{ id: number; name: string; description: string | null; url: string | null; navigateToVenue: boolean; formSlug: string | null; images: { id: number; imageUrl: string }[] }[]>([]);
+  const [programmes, setProgrammes] = useState<{ id: number; title: string; time: string; description: string | null; venue: string | null }[]>([]);
   const [event] = useState(() => ({
     date:     initialSettings.event_date       || DEFAULT_EVENT.date,
     dateIso:  initialSettings.event_date_iso   || DEFAULT_EVENT.dateIso,
@@ -280,6 +380,7 @@ export default function HomeClient({ initialSettings }: { initialSettings: Recor
 
   useEffect(() => {
     fetch("/api/attractions").then(r => r.ok ? r.json() : Promise.reject()).then(setDbAttractions).catch(() => {});
+    fetch("/api/programmes").then(r => r.ok ? r.json() : Promise.reject()).then(setProgrammes).catch(() => {});
     setMounted(true);
     fetch("/music.mp3", { method: "HEAD" }).then((res) => {
       if (!res.ok) return;
@@ -365,20 +466,37 @@ export default function HomeClient({ initialSettings }: { initialSettings: Recor
   }
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-start" style={{ background: "#0E0E0E" }}>
+    <div data-inv-theme={theme} className="min-h-screen flex flex-col items-center justify-start" style={{ background: T.bg }}>
 
       <style>{`
         @keyframes shimmer {
           0%   { background-position: -200% center; }
           100% { background-position:  200% center; }
         }
+        [data-inv-theme="dark"] {
+          --shimmer-grad: linear-gradient(90deg, #9A7840 20%, #C9A96E 40%, #E8D5B0 50%, #C9A96E 60%, #9A7840 80%);
+          --title-grad: linear-gradient(90deg, #3D2500 0%, #9A7840 20%, #C9A96E 35%, #F5EDD0 50%, #C9A96E 65%, #9A7840 80%, #3D2500 100%);
+        }
+        [data-inv-theme="light"] {
+          --shimmer-grad: linear-gradient(90deg, #7A5818 20%, #A07828 40%, #C8A050 50%, #A07828 60%, #7A5818 80%);
+          --title-grad: linear-gradient(90deg, #3D2800 0%, #7A5818 20%, #A07828 35%, #C8A050 50%, #A07828 65%, #7A5818 80%, #3D2800 100%);
+        }
         .shimmer-text {
-          background: linear-gradient(90deg, #9A7840 20%, #C9A96E 40%, #E8D5B0 50%, #C9A96E 60%, #9A7840 80%);
+          background: var(--shimmer-grad);
           background-size: 200% auto;
           -webkit-background-clip: text;
           -webkit-text-fill-color: transparent;
           background-clip: text;
           animation: shimmer 4s linear infinite;
+        }
+        .event-title {
+          font-family: var(--font-galada), serif;
+          background: var(--title-grad);
+          background-size: 300% auto;
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+          background-clip: text;
+          animation: shimmer-gold 6s linear infinite;
         }
         @keyframes pulse-bar {
           0%, 100% { opacity: 0.35; transform: scaleX(0.85); }
@@ -404,18 +522,6 @@ export default function HomeClient({ initialSettings }: { initialSettings: Recor
         .event-title-wrap {
           animation: title-float 5s ease-in-out 1s infinite;
         }
-        .event-title {
-          font-family: var(--font-galada), serif;
-          background: linear-gradient(90deg,
-            #3D2500 0%, #9A7840 20%, #C9A96E 35%,
-            #F5EDD0 50%,
-            #C9A96E 65%, #9A7840 80%, #3D2500 100%);
-          background-size: 300% auto;
-          -webkit-background-clip: text;
-          -webkit-text-fill-color: transparent;
-          background-clip: text;
-          animation: shimmer-gold 6s linear infinite;
-        }
         @keyframes splash-zoom-in {
           0%   { opacity: 0; transform: scale(0.3); filter: blur(10px); }
           60%  { opacity: 1; filter: blur(0); }
@@ -439,7 +545,7 @@ export default function HomeClient({ initialSettings }: { initialSettings: Recor
           to { transform: rotate(360deg); }
         }
         .music-disc { animation: spin-slow 4s linear infinite; }
-        .vf-input:focus { border-color: rgba(201,169,110,0.55) !important; box-shadow: 0 0 0 3px rgba(201,169,110,0.07); outline: none; }
+        .vf-input:focus { border-color: rgba(139,105,20,0.35) !important; box-shadow: 0 0 0 3px rgba(201,169,110,0.07); outline: none; }
         .vf-input::placeholder { color: rgba(232,213,176,0.22); }
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
@@ -469,7 +575,7 @@ export default function HomeClient({ initialSettings }: { initialSettings: Recor
           onClick={handleEnter}
           style={{
             position: "fixed", inset: 0, zIndex: 100,
-            background: "radial-gradient(ellipse 80% 80% at 50% 40%, #2C1A00 0%, #0E0E0E 70%)",
+            background: T.splashBg,
             display: entered ? "flex" : "flex",
             flexDirection: "column", alignItems: "center", justifyContent: "center",
             cursor: "pointer",
@@ -477,12 +583,12 @@ export default function HomeClient({ initialSettings }: { initialSettings: Recor
           }}
         >
           <div className="flex items-center gap-3 mb-8">
-            <div className="flex-1 h-px w-16" style={{ background: "linear-gradient(90deg, transparent, #C9A96E)" }} />
-            <span style={{ color: "#C9A96E", fontSize: 20 }}>✦</span>
-            <div className="flex-1 h-px w-16" style={{ background: "linear-gradient(90deg, #C9A96E, transparent)" }} />
+            <div className="flex-1 h-px w-16" style={{ background: `linear-gradient(90deg, transparent, ${T.gold})` }} />
+            <span style={{ color: T.gold, fontSize: 20 }}>✦</span>
+            <div className="flex-1 h-px w-16" style={{ background: `linear-gradient(90deg, ${T.gold}, transparent)` }} />
           </div>
 
-          <h1 className="event-title splash-title mb-2" style={{ fontSize: "clamp(5rem, 28vw, 8rem)", letterSpacing: "0.06em", lineHeight: 1.6 }}>
+          <h1 className="event-title splash-title mb-2" style={{ fontSize: "clamp(4rem, 22vw, 6.5rem)", letterSpacing: "0.06em", lineHeight: 1.6 }}>
             প্ৰিয়বোধী
           </h1>
           <p className="shimmer-text font-black mb-10" style={{ fontSize: "clamp(1rem, 4vw, 1.4rem)", letterSpacing: "0.1em" }}>
@@ -492,11 +598,13 @@ export default function HomeClient({ initialSettings }: { initialSettings: Recor
           <div style={{ animation: "tap-pulse 2s ease-in-out infinite" }}>
             <div
               className="flex flex-col items-center gap-2 px-8 py-3 rounded-full border"
-              style={{ borderColor: "rgba(201,169,110,0.45)", background: "rgba(201,169,110,0.06)" }}
+              style={{ borderColor: T.g45, background: T.g06 }}
             >
-              <span className="text-xs uppercase tracking-[0.4em]" style={{ color: "#C9A96E", opacity: 0.8 }}>Tap to Enter</span>
+              <span className="text-xs uppercase tracking-[0.4em]" style={{ color: T.gold, opacity: 0.8 }}>Tap to Enter</span>
             </div>
           </div>
+
+          <AttendCount variant="splash" />
 
         </div>
       ) : null}
@@ -504,16 +612,16 @@ export default function HomeClient({ initialSettings }: { initialSettings: Recor
       {/* ── Hero ── */}
       <div
         className="w-full flex flex-col items-center text-center px-6 pt-16 pb-14"
-        style={{ background: "radial-gradient(ellipse 80% 60% at 50% 0%, #2C2010 0%, #0E0E0E 70%)" }}
+        style={{ background: T.heroBg }}
       >
         {/* Ornamental top rule */}
         <div className="flex items-center gap-3 w-full max-w-xs mb-8">
-          <div className="flex-1 h-px" style={{ background: "linear-gradient(90deg, transparent, #C9A96E)" }} />
-          <span style={{ color: "#C9A96E", fontSize: 18, lineHeight: 1 }}>✦</span>
-          <div className="flex-1 h-px" style={{ background: "linear-gradient(90deg, #C9A96E, transparent)" }} />
+          <div className="flex-1 h-px" style={{ background: `linear-gradient(90deg, transparent, ${T.gold})` }} />
+          <span style={{ color: T.gold, fontSize: 18, lineHeight: 1 }}>✦</span>
+          <div className="flex-1 h-px" style={{ background: `linear-gradient(90deg, ${T.gold}, transparent)` }} />
         </div>
 
-        <p className="uppercase tracking-[0.4em] mb-4" style={{ color: "#C9A96E", opacity: 0.5, fontSize: "0.6rem" }}>
+        <p className="uppercase tracking-[0.4em] mb-4" style={{ color: T.gold, opacity: 0.5, fontSize: "0.6rem" }}>
           You are cordially invited to
         </p>
 
@@ -532,7 +640,7 @@ export default function HomeClient({ initialSettings }: { initialSettings: Recor
             <div
               className="absolute inset-0 pointer-events-none"
               style={{
-                background: "radial-gradient(ellipse 80% 60% at 50% 50%, rgba(201,169,110,0.22) 0%, transparent 70%)",
+                background: `radial-gradient(ellipse 80% 60% at 50% 50%, ${T.g22} 0%, transparent 70%)`,
                 filter: "blur(18px)",
                 animation: "bloom-breathe 4s ease-in-out infinite",
               }}
@@ -549,21 +657,21 @@ export default function HomeClient({ initialSettings }: { initialSettings: Recor
           </p>
         </div>
 
-        <p className="mt-3 text-sm font-medium tracking-wide" style={{ color: "#C9A96E", opacity: 0.75 }}>
+        <p className="mt-3 text-sm font-medium tracking-wide" style={{ color: T.gold, opacity: 0.75 }}>
           Purba Bardhaman Sadar North Subdivision
         </p>
 
         {/* Bottom rule */}
         <div className="flex items-center gap-3 w-full max-w-xs mt-8">
-          <div className="flex-1 h-px" style={{ background: "linear-gradient(90deg, transparent, #C9A96E)" }} />
-          <span style={{ color: "#C9A96E", fontSize: 18, lineHeight: 1 }}>✦</span>
-          <div className="flex-1 h-px" style={{ background: "linear-gradient(90deg, #C9A96E, transparent)" }} />
+          <div className="flex-1 h-px" style={{ background: `linear-gradient(90deg, transparent, ${T.gold})` }} />
+          <span style={{ color: T.gold, fontSize: 18, lineHeight: 1 }}>✦</span>
+          <div className="flex-1 h-px" style={{ background: `linear-gradient(90deg, ${T.gold}, transparent)` }} />
         </div>
       </div>
 
       {/* ── Countdown ── */}
-      <div className="w-full px-5 py-8" style={{ background: "#141414" }}>
-        <p className="text-center text-xs uppercase tracking-[0.3em] mb-6" style={{ color: "#C9A96E", opacity: 0.45 }}>
+      <div className="w-full px-5 py-8" style={{ background: T.bg2 }}>
+        <p className="text-center text-xs uppercase tracking-[0.3em] mb-6" style={{ color: T.gold, opacity: 0.45 }}>
           Counting down to the event
         </p>
         <div className="flex items-start justify-center gap-0">
@@ -577,16 +685,16 @@ export default function HomeClient({ initialSettings }: { initialSettings: Recor
               <div className="flex flex-col items-center w-[72px]">
                 <span
                   className="text-5xl font-black tabular-nums leading-none"
-                  style={{ color: "#E8D5B0", fontVariantNumeric: "tabular-nums" }}
+                  style={{ color: T.text, fontVariantNumeric: "tabular-nums" }}
                 >
                   {String(value).padStart(2, "0")}
                 </span>
-                <span className="text-[10px] uppercase tracking-widest mt-2" style={{ color: "#C9A96E", opacity: 0.5 }}>
+                <span className="text-[10px] uppercase tracking-widest mt-2" style={{ color: T.gold, opacity: 0.5 }}>
                   {label}
                 </span>
               </div>
               {i < 3 && (
-                <span className="text-3xl font-light mt-1 mx-1 select-none" style={{ color: "#C9A96E", opacity: 0.35 }}>
+                <span className="text-3xl font-light mt-1 mx-1 select-none" style={{ color: T.gold, opacity: 0.35 }}>
                   :
                 </span>
               )}
@@ -596,30 +704,30 @@ export default function HomeClient({ initialSettings }: { initialSettings: Recor
       </div>
 
       {/* ── Event Details ── */}
-      <div className="w-full max-w-lg px-6 py-8 grid grid-cols-2 gap-4" style={{ background: "#0E0E0E" }}>
-        <div className="flex flex-col gap-1 border-l-2 pl-4" style={{ borderColor: "#C9A96E" }}>
-          <div className="flex items-center gap-1.5 mb-1" style={{ color: "#C9A96E" }}>
+      <div className="w-full max-w-lg px-6 py-8 grid grid-cols-2 gap-4" style={{ background: T.bg }}>
+        <div className="flex flex-col gap-1 border-l-2 pl-4" style={{ borderColor: T.gold }}>
+          <div className="flex items-center gap-1.5 mb-1" style={{ color: T.gold }}>
             <Calendar className="w-3.5 h-3.5" />
             <span className="text-[10px] uppercase tracking-widest" style={{ opacity: 0.55 }}>Date</span>
           </div>
-          <p className="text-sm font-semibold leading-snug" style={{ color: "#E8D5B0" }}>{event.date}</p>
+          <p className="text-sm font-semibold leading-snug" style={{ color: T.text }}>{event.date}</p>
         </div>
 
-        <div className="flex flex-col gap-1 border-l-2 pl-4" style={{ borderColor: "#C9A96E" }}>
-          <div className="flex items-center gap-1.5 mb-1" style={{ color: "#C9A96E" }}>
+        <div className="flex flex-col gap-1 border-l-2 pl-4" style={{ borderColor: T.gold }}>
+          <div className="flex items-center gap-1.5 mb-1" style={{ color: T.gold }}>
             <MapPin className="w-3.5 h-3.5" />
             <span className="text-[10px] uppercase tracking-widest" style={{ opacity: 0.55 }}>Place</span>
           </div>
-          <p className="text-sm font-semibold leading-snug" style={{ color: "#E8D5B0" }}>{event.venue}</p>
+          <p className="text-sm font-semibold leading-snug" style={{ color: T.text }}>{event.venue}</p>
         </div>
       </div>
 
       {/* ── Map ── */}
-      <div className="w-full" style={{ background: "#0E0E0E" }}>
-        <div className="mx-5 mb-6 rounded-2xl overflow-hidden border" style={{ borderColor: "rgba(201,169,110,0.25)" }}>
-          <div className="flex items-center gap-2 px-4 py-2.5" style={{ background: "#1A1A1A", borderBottom: "1px solid rgba(201,169,110,0.15)" }}>
-            <MapPin className="w-3.5 h-3.5" style={{ color: "#C9A96E" }} />
-            <span className="text-xs tracking-wide" style={{ color: "#C9A96E", opacity: 0.65 }}>Venue Location</span>
+      <div className="w-full" style={{ background: T.bg }}>
+        <div className="mx-5 mb-6 rounded-2xl overflow-hidden border" style={{ borderColor: T.g25 }}>
+          <div className="flex items-center gap-2 px-4 py-2.5" style={{ background: T.bg3, borderBottom: `1px solid ${T.g15}` }}>
+            <MapPin className="w-3.5 h-3.5" style={{ color: T.gold }} />
+            <span className="text-xs tracking-wide" style={{ color: T.gold, opacity: 0.65 }}>Venue Location</span>
           </div>
           <iframe
             src={event.embedUrl}
@@ -635,7 +743,7 @@ export default function HomeClient({ initialSettings }: { initialSettings: Recor
       </div>
 
       {/* ── CTAs ── */}
-      <div className="w-full max-w-lg px-5 flex flex-col gap-3 pb-6" style={{ background: "#0E0E0E" }}>
+      <div className="w-full max-w-lg px-5 flex flex-col gap-3 pb-6" style={{ background: T.bg }}>
         <a
           data-reveal
           href={event.mapsUrl}
@@ -643,7 +751,7 @@ export default function HomeClient({ initialSettings }: { initialSettings: Recor
           rel="noopener noreferrer"
           onClick={handleMap}
           className="flex items-center justify-center gap-2 w-full py-4 rounded-2xl font-bold text-sm transition-all hover:brightness-110 active:scale-[0.98]"
-          style={{ background: "linear-gradient(90deg, #9A7840, #C9A96E, #E8D5B0, #C9A96E, #9A7840)", backgroundSize: "200% auto", color: "#0E0E0E", transitionDelay: "0ms" }}
+          style={{ backgroundImage: T.gradBtn, backgroundSize: "200% auto", color: T.onGold, transitionDelay: "0ms" }}
         >
           <Navigation className="w-4 h-4" />
           Get Directions on Google Maps
@@ -657,7 +765,7 @@ export default function HomeClient({ initialSettings }: { initialSettings: Recor
           style={
             attended
               ? { background: "rgba(34,197,94,0.08)", borderColor: "#22c55e", color: "#4ade80", transitionDelay: "120ms" }
-              : { background: "transparent", borderColor: "rgba(201,169,110,0.35)", color: "#C9A96E", transitionDelay: "120ms" }
+              : { background: "transparent", borderColor: T.g35, color: T.gold, transitionDelay: "120ms" }
           }
         >
           {attended ? (
@@ -674,11 +782,11 @@ export default function HomeClient({ initialSettings }: { initialSettings: Recor
       </div>
 
       {/* ── Attractions ── */}
-      <div className="w-full py-10" style={{ background: "#141414" }}>
+      <div className="w-full py-10" style={{ background: T.bg2 }}>
         <div className="flex items-center gap-3 px-5 mb-8">
-          <div className="flex-1 h-px" style={{ background: "linear-gradient(90deg, transparent, #C9A96E)" }} />
-          <span className="text-xs uppercase tracking-[0.3em]" style={{ color: "#C9A96E", opacity: 0.55 }}>Specialties &amp; Attractions</span>
-          <div className="flex-1 h-px" style={{ background: "linear-gradient(90deg, #C9A96E, transparent)" }} />
+          <div className="flex-1 h-px" style={{ background: `linear-gradient(90deg, transparent, ${T.gold})` }} />
+          <span className="text-xs uppercase tracking-[0.3em]" style={{ color: T.gold, opacity: 0.55 }}>Specialties &amp; Attractions</span>
+          <div className="flex-1 h-px" style={{ background: `linear-gradient(90deg, ${T.gold}, transparent)` }} />
         </div>
         <div className="flex flex-col">
           {(() => {
@@ -698,55 +806,55 @@ export default function HomeClient({ initialSettings }: { initialSettings: Recor
                 <div
                   key={a.id}
                   data-reveal
-                  style={{ borderBottom: i < items.length - 1 ? "1px solid rgba(201,169,110,0.06)" : "none" }}
+                  style={{ borderBottom: i < items.length - 1 ? `1px solid ${T.g06}` : "none" }}
                 >
                   <button
                     onClick={() => setExpanded(open ? null : a.id)}
                     className="w-full flex items-center gap-5 px-6 py-4 relative text-left"
-                    style={{ background: open ? "rgba(201,169,110,0.04)" : "transparent" }}
+                    style={{ background: open ? T.g04 : "transparent" }}
                   >
-                    <div className="reveal-bar absolute left-0 top-0 bottom-0 w-[3px] rounded-r-full" style={{ background: "linear-gradient(180deg, #C9A96E, #9A7840)" }} />
-                    <span className="font-black tabular-nums select-none" style={{ color: "#C9A96E", opacity: open ? 0.5 : 0.18, fontSize: "clamp(2rem, 7vw, 2.8rem)", lineHeight: 1, minWidth: "2.2ch", transition: "opacity 0.3s" }}>
+                    <div className="reveal-bar absolute left-0 top-0 bottom-0 w-[3px] rounded-r-full" style={{ background: `linear-gradient(180deg, ${T.gold}, ${T.goldDk})` }} />
+                    <span className="font-black tabular-nums select-none" style={{ color: T.gold, opacity: open ? 0.5 : 0.18, fontSize: "clamp(2rem, 7vw, 2.8rem)", lineHeight: 1, minWidth: "2.2ch", transition: "opacity 0.3s" }}>
                       {String(i + 1).padStart(2, "0")}
                     </span>
-                    <span className="flex-1 font-semibold tracking-wide" style={{ color: open ? "#C9A96E" : "#E8D5B0", fontSize: "clamp(1rem, 3.8vw, 1.15rem)", transition: "color 0.3s" }}>
+                    <span className="flex-1 font-semibold tracking-wide" style={{ color: open ? T.gold : T.text, fontSize: "clamp(1rem, 3.8vw, 1.15rem)", transition: "color 0.3s" }}>
                       {a.name}
                     </span>
-                    <ChevronDown className="w-4 h-4 flex-shrink-0" style={{ color: "#C9A96E", opacity: 0.6, transition: "transform 0.35s cubic-bezier(0.16,1,0.3,1)", transform: open ? "rotate(180deg)" : "rotate(0deg)" }} />
+                    <ChevronDown className="w-4 h-4 flex-shrink-0" style={{ color: T.gold, opacity: 0.6, transition: "transform 0.35s cubic-bezier(0.16,1,0.3,1)", transform: open ? "rotate(180deg)" : "rotate(0deg)" }} />
                   </button>
 
                   <div style={{ maxHeight: open ? "700px" : "0px", overflow: "hidden", transition: "max-height 0.45s cubic-bezier(0.16,1,0.3,1)" }}>
                     {open && (
                     <div className="mx-6 mb-4 flex flex-col gap-2">
-                      {a.description && <p className="text-xs leading-relaxed" style={{ color: "#C9A96E", opacity: 0.55 }}>{a.description}</p>}
+                      {a.description && <p className="text-xs leading-relaxed" style={{ color: T.gold, opacity: 0.55 }}>{a.description}</p>}
                       {imgs.length > 0 && (
                         <div className="grid gap-2 mt-2" style={{ gridTemplateColumns: imgs.length === 1 ? "1fr" : "1fr 1fr" }}>
                           {imgs.map((src, idx) => (
-                            <div key={idx} className="rounded-xl overflow-hidden aspect-video" style={{ border: "1px solid rgba(201,169,110,0.2)" }}>
+                            <div key={idx} className="rounded-xl overflow-hidden aspect-video" style={{ border: `1px solid ${T.g20}` }}>
                               <img src={src} alt={`${a.name} ${idx + 1}`} className="w-full h-full object-cover" loading="lazy" />
                             </div>
                           ))}
                         </div>
                       )}
                       {a.formSlug && (
-                        <button onClick={() => setDynFormSlug(a.formSlug)} className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl font-bold text-sm mt-2" style={{ background: "linear-gradient(135deg, rgba(201,169,110,0.22), rgba(154,120,64,0.16))", border: "1px solid rgba(201,169,110,0.45)", color: "#C9A96E", letterSpacing: "0.04em" }}>
+                        <button onClick={() => setDynFormSlug(a.formSlug)} className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl font-bold text-sm mt-2" style={{ background: T.gradReg, border: `1px solid ${T.g45}`, color: T.gold, letterSpacing: "0.04em" }}>
                           <CheckCircle className="w-4 h-4" /> Register
                         </button>
                       )}
                       {a.url && (
-                        <a href={a.url} target="_blank" rel="noopener noreferrer" className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl font-bold text-sm" style={{ background: "linear-gradient(135deg, rgba(201,169,110,0.18), rgba(154,120,64,0.12))", border: "1px solid rgba(201,169,110,0.35)", color: "#C9A96E", letterSpacing: "0.04em" }}>
+                        <a href={a.url} target="_blank" rel="noopener noreferrer" className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl font-bold text-sm" style={{ background: T.gradReg, border: `1px solid ${T.g35}`, color: T.gold, letterSpacing: "0.04em" }}>
                           <Sparkles className="w-4 h-4" /> Open Link
                         </a>
                       )}
                       {a.navigateToVenue && (
-                        <a href={event.mapsUrl} target="_blank" rel="noopener noreferrer" className="w-full flex items-center justify-center gap-2 py-3 rounded-xl font-semibold text-sm" style={{ background: "linear-gradient(135deg, rgba(201,169,110,0.18), rgba(154,120,64,0.12))", border: "1px solid rgba(201,169,110,0.35)", color: "#C9A96E" }}>
+                        <a href={event.mapsUrl} target="_blank" rel="noopener noreferrer" className="w-full flex items-center justify-center gap-2 py-3 rounded-xl font-semibold text-sm" style={{ background: T.gradReg, border: `1px solid ${T.g35}`, color: T.gold }}>
                           <Navigation className="w-4 h-4" /> Navigate to Venue
                         </a>
                       )}
                       {imgs.length === 0 && !a.url && !a.formSlug && !a.navigateToVenue && !a.description && (
-                        <div className="rounded-xl flex flex-col items-center justify-center gap-2 py-8" style={{ background: "#1A1A1A", border: "1px solid rgba(201,169,110,0.15)" }}>
-                          <Icon className="w-8 h-8" style={{ color: "#C9A96E", opacity: 0.35 }} />
-                          <p className="text-xs uppercase tracking-widest" style={{ color: "#C9A96E", opacity: 0.35 }}>Photo coming soon</p>
+                        <div className="rounded-xl flex flex-col items-center justify-center gap-2 py-8" style={{ background: T.bg3, border: `1px solid ${T.g15}` }}>
+                          <Icon className="w-8 h-8" style={{ color: T.gold, opacity: 0.35 }} />
+                          <p className="text-xs uppercase tracking-widest" style={{ color: T.gold, opacity: 0.35 }}>Photo coming soon</p>
                         </div>
                       )}
                     </div>
@@ -761,17 +869,17 @@ export default function HomeClient({ initialSettings }: { initialSettings: Recor
 
 
       {/* ── Contact ── */}
-      <div className="w-full px-5 py-8" style={{ background: "#0E0E0E" }}>
+      <div className="w-full px-5 py-8" style={{ background: T.bg }}>
         <div className="flex items-center gap-3 mb-6">
-          <div className="flex-1 h-px" style={{ background: "linear-gradient(90deg, transparent, #C9A96E)" }} />
-          <span className="text-xs uppercase tracking-[0.3em]" style={{ color: "#C9A96E", opacity: 0.55 }}>Contact</span>
-          <div className="flex-1 h-px" style={{ background: "linear-gradient(90deg, #C9A96E, transparent)" }} />
+          <div className="flex-1 h-px" style={{ background: `linear-gradient(90deg, transparent, ${T.gold})` }} />
+          <span className="text-xs uppercase tracking-[0.3em]" style={{ color: T.gold, opacity: 0.55 }}>Contact</span>
+          <div className="flex-1 h-px" style={{ background: `linear-gradient(90deg, ${T.gold}, transparent)` }} />
         </div>
         <div className="flex flex-col gap-3">
           {DEFAULT_CONTACTS.map(({ label, key, fallback }) => (
-            <div key={label} className="flex flex-col gap-1 px-4 py-3 rounded-xl" style={{ background: "#141414", border: "1px solid rgba(201,169,110,0.12)" }}>
-              <span className="text-xs uppercase tracking-widest" style={{ color: "#C9A96E", opacity: 0.55 }}>{label}</span>
-              <span className="text-sm font-medium" style={{ color: "#E8D5B0" }}>{settings[key] || fallback}</span>
+            <div key={label} className="flex flex-col gap-1 px-4 py-3 rounded-xl" style={{ background: T.bg2, border: `1px solid ${T.g12}` }}>
+              <span className="text-xs uppercase tracking-widest" style={{ color: T.gold, opacity: 0.55 }}>{label}</span>
+              <span className="text-sm font-medium" style={{ color: T.text }}>{settings[key] || fallback}</span>
             </div>
           ))}
 
@@ -805,9 +913,9 @@ export default function HomeClient({ initialSettings }: { initialSettings: Recor
                     className="flex items-center justify-center rounded-full"
                     style={{
                       width: 40, height: 40,
-                      background: "#141414",
-                      border: "1px solid rgba(201,169,110,0.25)",
-                      color: "#C9A96E",
+                      background: T.bg2,
+                      border: `1px solid ${T.g25}`,
+                      color: T.gold,
                     }}
                   >
                     <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
@@ -821,42 +929,90 @@ export default function HomeClient({ initialSettings }: { initialSettings: Recor
         </div>
       </div>
 
+      {/* ── Programme Schedule ── */}
+      {programmes.length > 0 && (
+        <div className="w-full px-5 py-10" style={{ background: T.bg2 }}>
+
+          {/* Section heading */}
+          <div className="flex items-center gap-3 mb-8">
+            <div className="flex-1 h-px" style={{ background: `linear-gradient(90deg, transparent, ${T.gold})` }} />
+            <span className="text-xs uppercase tracking-[0.3em]" style={{ color: T.gold, opacity: 0.55 }}>Programme Schedule</span>
+            <div className="flex-1 h-px" style={{ background: `linear-gradient(90deg, ${T.gold}, transparent)` }} />
+          </div>
+
+          {/* Table */}
+          <div style={{ borderRadius: 10, border: `1px solid ${T.g25}`, overflow: "hidden", background: T.bg3 }}>
+
+            {/* Header row */}
+            <div style={{ display: "grid", gridTemplateColumns: "2fr 1.3fr 1.3fr", background: T.g06 }}>
+              {["Event name", "Time", "Venue"].map((h, i) => (
+                <div key={h} style={{
+                  padding: "12px 16px", fontSize: 13, fontWeight: 600, color: T.gold,
+                  borderRight: i < 2 ? `1px solid ${T.g15}` : "none",
+                  borderBottom: `1px solid ${T.g25}`,
+                  letterSpacing: "0.04em",
+                }}>
+                  {h}
+                </div>
+              ))}
+            </div>
+
+            {/* Data rows */}
+            {programmes.map((p, i) => (
+              <div key={p.id} style={{ display: "grid", gridTemplateColumns: "2fr 1.3fr 1.3fr", borderBottom: i < programmes.length - 1 ? `1px solid ${T.g08}` : "none" }}>
+                <div style={{ padding: "13px 16px", fontSize: 14, color: T.text, borderRight: `1px solid ${T.g08}`, lineHeight: 1.45 }}>
+                  {p.title}
+                  {p.description && <div style={{ fontSize: 12, color: T.gold, opacity: 0.5, marginTop: 2 }}>{p.description}</div>}
+                </div>
+                <div style={{ padding: "13px 16px", fontSize: 14, color: T.gold, borderRight: `1px solid ${T.g08}`, lineHeight: 1.45, whiteSpace: "pre-line", fontWeight: 500 }}>
+                  {p.time || "—"}
+                </div>
+                <div style={{ padding: "13px 16px", fontSize: 14, color: T.textB, lineHeight: 1.45 }}>
+                  {p.venue || "—"}
+                </div>
+              </div>
+            ))}
+
+          </div>
+        </div>
+      )}
+
       {/* ── RSVP Modal ── */}
       {showRsvpModal && (
         <div
           className="fixed inset-0 z-50 flex items-end justify-center"
-          style={{ background: "rgba(0,0,0,0.75)", backdropFilter: "blur(4px)" }}
+          style={{ background: T.overlay, backdropFilter: "blur(4px)" }}
           onClick={(e) => { if (e.target === e.currentTarget) setShowRsvpModal(false); }}
         >
           <div
             className="w-full max-w-lg rounded-t-3xl px-5 pt-6 pb-10 flex flex-col gap-5"
-            style={{ background: "#141414", border: "1px solid rgba(201,169,110,0.2)", borderBottom: "none" }}
+            style={{ background: T.formBg, border: `1px solid ${T.g20}`, borderBottom: "none" }}
           >
             {/* Handle + header */}
             <div className="flex flex-col items-center gap-4">
-              <div className="w-10 h-1 rounded-full" style={{ background: "rgba(201,169,110,0.3)" }} />
-              <p className="font-bold text-base tracking-wide" style={{ color: "#E8D5B0" }}>Confirm Your Attendance</p>
+              <div className="w-10 h-1 rounded-full" style={{ background: T.g35 }} />
+              <p className="font-bold text-base tracking-wide" style={{ color: T.text }}>Confirm Your Attendance</p>
             </div>
 
             {rsvpState === "done" ? (
               <div className="flex flex-col items-center gap-4 text-center">
                 <div className="flex flex-col items-center gap-1">
-                  <CheckCircle className="w-8 h-8" style={{ color: "#C9A96E" }} />
-                  <p className="font-bold text-base" style={{ color: "#E8D5B0" }}>Thank you! We'll be in touch.</p>
-                  <p className="text-xs" style={{ color: "#C9A96E", opacity: 0.55 }}>Save this card and share on WhatsApp</p>
+                  <CheckCircle className="w-8 h-8" style={{ color: T.gold }} />
+                  <p className="font-bold text-base" style={{ color: T.text }}>Thank you! We'll be in touch.</p>
+                  <p className="text-xs" style={{ color: T.gold, opacity: 0.55 }}>Save this card and share on WhatsApp</p>
                 </div>
-                <div style={{ width: "100%", borderRadius: 12, overflow: "hidden", border: "1px solid rgba(201,169,110,0.25)" }}>
+                <div style={{ width: "100%", borderRadius: 12, overflow: "hidden", border: `1px solid ${T.g25}` }}>
                   <canvas ref={canvasRef} style={{ display: "block", width: "100%", aspectRatio: "1 / 1" }} />
                 </div>
                 <button
                   onClick={shareCard}
                   className="w-full py-3.5 rounded-xl font-bold text-sm"
-                  style={{ background: "linear-gradient(135deg, #C9A96E, #9A7840)", color: "#0E0E0E" }}
+                  style={{ background: T.gradBtn2, color: T.onGold }}
                 >Share on WhatsApp</button>
                 <button
                   onClick={() => setShowRsvpModal(false)}
                   className="text-xs pb-2"
-                  style={{ color: "#C9A96E", opacity: 0.45 }}
+                  style={{ color: T.gold, opacity: 0.45 }}
                 >Close</button>
               </div>
             ) : (
@@ -886,7 +1042,7 @@ export default function HomeClient({ initialSettings }: { initialSettings: Recor
                   { key: "totalAttending", label: "Total Attending",        type: "number", required: true  },
                 ] as const).map(({ key, label, type, required }) => (
                   <div key={key} className="flex flex-col gap-1.5">
-                    <label className="text-xs uppercase tracking-widest" style={{ color: "#C9A96E", opacity: 0.55 }}>
+                    <label className="text-xs uppercase tracking-widest" style={{ color: T.gold, opacity: 0.55 }}>
                       {label}{required ? <span style={{ color: "#f87171" }}> *</span> : <span style={{ opacity: 0.5 }}> (optional)</span>}
                     </label>
                     <input
@@ -895,7 +1051,7 @@ export default function HomeClient({ initialSettings }: { initialSettings: Recor
                       value={rsvpForm[key]}
                       onChange={(e) => setRsvpForm(p => ({ ...p, [key]: e.target.value }))}
                       className="rounded-xl px-4 py-3 text-sm outline-none"
-                      style={{ background: "#0E0E0E", border: "1px solid rgba(201,169,110,0.2)", color: "#E8D5B0", caretColor: "#C9A96E" }}
+                      style={{ background: T.inputBg, border: `1px solid ${T.inputBdr}`, color: T.inputText, caretColor: T.gold }}
                     />
                   </div>
                 ))}
@@ -906,7 +1062,7 @@ export default function HomeClient({ initialSettings }: { initialSettings: Recor
                   type="submit"
                   disabled={rsvpState === "loading"}
                   className="w-full py-3.5 rounded-xl font-bold text-sm tracking-widest uppercase"
-                  style={{ background: "linear-gradient(135deg, #C9A96E, #9A7840)", color: "#0E0E0E", opacity: rsvpState === "loading" ? 0.6 : 1 }}
+                  style={{ background: T.gradBtn2, color: T.onGold, opacity: rsvpState === "loading" ? 0.6 : 1 }}
                 >
                   {rsvpState === "loading" ? "Submitting…" : "Confirm Attendance"}
                 </button>
@@ -922,37 +1078,37 @@ export default function HomeClient({ initialSettings }: { initialSettings: Recor
       {dynFormSlug && (
         <div
           className="fixed inset-0 z-50 flex items-end justify-center"
-          style={{ background: "rgba(0,0,0,0.75)", backdropFilter: "blur(4px)" }}
+          style={{ background: T.overlay, backdropFilter: "blur(4px)" }}
           onClick={(e) => { if (e.target === e.currentTarget) setDynFormSlug(null); }}
         >
           <div
             className="no-scrollbar w-full max-w-lg rounded-t-3xl px-5 pt-6 pb-10 flex flex-col gap-4"
-            style={{ background: "#141414", border: "1px solid rgba(201,169,110,0.2)", borderBottom: "none", maxHeight: "90vh", overflowY: "auto" }}
+            style={{ background: T.formBg, border: `1px solid ${T.g20}`, borderBottom: "none", maxHeight: "90vh", overflowY: "auto" }}
           >
             {/* Handle + header */}
             <div className="flex flex-col items-center gap-3">
-              <div className="w-10 h-1 rounded-full" style={{ background: "rgba(201,169,110,0.3)" }} />
+              <div className="w-10 h-1 rounded-full" style={{ background: T.g35 }} />
               <div className="flex items-center gap-2.5">
-                <div className="flex items-center justify-center w-8 h-8 rounded-xl" style={{ background: "rgba(201,169,110,0.12)", border: "1px solid rgba(201,169,110,0.2)" }}>
-                  <CheckCircle className="w-4 h-4" style={{ color: "#C9A96E" }} />
+                <div className="flex items-center justify-center w-8 h-8 rounded-xl" style={{ background: T.g12, border: `1px solid ${T.g20}` }}>
+                  <CheckCircle className="w-4 h-4" style={{ color: T.gold }} />
                 </div>
                 <div>
-                  <p className="font-bold text-base leading-tight" style={{ color: "#E8D5B0" }}>{dynFormData?.name ?? "Registration"}</p>
-                  {dynFormData?.description && <p className="text-xs" style={{ color: "#C9A96E", opacity: 0.5 }}>{dynFormData.description}</p>}
+                  <p className="font-bold text-base leading-tight" style={{ color: T.text }}>{dynFormData?.name ?? "Registration"}</p>
+                  {dynFormData?.description && <p className="text-xs" style={{ color: T.gold, opacity: 0.5 }}>{dynFormData.description}</p>}
                 </div>
               </div>
             </div>
 
             {!dynFormData ? (
               <div className="flex justify-center py-8">
-                <div style={{ width: 28, height: 28, border: "2.5px solid rgba(201,169,110,0.4)", borderTopColor: "#C9A96E", borderRadius: "50%", animation: "spin 0.7s linear infinite" }} />
+                <div style={{ width: 28, height: 28, border: `2.5px solid ${T.g45}`, borderTopColor: T.gold, borderRadius: "50%", animation: "spin 0.7s linear infinite" }} />
               </div>
             ) : dynFormState === "done" ? (
               <div className="flex flex-col items-center gap-3 py-6 text-center">
-                <CheckCircle className="w-10 h-10" style={{ color: "#C9A96E" }} />
-                <p className="font-bold text-base" style={{ color: "#E8D5B0" }}>Submitted!</p>
-                <p className="text-xs" style={{ color: "#C9A96E", opacity: 0.55 }}>Your registration has been received. Thank you!</p>
-                <button onClick={() => setDynFormSlug(null)} className="mt-2 px-6 py-2.5 rounded-xl font-bold text-sm" style={{ background: "rgba(201,169,110,0.15)", border: "1px solid rgba(201,169,110,0.3)", color: "#C9A96E" }}>Close</button>
+                <CheckCircle className="w-10 h-10" style={{ color: T.gold }} />
+                <p className="font-bold text-base" style={{ color: T.text }}>Submitted!</p>
+                <p className="text-xs" style={{ color: T.gold, opacity: 0.55 }}>Your registration has been received. Thank you!</p>
+                <button onClick={() => setDynFormSlug(null)} className="mt-2 px-6 py-2.5 rounded-xl font-bold text-sm" style={{ background: T.g15, border: `1px solid ${T.g35}`, color: T.gold }}>Close</button>
               </div>
             ) : (
               <form onSubmit={dynSubmit} style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) minmax(0,1fr)", gap: 16 }}>
@@ -966,19 +1122,19 @@ export default function HomeClient({ initialSettings }: { initialSettings: Recor
                   const colSpan: React.CSSProperties = { gridColumn: (field.type === "section" || (v.colSpan ?? "full") === "full") ? "span 2" : "span 1" };
                   const inputCls = "w-full rounded-xl px-4 py-3 text-sm outline-none";
                   const inputStyle: React.CSSProperties = {
-                    background: "#0E0E0E", border: `1px solid ${err ? "rgba(239,68,68,0.5)" : "rgba(201,169,110,0.2)"}`,
-                    color: "#E8D5B0", fontFamily: "inherit",
+                    background: T.inputBg, border: `1px solid ${err ? "rgba(239,68,68,0.5)" : T.inputBdr}`,
+                    color: T.inputText, fontFamily: "inherit",
                   };
                   if (field.type === "section") return (
-                    <div key={field.id} style={{ gridColumn: "span 2", borderTop: "1px solid rgba(201,169,110,0.2)", paddingTop: 14, marginTop: 4 }}>
-                      <p style={{ fontSize: 12, fontWeight: 700, color: "#C9A96E", margin: 0, letterSpacing: "0.06em", textTransform: "uppercase" }}>{field.label}</p>
-                      {field.placeholder && <p style={{ fontSize: 11, color: "#666", margin: "3px 0 0" }}>{field.placeholder}</p>}
+                    <div key={field.id} style={{ gridColumn: "span 2", borderTop: `1px solid ${T.g20}`, paddingTop: 14, marginTop: 4 }}>
+                      <p style={{ fontSize: 12, fontWeight: 700, color: T.gold, margin: 0, letterSpacing: "0.06em", textTransform: "uppercase" }}>{field.label}</p>
+                      {field.placeholder && <p style={{ fontSize: 11, color: T.textC, margin: "3px 0 0" }}>{field.placeholder}</p>}
                     </div>
                   );
                   return (
                     <div key={field.id} className="flex flex-col gap-1.5" style={colSpan}>
                       {field.type !== "checkbox" && field.type !== "file" && (
-                        <label className="text-xs uppercase tracking-widest" style={{ color: "#C9A96E", opacity: 0.5 }}>
+                        <label className="text-xs uppercase tracking-widest" style={{ color: T.gold, opacity: 0.5 }}>
                           {field.label}{field.required && <span style={{ color: "#f87171" }}> *</span>}
                         </label>
                       )}
@@ -1022,9 +1178,9 @@ export default function HomeClient({ initialSettings }: { initialSettings: Recor
                                   display: "flex", alignItems: "center", gap: 6,
                                   padding: "8px 18px", borderRadius: 10, fontSize: 13, fontWeight: 600,
                                   cursor: "pointer", transition: "all 0.15s", fontFamily: "inherit",
-                                  border: `1.5px solid ${sel ? "#C9A96E" : "rgba(201,169,110,0.25)"}`,
-                                  background: sel ? "rgba(201,169,110,0.18)" : "transparent",
-                                  color: sel ? "#C9A96E" : "#666",
+                                  border: `1.5px solid ${sel ? T.gold : T.g25}`,
+                                  background: sel ? T.g18 : "transparent",
+                                  color: sel ? T.gold : T.textC,
                                 }}
                               >
                                 {iconName && <LucideIcon name={iconName} size={14} />}
@@ -1052,7 +1208,7 @@ export default function HomeClient({ initialSettings }: { initialSettings: Recor
                         const uploaded = dynFormValues[field.label];
                         const uploading = dynFormValues[`__uploading_${field.label}`] === "1";
                         return (
-                          <label style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 8, padding: "18px 12px", borderRadius: 12, border: `2px dashed ${err ? "rgba(239,68,68,0.5)" : uploaded ? "rgba(201,169,110,0.5)" : "rgba(201,169,110,0.2)"}`, background: uploaded ? "rgba(201,169,110,0.07)" : "#0E0E0E", cursor: uploading ? "wait" : "pointer", transition: "border-color 0.2s" }}>
+                          <label style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 8, padding: "18px 12px", borderRadius: 12, border: `2px dashed ${err ? "rgba(239,68,68,0.5)" : uploaded ? T.g55 : T.g20}`, background: uploaded ? T.g08 : T.inputBg, cursor: uploading ? "wait" : "pointer", transition: "border-color 0.2s" }}>
                             <input type="file" accept={accept} style={{ display: "none" }} onChange={async e => {
                               const file = e.target.files?.[0]; if (!file) return;
                               setDynFormValues(p => ({ ...p, [`__uploading_${field.label}`]: "1" }));
@@ -1067,32 +1223,32 @@ export default function HomeClient({ initialSettings }: { initialSettings: Recor
                               }
                             }} />
                             {uploading ? (
-                              <span style={{ fontSize: 12, color: "#C9A96E", opacity: 0.7 }}>Uploading…</span>
+                              <span style={{ fontSize: 12, color: T.gold, opacity: 0.7 }}>Uploading…</span>
                             ) : uploaded ? (
                               <>
                                 <span style={{ fontSize: 18 }}>📎</span>
-                                <span className="text-xs text-center" style={{ color: "#C9A96E", opacity: 0.85, wordBreak: "break-all" }}>{dynFormValues[`__file_name_${field.label}`] || "File uploaded"}</span>
-                                <span className="text-xs" style={{ color: "#C9A96E", opacity: 0.45 }}>Tap to change</span>
+                                <span className="text-xs text-center" style={{ color: T.gold, opacity: 0.85, wordBreak: "break-all" }}>{dynFormValues[`__file_name_${field.label}`] || "File uploaded"}</span>
+                                <span className="text-xs" style={{ color: T.gold, opacity: 0.45 }}>Tap to change</span>
                               </>
                             ) : (
                               <>
                                 <span style={{ fontSize: 22 }}>📎</span>
-                                <span className="text-xs font-semibold uppercase tracking-widest" style={{ color: "#C9A96E", opacity: 0.5 }}>{field.label}{field.required && <span style={{ color: "#f87171" }}> *</span>}</span>
-                                <span className="text-xs" style={{ color: "#C9A96E", opacity: 0.35 }}>Tap to choose file</span>
+                                <span className="text-xs font-semibold uppercase tracking-widest" style={{ color: T.gold, opacity: 0.5 }}>{field.label}{field.required && <span style={{ color: "#f87171" }}> *</span>}</span>
+                                <span className="text-xs" style={{ color: T.gold, opacity: 0.35 }}>Tap to choose file</span>
                               </>
                             )}
                           </label>
                         );
                       })()}
                       {field.type === "checkbox" && (
-                        <label style={{ display: "flex", alignItems: "flex-start", gap: 10, cursor: "pointer", padding: "10px 12px", borderRadius: 12, border: `1px solid ${err ? "rgba(239,68,68,0.5)" : dynFormValues[field.label] === "true" ? "rgba(201,169,110,0.4)" : "rgba(201,169,110,0.15)"}`, background: dynFormValues[field.label] === "true" ? "rgba(201,169,110,0.07)" : "#0E0E0E", transition: "background 0.2s, border-color 0.2s" }}>
+                        <label style={{ display: "flex", alignItems: "flex-start", gap: 10, cursor: "pointer", padding: "10px 12px", borderRadius: 12, border: `1px solid ${err ? "rgba(239,68,68,0.5)" : dynFormValues[field.label] === "true" ? T.g45 : T.g15}`, background: dynFormValues[field.label] === "true" ? T.g08 : T.inputBg, transition: "background 0.2s, border-color 0.2s" }}>
                           <input
                             type="checkbox"
                             checked={dynFormValues[field.label] === "true"}
                             onChange={e => { setDynFormValues(p => ({ ...p, [field.label]: e.target.checked ? "true" : "" })); setDynFormErrors(p => { const n = { ...p }; delete n[field.label]; return n; }); }}
-                            style={{ marginTop: 2, accentColor: "#C9A96E", flexShrink: 0, width: 15, height: 15, cursor: "pointer" }}
+                            style={{ marginTop: 2, accentColor: T.gold, flexShrink: 0, width: 15, height: 15, cursor: "pointer" }}
                           />
-                          <span className="text-xs leading-relaxed" style={{ color: dynFormValues[field.label] === "true" ? "#C9A96E" : "#C9A96E", opacity: dynFormValues[field.label] === "true" ? 0.85 : 0.55 }}>{field.label}{field.required && <span style={{ color: "#f87171" }}> *</span>}</span>
+                          <span className="text-xs leading-relaxed" style={{ color: T.gold, opacity: dynFormValues[field.label] === "true" ? 0.85 : 0.55 }}>{field.label}{field.required && <span style={{ color: "#f87171" }}> *</span>}</span>
                         </label>
                       )}
                       {err && <p className="text-xs" style={{ color: "#f87171" }}>{err}</p>}
@@ -1102,9 +1258,9 @@ export default function HomeClient({ initialSettings }: { initialSettings: Recor
                 <button
                   type="submit" disabled={dynFormState === "loading"}
                   className="w-full py-4 rounded-2xl font-black text-sm tracking-wider flex items-center justify-center gap-2"
-                  style={{ gridColumn: "span 2", background: dynFormState === "loading" ? "rgba(201,169,110,0.1)" : "linear-gradient(135deg, rgba(201,169,110,0.25), rgba(154,120,64,0.2))", border: "1px solid rgba(201,169,110,0.4)", color: "#C9A96E", cursor: dynFormState === "loading" ? "not-allowed" : "pointer" }}
+                  style={{ gridColumn: "span 2", background: dynFormState === "loading" ? T.g08 : T.gradReg, border: `1px solid ${T.g45}`, color: T.gold, cursor: dynFormState === "loading" ? "not-allowed" : "pointer" }}
                 >
-                  {dynFormState === "loading" && <span style={{ width: 14, height: 14, border: "2px solid rgba(201,169,110,0.3)", borderTopColor: "#C9A96E", borderRadius: "50%", animation: "spin 0.7s linear infinite" }} />}
+                  {dynFormState === "loading" && <span style={{ width: 14, height: 14, border: `2px solid ${T.g35}`, borderTopColor: T.gold, borderRadius: "50%", animation: "spin 0.7s linear infinite" }} />}
                   {dynFormState === "loading" ? "Submitting…" : "Submit"}
                 </button>
               </form>
@@ -1113,36 +1269,28 @@ export default function HomeClient({ initialSettings }: { initialSettings: Recor
         </div>
       )}
 
-      {/* ── Coming Soon ── */}
-      <div className="w-full max-w-lg px-5 pb-12" style={{ background: "#0E0E0E" }}>
-        <div
-          className="rounded-2xl px-6 py-6 flex flex-col items-center gap-3 border"
-          style={{ background: "#141414", borderColor: "rgba(201,169,110,0.18)" }}
+      {/* Coming Soon placeholder removed — replaced by Programme Schedule section */}
+
+      {/* ── Floating Theme Toggle Button ── */}
+      {mounted && (
+        <button
+          onClick={toggleTheme}
+          aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+          className="fixed z-50 flex items-center justify-center rounded-full shadow-lg"
+          style={{
+            bottom: 80, right: 20,
+            width: 48, height: 48,
+            background: T.bg2,
+            border: `1px solid ${T.g45}`,
+            backdropFilter: 'blur(10px)',
+            color: T.gold,
+          }}
         >
-          <div className="w-full flex items-center gap-2">
-            <div className="flex-1 h-px" style={{ background: "#C9A96E" }} />
-            <div className="pulse-bar flex-1 h-0.5 rounded-full" style={{ background: "linear-gradient(90deg, #9A7840, #E8D5B0, #9A7840)" }} />
-            <div className="flex-1 h-px" style={{ background: "#C9A96E" }} />
-          </div>
-
-          <div className="text-center">
-            <p className="font-bold text-sm" style={{ color: "#E8D5B0" }}>More Details Coming Soon</p>
-            <p className="text-xs mt-1" style={{ color: "#C9A96E", opacity: 0.5 }}>
-              Schedule &amp; programme details will be updated here
-            </p>
-          </div>
-
-          <div className="flex items-center gap-2">
-            {[0, 1, 2].map((i) => (
-              <span
-                key={i}
-                className="w-1.5 h-1.5 rounded-full"
-                style={{ background: "#C9A96E", animation: `pulse-bar 1.4s ease-in-out ${i * 0.2}s infinite` }}
-              />
-            ))}
-          </div>
-        </div>
-      </div>
+          {theme === 'dark'
+            ? <Sun size={17} />
+            : <Moon size={17} />}
+        </button>
+      )}
 
       {/* ── Floating Music Button ── */}
       {mounted ? (
@@ -1153,18 +1301,18 @@ export default function HomeClient({ initialSettings }: { initialSettings: Recor
           style={{
             width: "48px", height: "48px",
             background: "rgba(20,20,20,0.85)",
-            border: "1px solid rgba(201,169,110,0.4)",
+            border: `1px solid ${T.g45}`,
             backdropFilter: "blur(10px)",
           }}
         >
           {playing ? (
             <svg className="music-disc" width="26" height="26" viewBox="0 0 24 24" fill="none">
-              <circle cx="12" cy="12" r="10" stroke="#C9A96E" strokeWidth="1.2" />
-              <circle cx="12" cy="12" r="3" fill="#C9A96E" />
-              <circle cx="12" cy="12" r="1" fill="#0E0E0E" />
+              <circle cx="12" cy="12" r="10" stroke={T.gold} strokeWidth="1.2" />
+              <circle cx="12" cy="12" r="3" fill={T.gold} />
+              <circle cx="12" cy="12" r="1" fill={T.bg} />
             </svg>
           ) : (
-            <Music className="w-5 h-5" style={{ color: "#C9A96E", opacity: 0.6 }} />
+            <Music className="w-5 h-5" style={{ color: T.gold, opacity: 0.6 }} />
           )}
         </button>
       ) : null}

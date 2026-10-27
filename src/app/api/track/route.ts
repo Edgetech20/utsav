@@ -27,13 +27,15 @@ export async function POST(req: NextRequest) {
 }
 
 export async function GET(_req: NextRequest) {
-  const [views, viewHits, attending, mapClicks, mapHits, rsvp] = await Promise.all([
+  const [views, viewHits, attending, mapClicks, mapHits, rsvp, rsvpAgg] = await Promise.all([
     db.clickEvent.groupBy({ by: ["ip"], where: { type: "view" } }).then(r => r.length),
     db.clickEvent.count({ where: { type: "view" } }),
     db.clickEvent.groupBy({ by: ["ip"], where: { type: "attend" } }).then(r => r.length),
     db.clickEvent.groupBy({ by: ["ip"], where: { type: "map" } }).then(r => r.length),
     db.clickEvent.count({ where: { type: "map" } }),
     db.rsvp.count(),
+    db.rsvp.aggregate({ _sum: { totalAttending: true } }),
   ]);
-  return NextResponse.json({ views, viewHits, attending, mapClicks, mapHits, rsvp });
+  const totalAttending = rsvpAgg._sum.totalAttending ?? 0;
+  return NextResponse.json({ views, viewHits, attending, mapClicks, mapHits, rsvp, totalAttending });
 }
