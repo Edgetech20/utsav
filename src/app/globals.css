@@ -127,6 +127,16 @@
   }
 }
 
+/* Hide scrollbar globally, keep scroll functional */
+html, body {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+html::-webkit-scrollbar,
+body::-webkit-scrollbar {
+  display: none;
+}
+
 /* Admin animations */
 @keyframes shimmer {
   0%   { background-position: 200% 0; }
