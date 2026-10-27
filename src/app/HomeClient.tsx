@@ -788,8 +788,9 @@ export default function HomeClient({ initialSettings }: { initialSettings: Recor
           <span className="text-xs uppercase tracking-[0.3em]" style={{ color: T.gold, opacity: 0.55 }}>Specialties &amp; Attractions</span>
           <div className="flex-1 h-px" style={{ background: `linear-gradient(90deg, ${T.gold}, transparent)` }} />
         </div>
-        <div className="flex flex-col">
-          {(() => {
+        {/* ── Desktop card grid (md+) ── */}
+        <div className="hidden md:grid gap-5 px-8 pb-2" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))" }}>
+          {dbAttractions.map((a, i) => {
             const ICON_MAP: Record<string, React.ElementType> = {
               "Medical Camp": Stethoscope, "Cheap Canteen": UtensilsCrossed,
               "Jajan Parikrama": Footprints, "Diksha Grahan": BookOpen,
@@ -797,73 +798,125 @@ export default function HomeClient({ initialSettings }: { initialSettings: Recor
               "Music Event": Music, "Istaprasanga": Mic,
               "Cultural Events": Palette, "Drama": Theater,
             };
-            const items = dbAttractions;
-            return items.map((a, i) => {
-              const Icon = ICON_MAP[a.name] ?? Sparkles;
-              const imgs = a.images.map(x => x.imageUrl);
-              const open = expanded === a.id;
-              return (
-                <div
-                  key={a.id}
-                  data-reveal
-                  style={{ borderBottom: i < items.length - 1 ? `1px solid ${T.g06}` : "none" }}
-                >
-                  <button
-                    onClick={() => setExpanded(open ? null : a.id)}
-                    className="w-full flex items-center gap-5 px-6 py-4 relative text-left"
-                    style={{ background: open ? T.g04 : "transparent" }}
-                  >
-                    <div className="reveal-bar absolute left-0 top-0 bottom-0 w-[3px] rounded-r-full" style={{ background: `linear-gradient(180deg, ${T.gold}, ${T.goldDk})` }} />
-                    <span className="font-black tabular-nums select-none" style={{ color: T.gold, opacity: open ? 0.5 : 0.18, fontSize: "clamp(2rem, 7vw, 2.8rem)", lineHeight: 1, minWidth: "2.2ch", transition: "opacity 0.3s" }}>
-                      {String(i + 1).padStart(2, "0")}
-                    </span>
-                    <span className="flex-1 font-semibold tracking-wide" style={{ color: open ? T.gold : T.text, fontSize: "clamp(1rem, 3.8vw, 1.15rem)", transition: "color 0.3s" }}>
-                      {a.name}
-                    </span>
-                    <ChevronDown className="w-4 h-4 flex-shrink-0" style={{ color: T.gold, opacity: 0.6, transition: "transform 0.35s cubic-bezier(0.16,1,0.3,1)", transform: open ? "rotate(180deg)" : "rotate(0deg)" }} />
-                  </button>
-
-                  <div style={{ maxHeight: open ? "700px" : "0px", overflow: "hidden", transition: "max-height 0.45s cubic-bezier(0.16,1,0.3,1)" }}>
-                    {open && (
-                    <div className="mx-6 mb-4 flex flex-col gap-2">
-                      {a.description && <p className="text-xs leading-relaxed" style={{ color: T.gold, opacity: 0.55 }}>{a.description}</p>}
-                      {imgs.length > 0 && (
-                        <div className="grid gap-2 mt-2" style={{ gridTemplateColumns: imgs.length === 1 ? "1fr" : "1fr 1fr" }}>
-                          {imgs.map((src, idx) => (
-                            <div key={idx} className="rounded-xl overflow-hidden aspect-video" style={{ border: `1px solid ${T.g20}` }}>
-                              <img src={src} alt={`${a.name} ${idx + 1}`} className="w-full h-full object-cover" loading="lazy" />
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                      {a.formSlug && (
-                        <button onClick={() => setDynFormSlug(a.formSlug)} className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl font-bold text-sm mt-2" style={{ background: T.gradReg, border: `1px solid ${T.g45}`, color: T.gold, letterSpacing: "0.04em" }}>
-                          <CheckCircle className="w-4 h-4" /> Register
-                        </button>
-                      )}
-                      {a.url && (
-                        <a href={a.url} target="_blank" rel="noopener noreferrer" className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl font-bold text-sm" style={{ background: T.gradReg, border: `1px solid ${T.g35}`, color: T.gold, letterSpacing: "0.04em" }}>
-                          <Sparkles className="w-4 h-4" /> Open Link
-                        </a>
-                      )}
-                      {a.navigateToVenue && (
-                        <a href={event.mapsUrl} target="_blank" rel="noopener noreferrer" className="w-full flex items-center justify-center gap-2 py-3 rounded-xl font-semibold text-sm" style={{ background: T.gradReg, border: `1px solid ${T.g35}`, color: T.gold }}>
-                          <Navigation className="w-4 h-4" /> Navigate to Venue
-                        </a>
-                      )}
-                      {imgs.length === 0 && !a.url && !a.formSlug && !a.navigateToVenue && !a.description && (
-                        <div className="rounded-xl flex flex-col items-center justify-center gap-2 py-8" style={{ background: T.bg3, border: `1px solid ${T.g15}` }}>
-                          <Icon className="w-8 h-8" style={{ color: T.gold, opacity: 0.35 }} />
-                          <p className="text-xs uppercase tracking-widest" style={{ color: T.gold, opacity: 0.35 }}>Photo coming soon</p>
-                        </div>
-                      )}
-                    </div>
+            const Icon = ICON_MAP[a.name] ?? Sparkles;
+            const imgs = a.images.map(x => x.imageUrl);
+            return (
+              <div key={a.id} data-reveal className="rounded-2xl overflow-hidden flex flex-col" style={{ background: T.bg3, border: `1px solid ${T.g12}`, transitionDelay: `${i * 0.08}s` }}>
+                {imgs.length > 0 ? (
+                  <div className="grid" style={{ gridTemplateColumns: imgs.length === 1 ? "1fr" : "1fr 1fr", gap: 2 }}>
+                    {imgs.map((src, idx) => (
+                      <div key={idx} className="overflow-hidden" style={{ aspectRatio: "16/9" }}>
+                        <img src={src} alt={`${a.name} ${idx + 1}`} className="w-full h-full object-cover" loading="lazy" />
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="w-full flex items-center justify-center" style={{ aspectRatio: "16/9", background: T.bg2 }}>
+                    <Icon className="w-10 h-10" style={{ color: T.gold, opacity: 0.3 }} />
+                  </div>
+                )}
+                <div className="flex flex-col gap-2 p-4 flex-1">
+                  <div className="flex items-center gap-2">
+                    <span className="font-black tabular-nums select-none" style={{ color: T.gold, opacity: 0.22, fontSize: "1.5rem", lineHeight: 1 }}>{String(i + 1).padStart(2, "0")}</span>
+                    <span className="font-semibold tracking-wide" style={{ color: T.text, fontSize: "0.95rem" }}>{a.name}</span>
+                  </div>
+                  {a.description && <p className="text-xs leading-relaxed" style={{ color: T.gold, opacity: 0.55 }}>{a.description}</p>}
+                  <div className="flex flex-col gap-1.5 mt-auto pt-2">
+                    {a.formSlug && (
+                      <button onClick={() => setDynFormSlug(a.formSlug)} className="w-full flex items-center justify-center gap-2 py-3 rounded-xl font-bold text-sm" style={{ background: T.gradReg, border: `1px solid ${T.g45}`, color: T.gold, letterSpacing: "0.04em" }}>
+                        <CheckCircle className="w-4 h-4" /> Register
+                      </button>
+                    )}
+                    {a.url && (
+                      <a href={a.url} target="_blank" rel="noopener noreferrer" className="w-full flex items-center justify-center gap-2 py-3 rounded-xl font-bold text-sm" style={{ background: T.gradReg, border: `1px solid ${T.g35}`, color: T.gold, letterSpacing: "0.04em" }}>
+                        <Sparkles className="w-4 h-4" /> Open Link
+                      </a>
+                    )}
+                    {a.navigateToVenue && (
+                      <a href={event.mapsUrl} target="_blank" rel="noopener noreferrer" className="w-full flex items-center justify-center gap-2 py-3 rounded-xl font-semibold text-sm" style={{ background: T.gradReg, border: `1px solid ${T.g35}`, color: T.gold }}>
+                        <Navigation className="w-4 h-4" /> Navigate to Venue
+                      </a>
                     )}
                   </div>
                 </div>
-              );
-            });
-          })()}
+              </div>
+            );
+          })}
+        </div>
+
+        {/* ── Mobile accordion (unchanged) ── */}
+        <div className="flex flex-col md:hidden">
+          {dbAttractions.map((a, i) => {
+            const ICON_MAP: Record<string, React.ElementType> = {
+              "Medical Camp": Stethoscope, "Cheap Canteen": UtensilsCrossed,
+              "Jajan Parikrama": Footprints, "Diksha Grahan": BookOpen,
+              "Photo Gallery": Camera, "Ananda Bazar": ShoppingBag,
+              "Music Event": Music, "Istaprasanga": Mic,
+              "Cultural Events": Palette, "Drama": Theater,
+            };
+            const Icon = ICON_MAP[a.name] ?? Sparkles;
+            const imgs = a.images.map(x => x.imageUrl);
+            const open = expanded === a.id;
+            return (
+              <div
+                key={a.id}
+                data-reveal
+                style={{ borderBottom: i < dbAttractions.length - 1 ? `1px solid ${T.g06}` : "none" }}
+              >
+                <button
+                  onClick={() => setExpanded(open ? null : a.id)}
+                  className="w-full flex items-center gap-5 px-6 py-4 relative text-left"
+                  style={{ background: open ? T.g04 : "transparent" }}
+                >
+                  <div className="reveal-bar absolute left-0 top-0 bottom-0 w-[3px] rounded-r-full" style={{ background: `linear-gradient(180deg, ${T.gold}, ${T.goldDk})` }} />
+                  <span className="font-black tabular-nums select-none" style={{ color: T.gold, opacity: open ? 0.5 : 0.18, fontSize: "clamp(2rem, 7vw, 2.8rem)", lineHeight: 1, minWidth: "2.2ch", transition: "opacity 0.3s" }}>
+                    {String(i + 1).padStart(2, "0")}
+                  </span>
+                  <span className="flex-1 font-semibold tracking-wide" style={{ color: open ? T.gold : T.text, fontSize: "clamp(1rem, 3.8vw, 1.15rem)", transition: "color 0.3s" }}>
+                    {a.name}
+                  </span>
+                  <ChevronDown className="w-4 h-4 flex-shrink-0" style={{ color: T.gold, opacity: 0.6, transition: "transform 0.35s cubic-bezier(0.16,1,0.3,1)", transform: open ? "rotate(180deg)" : "rotate(0deg)" }} />
+                </button>
+                <div style={{ maxHeight: open ? "700px" : "0px", overflow: "hidden", transition: "max-height 0.45s cubic-bezier(0.16,1,0.3,1)" }}>
+                  {open && (
+                  <div className="mx-6 mb-4 flex flex-col gap-2">
+                    {a.description && <p className="text-xs leading-relaxed" style={{ color: T.gold, opacity: 0.55 }}>{a.description}</p>}
+                    {imgs.length > 0 && (
+                      <div className="grid gap-2 mt-2" style={{ gridTemplateColumns: imgs.length === 1 ? "1fr" : "1fr 1fr" }}>
+                        {imgs.map((src, idx) => (
+                          <div key={idx} className="rounded-xl overflow-hidden aspect-video" style={{ border: `1px solid ${T.g20}` }}>
+                            <img src={src} alt={`${a.name} ${idx + 1}`} className="w-full h-full object-cover" loading="lazy" />
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    {a.formSlug && (
+                      <button onClick={() => setDynFormSlug(a.formSlug)} className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl font-bold text-sm mt-2" style={{ background: T.gradReg, border: `1px solid ${T.g45}`, color: T.gold, letterSpacing: "0.04em" }}>
+                        <CheckCircle className="w-4 h-4" /> Register
+                      </button>
+                    )}
+                    {a.url && (
+                      <a href={a.url} target="_blank" rel="noopener noreferrer" className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl font-bold text-sm" style={{ background: T.gradReg, border: `1px solid ${T.g35}`, color: T.gold, letterSpacing: "0.04em" }}>
+                        <Sparkles className="w-4 h-4" /> Open Link
+                      </a>
+                    )}
+                    {a.navigateToVenue && (
+                      <a href={event.mapsUrl} target="_blank" rel="noopener noreferrer" className="w-full flex items-center justify-center gap-2 py-3 rounded-xl font-semibold text-sm" style={{ background: T.gradReg, border: `1px solid ${T.g35}`, color: T.gold }}>
+                        <Navigation className="w-4 h-4" /> Navigate to Venue
+                      </a>
+                    )}
+                    {imgs.length === 0 && !a.url && !a.formSlug && !a.navigateToVenue && !a.description && (
+                      <div className="rounded-xl flex flex-col items-center justify-center gap-2 py-8" style={{ background: T.bg3, border: `1px solid ${T.g15}` }}>
+                        <Icon className="w-8 h-8" style={{ color: T.gold, opacity: 0.35 }} />
+                        <p className="text-xs uppercase tracking-widest" style={{ color: T.gold, opacity: 0.35 }}>Photo coming soon</p>
+                      </div>
+                    )}
+                  </div>
+                  )}
+                </div>
+              </div>
+            );
+          })}
         </div>
       </div>
 
