@@ -365,6 +365,13 @@ export default function HomeClient({ initialSettings }: { initialSettings: Recor
 
   const [entered, setEntered] = useState(false);
   const [playing, setPlaying] = useState(false);
+  const [isDesktop, setIsDesktop] = useState(false);
+  useEffect(() => {
+    const check = () => setIsDesktop(window.innerWidth >= 768);
+    check();
+    window.addEventListener("resize", check);
+    return () => window.removeEventListener("resize", check);
+  }, []);
   const [dbAttractions, setDbAttractions] = useState<{ id: number; name: string; description: string | null; url: string | null; navigateToVenue: boolean; formSlug: string | null; images: { id: number; imageUrl: string }[] }[]>([]);
   const [programmes, setProgrammes] = useState<{ id: number; title: string; time: string; description: string | null; venue: string | null }[]>([]);
   const [event] = useState(() => ({
@@ -789,7 +796,7 @@ export default function HomeClient({ initialSettings }: { initialSettings: Recor
           <div className="flex-1 h-px" style={{ background: `linear-gradient(90deg, ${T.gold}, transparent)` }} />
         </div>
         {/* ── Desktop card grid (md+) ── */}
-        <div className="hidden md:grid gap-5 px-8 pb-2" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))" }}>
+        <div style={{ display: isDesktop ? "grid" : "none", gap: 20, padding: "0 32px 8px", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))" }}>
           {dbAttractions.map((a, i) => {
             const ICON_MAP: Record<string, React.ElementType> = {
               "Medical Camp": Stethoscope, "Cheap Canteen": UtensilsCrossed,
@@ -845,7 +852,7 @@ export default function HomeClient({ initialSettings }: { initialSettings: Recor
         </div>
 
         {/* ── Mobile accordion (unchanged) ── */}
-        <div className="flex flex-col md:hidden">
+        <div style={{ display: isDesktop ? "none" : "flex", flexDirection: "column" }}>
           {dbAttractions.map((a, i) => {
             const ICON_MAP: Record<string, React.ElementType> = {
               "Medical Camp": Stethoscope, "Cheap Canteen": UtensilsCrossed,
