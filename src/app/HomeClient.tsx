@@ -97,7 +97,7 @@ const DEFAULT_CONTACTS = [
   { label: "Email",     key: "contact_email",     fallback: "priyabodhimahotsav@gmail.com" },
 ];
 
-function drawShareCard(canvas: HTMLCanvasElement, name: string, venue: string) {
+function drawShareCard(canvas: HTMLCanvasElement, name: string, venue: string, date: string) {
   const maybeCtx = canvas.getContext("2d");
   if (!maybeCtx) return;
   const ctx: CanvasRenderingContext2D = maybeCtx;
@@ -184,7 +184,7 @@ function drawShareCard(canvas: HTMLCanvasElement, name: string, venue: string) {
   // Date & venue
   ctx.font = "600 30px 'Geist', system-ui, sans-serif";
   ctx.fillStyle = "rgba(232,213,176,0.7)";
-  ctx.fillText("20 December 2026  ·  ৪ পৌষ ১৪৩৩", cx, 752);
+  ctx.fillText(date, cx, 752);
 
   ctx.font = "400 24px 'Geist', system-ui, sans-serif";
   ctx.fillStyle = "rgba(201,169,110,0.45)";
@@ -442,7 +442,7 @@ export default function HomeClient({ initialSettings }: { initialSettings: Recor
   useEffect(() => {
     if (rsvpState !== "done" || !canvasRef.current) return;
     const canvas = canvasRef.current;
-    document.fonts.ready.then(() => drawShareCard(canvas, rsvpForm.name, event.venue));
+    document.fonts.ready.then(() => drawShareCard(canvas, rsvpForm.name, event.venue, event.date));
   }, [rsvpState]);
 
   function shareCard() {
