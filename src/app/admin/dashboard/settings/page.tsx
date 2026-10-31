@@ -10,6 +10,7 @@ type Vals = Record<string, string>;
 const EVENT_FIELDS = [
   { key: "event_date",       label: "Display Date",        icon: Calendar, placeholder: "Sunday, 20 December 2026 | ৪ ই পৌষ, ১৪৩৩" },
   { key: "event_date_iso",   label: "ISO Date (countdown)", icon: Calendar, placeholder: "2026-12-20" },
+  { key: "event_subtitle",   label: "Subtitle (under title)", icon: MapPin, placeholder: "Purba Bardhaman Sadar North Subdivision" },
   { key: "event_venue",      label: "Venue",               icon: MapPin,   placeholder: "Alinagar Playground, Bhatar, Purba Burdwan" },
   { key: "event_maps_url",   label: "Google Maps URL",     icon: Link2,    placeholder: "https://maps.google.com/..." },
   { key: "event_maps_embed", label: "Maps Embed URL",      icon: Link2,    placeholder: "https://maps.google.com/maps?q=...&output=embed" },

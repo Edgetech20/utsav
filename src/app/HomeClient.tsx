@@ -668,7 +668,7 @@ export default function HomeClient({ initialSettings }: { initialSettings: Recor
         </div>
 
         <p className="mt-3 text-sm font-medium tracking-wide" style={{ color: T.gold, opacity: 0.75 }}>
-          Purba Bardhaman Sadar North Subdivision
+          {initialSettings.event_subtitle || "Purba Bardhaman Sadar North Subdivision"}
         </p>
 
         {/* Bottom rule */}

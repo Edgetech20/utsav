@@ -6,7 +6,7 @@ const ALLOWED_KEYS = [
   "social_facebook", "social_instagram", "social_youtube",
   "social_whatsapp", "social_twitter", "social_website",
   "event_date", "event_date_iso", "event_venue",
-  "event_maps_url", "event_maps_embed",
+  "event_maps_url", "event_maps_embed", "event_subtitle",
   "contact_organiser", "contact_phone", "contact_whatsapp", "contact_email",
 ];
 
