@@ -55,6 +55,8 @@ async function sendRsvpAuto(client) {
     } catch (e) {
       await prisma.waLog.create({ data: { type: "rsvp_auto", name: row.name, whatsapp: row.whatsapp, status: "failed", error: e.message } });
       console.error("[wa-bot] rsvp_auto failed →", row.whatsapp, e.message);
+      // Mark done so we don't retry forever; log table has the failure reason
+      await prisma.rsvp.update({ where: { id: row.id }, data: { waSent: true } }).catch(() => {});
     }
     await sleep(2000);
   }
@@ -132,6 +134,10 @@ client.on("ready", () => {
 client.on("disconnected", async reason => {
   console.log("[wa-bot] disconnected:", reason);
   await setStatus("disconnected").catch(() => {});
+  if (reason === "LOGOUT") {
+    require("fs").rmSync("/var/wwebjs_auth_utsav", { recursive: true, force: true });
+    console.log("[wa-bot] auth cleared after LOGOUT");
+  }
   process.exit(1);
 });
 
