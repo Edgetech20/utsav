@@ -18,6 +18,8 @@ function chatId(raw) {
 }
 
 function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+// Random 60–90 s between messages to avoid WA spam detection
+function msgDelay() { return sleep(60_000 + Math.random() * 30_000); }
 
 // ── WaStatus ─────────────────────────────────────────────────────────────────
 let statusRowId = null;
@@ -40,25 +42,33 @@ async function setStatus(status, qr = null) {
 }
 
 // ── RSVP auto-messages ────────────────────────────────────────────────────────
-async function sendRsvpAuto(client) {
-  const tpl = await prisma.waTemplate.findUnique({ where: { key: "rsvp_auto" } });
-  if (!tpl?.enabled) return;
+let rsvpSending = false;
 
-  const rows = await prisma.rsvp.findMany({ where: { waSent: false }, take: 10 });
-  for (const row of rows) {
-    const msg = tpl.body.replace(/\{name\}/gi, row.name.trim().split(" ")[0]);
-    try {
-      await client.sendMessage(chatId(row.whatsapp), msg);
-      await prisma.rsvp.update({ where: { id: row.id }, data: { waSent: true } });
-      await prisma.waLog.create({ data: { type: "rsvp_auto", name: row.name, whatsapp: row.whatsapp, status: "sent" } });
-      console.log("[wa-bot] rsvp_auto sent →", row.whatsapp);
-    } catch (e) {
-      await prisma.waLog.create({ data: { type: "rsvp_auto", name: row.name, whatsapp: row.whatsapp, status: "failed", error: e.message } });
-      console.error("[wa-bot] rsvp_auto failed →", row.whatsapp, e.message);
-      // Mark done so we don't retry forever; log table has the failure reason
-      await prisma.rsvp.update({ where: { id: row.id }, data: { waSent: true } }).catch(() => {});
+async function sendRsvpAuto(client) {
+  if (rsvpSending) return; // prevent overlap while waiting 60s between msgs
+  rsvpSending = true;
+  try {
+    const tpl = await prisma.waTemplate.findUnique({ where: { key: "rsvp_auto" } });
+    if (!tpl?.enabled) return;
+
+    const rows = await prisma.rsvp.findMany({ where: { waSent: false }, take: 10 });
+    for (const row of rows) {
+      const msg = tpl.body.replace(/\{name\}/gi, row.name.trim().split(" ")[0]);
+      try {
+        await client.sendMessage(chatId(row.whatsapp), msg);
+        await prisma.rsvp.update({ where: { id: row.id }, data: { waSent: true } });
+        await prisma.waLog.create({ data: { type: "rsvp_auto", name: row.name, whatsapp: row.whatsapp, status: "sent" } });
+        console.log("[wa-bot] rsvp_auto sent →", row.whatsapp);
+      } catch (e) {
+        await prisma.waLog.create({ data: { type: "rsvp_auto", name: row.name, whatsapp: row.whatsapp, status: "failed", error: e.message } });
+        console.error("[wa-bot] rsvp_auto failed →", row.whatsapp, e.message);
+        // Mark done so we don't retry forever; log table has the failure reason
+        await prisma.rsvp.update({ where: { id: row.id }, data: { waSent: true } }).catch(() => {});
+      }
+      await msgDelay();
     }
-    await sleep(2000);
+  } finally {
+    rsvpSending = false;
   }
 }
 
@@ -86,7 +96,7 @@ async function sendQueue(client) {
     } finally {
       processing.delete(row.id);
     }
-    await sleep(2000);
+    await msgDelay();
   }
 }
 
