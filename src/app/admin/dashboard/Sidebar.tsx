@@ -36,6 +36,7 @@ const NAV_GROUPS = [
   {
     label: "Operations",
     items: [
+      { label: "Users",       href: "/admin/dashboard/users",       icon: Users         },
       { label: "Forms",       href: "/admin/dashboard/forms",       icon: ClipboardList },
       { label: "QR Codes",    href: "/admin/dashboard/qr",         icon: QrCode    },
       { label: "WhatsApp",    href: "/admin/dashboard/whatsapp",   icon: Wifi      },

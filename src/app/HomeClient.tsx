@@ -663,7 +663,7 @@ export default function HomeClient({ initialSettings }: { initialSettings: Recor
             {initialSettings.event_title_sub || "মহোৎসব"}
           </h2>
           <p className="shimmer-text font-semibold" style={{ fontSize: "clamp(0.7rem, 2.5vw, 0.95rem)", letterSpacing: "0.08em", lineHeight: 1.6 }}>
-            প্রথম বর্ষ
+            {initialSettings.event_edition || "প্রথম বর্ষ"}
           </p>
         </div>
 
