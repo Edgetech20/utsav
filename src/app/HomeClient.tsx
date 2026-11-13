@@ -506,8 +506,8 @@ export default function HomeClient({ initialSettings }: { initialSettings: Recor
       },
       (err) => {
         const msg =
-          err.code === 1 ? "Permission denied — please allow location in your browser." :
-          err.code === 2 ? "Location unavailable — check your GPS or network." :
+          err.code === 1 ? "Location blocked. Tap the 🔒 icon in your browser's address bar → Site settings → Allow Location, then try again." :
+          err.code === 2 ? "Location unavailable — please check your GPS or network." :
           "Location request timed out — please try again.";
         setLocError(msg);
         setLocState("error");
