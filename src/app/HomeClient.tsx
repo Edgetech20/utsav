@@ -283,8 +283,9 @@ export default function HomeClient({ initialSettings }: { initialSettings: Recor
   const [rsvpState, setRsvpState] = useState<"idle" | "loading" | "done" | "error">("idle");
   const [rsvpError, setRsvpError] = useState("");
   const [locData, setLocData] = useState<{ lat: number; lng: number; accuracy: number; displayName: string } | null>(null);
-  const [locState, setLocState] = useState<"idle" | "loading" | "done" | "error">("idle");
+  const [locState, setLocState] = useState<"idle" | "loading" | "done" | "error" | "search">("idle");
   const [locError, setLocError] = useState("");
+  const locInputRef = useRef<HTMLInputElement | null>(null);
   const [showRsvpModal, setShowRsvpModal] = useState(false);
   // dynamic form modal
   const [dynFormSlug, setDynFormSlug]   = useState<string | null>(null);
@@ -478,49 +479,48 @@ export default function HomeClient({ initialSettings }: { initialSettings: Recor
     setAttended(true);
   }
 
-  async function captureIpLocation() {
-    try {
-      const r = await fetch("https://ipapi.co/json/");
-      const d = await r.json();
-      if (d.latitude && d.longitude) {
-        const parts = [d.city, d.region, d.country_name].filter(Boolean);
-        setLocData({ lat: d.latitude, lng: d.longitude, accuracy: 10000, displayName: parts.join(", ") + " (approximate)" });
-        setLocState("done");
-      } else {
-        setLocError("Could not detect location automatically.");
-        setLocState("error");
+  function loadGooglePlaces(): Promise<void> {
+    return new Promise((resolve, reject) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      if ((window as any).google?.maps?.places) { resolve(); return; }
+      if (document.getElementById("__gmap_script")) {
+        document.getElementById("__gmap_script")!.addEventListener("load", () => resolve());
+        return;
       }
-    } catch {
-      setLocError("Could not detect location automatically.");
-      setLocState("error");
-    }
+      const s = document.createElement("script");
+      s.id = "__gmap_script";
+      s.src = `https://maps.googleapis.com/maps/api/js?key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY}&libraries=places`;
+      s.onload = () => resolve();
+      s.onerror = () => reject();
+      document.head.appendChild(s);
+    });
   }
 
-  function captureLocation() {
+  function initAutocomplete(el: HTMLInputElement) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const g = (window as any).google;
+    const ac = new g.maps.places.Autocomplete(el, {
+      types: ["geocode"],
+      componentRestrictions: { country: "in" },
+      fields: ["formatted_address", "geometry"],
+    });
+    ac.addListener("place_changed", () => {
+      const p = ac.getPlace();
+      if (!p.geometry?.location) return;
+      setLocData({ lat: p.geometry.location.lat(), lng: p.geometry.location.lng(), accuracy: 0, displayName: p.formatted_address ?? "" });
+      setLocState("done");
+    });
+  }
+
+  async function captureLocation() {
     setLocState("loading");
-    // Try GPS first; fall back to IP-based location if GPS is unavailable or denied
-    if (!navigator.geolocation || (location.protocol !== "https:" && location.hostname !== "localhost")) {
-      captureIpLocation(); return;
+    try {
+      await loadGooglePlaces();
+      setLocState("search");
+    } catch {
+      setLocError("Could not load location search. Please check your connection.");
+      setLocState("error");
     }
-    navigator.geolocation.getCurrentPosition(
-      async (pos) => {
-        const { latitude: lat, longitude: lng, accuracy } = pos.coords;
-        try {
-          const r = await fetch(
-            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18`,
-            { headers: { "Accept-Language": "en" } }
-          );
-          const data = await r.json();
-          setLocData({ lat, lng, accuracy, displayName: data.display_name ?? `${lat.toFixed(5)}, ${lng.toFixed(5)}` });
-          setLocState("done");
-        } catch {
-          setLocData({ lat, lng, accuracy, displayName: `${lat.toFixed(5)}, ${lng.toFixed(5)}` });
-          setLocState("done");
-        }
-      },
-      () => captureIpLocation(),   // permission denied or unavailable → try IP
-      { enableHighAccuracy: true, timeout: 10000 }
-    );
   }
 
   return (
@@ -1193,7 +1193,26 @@ export default function HomeClient({ initialSettings }: { initialSettings: Recor
                   {locState === "loading" && (
                     <div className="flex items-center justify-center gap-2 py-2.5" style={{ color: T.gold, opacity: 0.65, fontSize: 13 }}>
                       <span style={{ width: 14, height: 14, border: `2px solid ${T.g35}`, borderTopColor: T.gold, borderRadius: "50%", display: "inline-block", animation: "spin 0.7s linear infinite" }} />
-                      Detecting location…
+                      Loading location search…
+                    </div>
+                  )}
+                  {locState === "search" && (
+                    <div className="flex flex-col gap-1.5">
+                      <label className="text-xs uppercase tracking-widest" style={{ color: T.gold, opacity: 0.55 }}>📍 Search your location</label>
+                      <input
+                        ref={(el) => {
+                          if (el && el !== locInputRef.current) {
+                            locInputRef.current = el;
+                            initAutocomplete(el);
+                          }
+                        }}
+                        type="text"
+                        autoFocus
+                        placeholder="Type your village, city or area…"
+                        className="rounded-xl px-4 py-3 text-sm outline-none"
+                        style={{ background: T.inputBg, border: `1px solid ${T.inputBdr}`, color: T.inputText, caretColor: T.gold }}
+                      />
+                      <button type="button" onClick={() => setLocState("idle")} className="text-xs self-end" style={{ color: T.textC, background: "none", border: "none", cursor: "pointer", padding: 0 }}>Cancel</button>
                     </div>
                   )}
                   {locState === "done" && locData && (
@@ -1202,12 +1221,12 @@ export default function HomeClient({ initialSettings }: { initialSettings: Recor
                       <div className="flex-1 min-w-0">
                         <p className="text-xs" style={{ color: T.gold, margin: 0, lineHeight: 1.5 }}>{locData.displayName}</p>
                       </div>
-                      <button type="button" onClick={() => { setLocData(null); setLocState("idle"); }} style={{ background: "none", border: "none", cursor: "pointer", color: T.textC, fontSize: 11, flexShrink: 0, padding: 0, lineHeight: 1 }}>✕</button>
+                      <button type="button" onClick={() => { setLocData(null); setLocState("idle"); locInputRef.current = null; }} style={{ background: "none", border: "none", cursor: "pointer", color: T.textC, fontSize: 11, flexShrink: 0, padding: 0, lineHeight: 1 }}>✕</button>
                     </div>
                   )}
                   {locState === "error" && (
                     <div className="flex items-center gap-2 py-2 px-3 rounded-xl" style={{ background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.2)" }}>
-                      <span className="text-xs" style={{ color: "#f87171", flex: 1 }}>{locError || "Could not detect location."}</span>
+                      <span className="text-xs" style={{ color: "#f87171", flex: 1 }}>{locError || "Could not load location search."}</span>
                       <button type="button" onClick={() => { setLocState("idle"); setLocError(""); }} className="text-xs" style={{ color: T.gold }}>Dismiss</button>
                     </div>
                   )}
