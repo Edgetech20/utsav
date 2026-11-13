@@ -38,5 +38,17 @@ export async function GET(req: NextRequest) {
     });
   }
 
-  return NextResponse.json({ error: "Missing q or id" }, { status: 400 });
+  // Reverse geocode: ?lat=X&lng=Y
+  const lat = req.nextUrl.searchParams.get("lat");
+  const lng = req.nextUrl.searchParams.get("lng");
+  if (lat && lng) {
+    const r = await fetch(
+      `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${KEY}&language=en`
+    );
+    const d = await r.json();
+    const address = d.results?.[0]?.formatted_address ?? `${lat}, ${lng}`;
+    return NextResponse.json({ address });
+  }
+
+  return NextResponse.json({ error: "Missing q, id, or lat/lng" }, { status: 400 });
 }

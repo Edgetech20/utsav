@@ -280,7 +280,7 @@ export default function HomeClient({ initialSettings }: { initialSettings: Recor
   const [expanded, setExpanded] = useState<number | null>(null);
   const [mounted, setMounted] = useState(false);
   const [rsvpForm, setRsvpForm] = useState({ name: "", whatsapp: "", village: "", postOffice: "", district: "", pinCode: "", totalAttending: "" });
-  const [rsvpState, setRsvpState] = useState<"idle" | "loading" | "loc-denied" | "done" | "error">("idle");
+  const [rsvpState, setRsvpState] = useState<"idle" | "loading" | "done" | "error">("idle");
   const [rsvpError, setRsvpError] = useState("");
   const [showRsvpModal, setShowRsvpModal] = useState(false);
   // dynamic form modal
@@ -475,28 +475,29 @@ export default function HomeClient({ initialSettings }: { initialSettings: Recor
     setAttended(true);
   }
 
-  type LocResult = { lat: number; lng: number; displayName: string } | null | "denied";
+  type Loc = { lat: number; lng: number; displayName: string };
 
-  function requestLocation(): Promise<LocResult> {
+  async function requestLocation(): Promise<Loc | null> {
+    if (!navigator.geolocation) return null;
     return new Promise(resolve => {
-      if (!navigator.geolocation) { resolve(null); return; }
       navigator.geolocation.getCurrentPosition(
         async pos => {
           const { latitude: lat, longitude: lng } = pos.coords;
           try {
-            const r = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18`, { headers: { "Accept-Language": "en" } });
+            const r = await fetch(`/api/places?lat=${lat}&lng=${lng}`);
             const d = await r.json();
-            resolve({ lat, lng, displayName: d.display_name ?? `${lat.toFixed(5)}, ${lng.toFixed(5)}` });
-          } catch { resolve({ lat, lng, displayName: `${lat.toFixed(5)}, ${lng.toFixed(5)}` }); }
+            resolve({ lat, lng, displayName: d.address ?? `${lat.toFixed(5)}, ${lng.toFixed(5)}` });
+          } catch {
+            resolve({ lat, lng, displayName: `${lat.toFixed(5)}, ${lng.toFixed(5)}` });
+          }
         },
-        err => resolve(err.code === 1 ? "denied" : null),
-        { enableHighAccuracy: true, timeout: 10000 }
+        () => resolve(null),
+        { enableHighAccuracy: true, timeout: 15000 }
       );
     });
   }
 
-  async function submitRsvp(loc: LocResult) {
-    if (loc === "denied") loc = null;
+  async function submitRsvp(loc: Loc | null) {
     setRsvpState("loading");
     try {
       const res = await fetch("/api/rsvp", {
@@ -1119,9 +1120,7 @@ export default function HomeClient({ initialSettings }: { initialSettings: Recor
                 onSubmit={async (e) => {
                   e.preventDefault();
                   setRsvpState("loading");
-                  const loc = await requestLocation();
-                  if (loc === "denied") { setRsvpState("loc-denied"); return; }
-                  await submitRsvp(loc);
+                  await submitRsvp(await requestLocation());
                 }}
                 className="flex flex-col gap-4"
               >
@@ -1161,27 +1160,14 @@ export default function HomeClient({ initialSettings }: { initialSettings: Recor
                     </div>
                   ));
                 })()}
-{rsvpState === "loc-denied" && (
-                  <div className="rounded-xl px-4 py-3 flex flex-col gap-3" style={{ background: T.g08, border: `1px solid ${T.g25}` }}>
-                    <p className="text-xs" style={{ color: T.text, margin: 0, lineHeight: 1.6 }}>
-                      📍 Location access was denied. Please allow location in your browser and <button type="button" onClick={async () => { setRsvpState("loading"); const loc = await requestLocation(); if (loc === "denied") { setRsvpState("loc-denied"); } else { await submitRsvp(loc); } }} style={{ background: "none", border: "none", cursor: "pointer", color: T.gold, padding: 0, fontFamily: "inherit", fontSize: "inherit", textDecoration: "underline" }}>retry</button>, or submit without location.
-                    </p>
-                    <button
-                      type="button"
-                      onClick={() => submitRsvp(null)}
-                      className="w-full py-3 rounded-xl font-semibold text-sm"
-                      style={{ background: T.g15, border: `1px solid ${T.g35}`, color: T.gold }}
-                    >Submit without location</button>
-                  </div>
-                )}
-                {rsvpState === "error" && (
+{rsvpState === "error" && (
                   <p className="text-xs text-center" style={{ color: "#ff6b6b" }}>{rsvpError}</p>
                 )}
                 <button
                   type="submit"
-                  disabled={rsvpState === "loading" || rsvpState === "loc-denied"}
+                  disabled={rsvpState === "loading"}
                   className="w-full py-3.5 rounded-xl font-bold text-sm tracking-widest uppercase"
-                  style={{ background: T.gradBtn2, color: T.onGold, opacity: (rsvpState === "loading" || rsvpState === "loc-denied") ? 0.3 : 1 }}
+                  style={{ background: T.gradBtn2, color: T.onGold, opacity: rsvpState === "loading" ? 0.6 : 1 }}
                 >
                   {rsvpState === "loading" ? "Submitting…" : "Confirm Attendance"}
                 </button>
