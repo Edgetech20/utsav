@@ -15,7 +15,7 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   const body = await req.json();
-  const { name, whatsapp, village, postOffice, district, pinCode, totalAttending } = body;
+  const { name, whatsapp, village, postOffice, district, pinCode, totalAttending, location } = body;
 
   // Collect custom field values (keys starting with "custom_")
   const extra: Record<string, string> = {};
@@ -37,6 +37,7 @@ export async function POST(req: NextRequest) {
         district: district?.trim() || null, pinCode: pinCode?.trim() || null,
         totalAttending: attending,
         extraData: Object.keys(extra).length ? JSON.stringify(extra) : null,
+        location: location ?? null,
       },
     });
   } catch (e) {

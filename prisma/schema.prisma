@@ -68,6 +68,7 @@ model Rsvp {
   totalAttending Int?
   extraData      String?  @db.Text  // JSON: custom field values
   notes          String?  @db.Text  // admin notes
+  location       String?  @db.Text  // JSON: { lat, lng, accuracy, displayName }
   submittedAt    DateTime @default(now())
   waSent         Boolean  @default(false)
 }

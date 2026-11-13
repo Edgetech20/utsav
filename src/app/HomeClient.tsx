@@ -282,6 +282,8 @@ export default function HomeClient({ initialSettings }: { initialSettings: Recor
   const [rsvpForm, setRsvpForm] = useState({ name: "", whatsapp: "", village: "", postOffice: "", district: "", pinCode: "", totalAttending: "" });
   const [rsvpState, setRsvpState] = useState<"idle" | "loading" | "done" | "error">("idle");
   const [rsvpError, setRsvpError] = useState("");
+  const [locData, setLocData] = useState<{ lat: number; lng: number; accuracy: number; displayName: string } | null>(null);
+  const [locState, setLocState] = useState<"idle" | "loading" | "done" | "error">("idle");
   const [showRsvpModal, setShowRsvpModal] = useState(false);
   // dynamic form modal
   const [dynFormSlug, setDynFormSlug]   = useState<string | null>(null);
@@ -473,6 +475,31 @@ export default function HomeClient({ initialSettings }: { initialSettings: Recor
     if (attended) return;
     await fetch("/api/track?type=attend", { method: "POST" });
     setAttended(true);
+  }
+
+  function captureLocation() {
+    if (!navigator.geolocation) { setLocState("error"); return; }
+    setLocState("loading");
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        const { latitude: lat, longitude: lng, accuracy } = pos.coords;
+        try {
+          const r = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18`,
+            { headers: { "Accept-Language": "en" } }
+          );
+          const data = await r.json();
+          setLocData({ lat, lng, accuracy, displayName: data.display_name ?? `${lat.toFixed(5)}, ${lng.toFixed(5)}` });
+          setLocState("done");
+        } catch {
+          // Fallback to raw coords if geocoding fails
+          setLocData({ lat, lng, accuracy, displayName: `${lat.toFixed(5)}, ${lng.toFixed(5)}` });
+          setLocState("done");
+        }
+      },
+      () => setLocState("error"),
+      { enableHighAccuracy: true, timeout: 15000 }
+    );
   }
 
   return (
@@ -1083,7 +1110,7 @@ export default function HomeClient({ initialSettings }: { initialSettings: Recor
                   e.preventDefault();
                   setRsvpState("loading");
                   try {
-                    const res = await fetch("/api/rsvp", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(rsvpForm) });
+                    const res = await fetch("/api/rsvp", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...rsvpForm, ...(locData ? { location: JSON.stringify(locData) } : {}) }) });
                     if (res.ok) { setRsvpState("done"); handleAttend(); }
                     else {
                       const body = await res.json().catch(() => ({}));
@@ -1130,6 +1157,41 @@ export default function HomeClient({ initialSettings }: { initialSettings: Recor
                     </div>
                   ));
                 })()}
+                {/* Location capture */}
+                <div>
+                  {locState === "idle" && (
+                    <button
+                      type="button"
+                      onClick={captureLocation}
+                      className="w-full py-2.5 rounded-xl text-sm font-medium flex items-center justify-center gap-2"
+                      style={{ background: T.g08, border: `1px dashed ${T.g35}`, color: T.gold }}
+                    >
+                      <span>📍</span> Share my location <span style={{ opacity: 0.5, fontSize: 11 }}>(optional)</span>
+                    </button>
+                  )}
+                  {locState === "loading" && (
+                    <div className="flex items-center justify-center gap-2 py-2.5" style={{ color: T.gold, opacity: 0.65, fontSize: 13 }}>
+                      <span style={{ width: 14, height: 14, border: `2px solid ${T.g35}`, borderTopColor: T.gold, borderRadius: "50%", display: "inline-block", animation: "spin 0.7s linear infinite" }} />
+                      Detecting location…
+                    </div>
+                  )}
+                  {locState === "done" && locData && (
+                    <div className="rounded-xl px-3 py-2.5 flex items-start gap-2" style={{ background: T.g08, border: `1px solid ${T.g35}` }}>
+                      <span style={{ fontSize: 16, flexShrink: 0 }}>📍</span>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs" style={{ color: T.gold, margin: 0, lineHeight: 1.5 }}>{locData.displayName}</p>
+                      </div>
+                      <button type="button" onClick={() => { setLocData(null); setLocState("idle"); }} style={{ background: "none", border: "none", cursor: "pointer", color: T.textC, fontSize: 11, flexShrink: 0, padding: 0, lineHeight: 1 }}>✕</button>
+                    </div>
+                  )}
+                  {locState === "error" && (
+                    <div className="flex items-center gap-2 py-2 px-3 rounded-xl" style={{ background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.2)" }}>
+                      <span className="text-xs" style={{ color: "#f87171", flex: 1 }}>Could not detect location</span>
+                      <button type="button" onClick={() => setLocState("idle")} className="text-xs" style={{ color: T.gold }}>Retry</button>
+                    </div>
+                  )}
+                </div>
+
                 {rsvpState === "error" && (
                   <p className="text-xs text-center" style={{ color: "#ff6b6b" }}>{rsvpError}</p>
                 )}

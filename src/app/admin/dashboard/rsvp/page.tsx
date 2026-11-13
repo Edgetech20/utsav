@@ -5,7 +5,7 @@ import { Trash2, RefreshCw, CheckCircle, Clock, Users, SlidersHorizontal, Save, 
 import { C, Badge, Button, Search, PageHeader, Table, Thead, Th, Tbody, Td, Tr, Skeleton, Empty, Avatar, Pagination, Card, useDesktop } from "../ui";
 import { useToast } from "../toast";
 
-type Entry = { id: number; name: string; whatsapp: string; address: string; village: string | null; postOffice: string | null; district: string | null; pinCode: string | null; totalAttending: number | null; extraData: string | null; notes: string | null; submittedAt: string; waSent: boolean };
+type Entry = { id: number; name: string; whatsapp: string; address: string; village: string | null; postOffice: string | null; district: string | null; pinCode: string | null; totalAttending: number | null; extraData: string | null; notes: string | null; location: string | null; submittedAt: string; waSent: boolean };
 
 function SkeletonRows() {
   return (
@@ -416,10 +416,12 @@ export default function RsvpPage() {
               const busy = acting === e.id; const confirm = toConfirm === e.id;
               const extra: Record<string, string> = e.extraData ? (() => { try { return JSON.parse(e.extraData); } catch { return {}; } })() : {};
               const customFields = fieldConfig.filter(f => f.custom && f.visible);
+              const loc: { lat: number; lng: number; displayName: string } | null = e.location ? (() => { try { return JSON.parse(e.location); } catch { return null; } })() : null;
+              const hasExtra = customFields.length > 0 || !!loc;
               const isExpanded = expanded === e.id;
               return (
                 <Fragment key={e.id}>
-                  <Tr style={{ opacity: busy ? 0.5 : 1, cursor: customFields.length ? "pointer" : "default" }} onClick={() => customFields.length && setExpanded(isExpanded ? null : e.id)}>
+                  <Tr style={{ opacity: busy ? 0.5 : 1, cursor: hasExtra ? "pointer" : "default" }} onClick={() => hasExtra && setExpanded(isExpanded ? null : e.id)}>
                     <Td><div style={{ display: "flex", alignItems: "center", gap: 10 }}><Avatar name={e.name} size={32} /><span style={{ fontWeight: 600, whiteSpace: "nowrap" }}>{e.name}</span></div></Td>
                     <Td><span style={{ fontFamily: "monospace", fontSize: 12, color: C.textSub }}>{e.whatsapp}</span></Td>
                     <Td style={{ maxWidth: 220 }}><span style={{ display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: C.textSub, fontSize: 12 }}>{[e.village, e.postOffice, e.district, e.pinCode].filter(Boolean).join(", ") || e.address}</span></Td>
@@ -438,10 +440,24 @@ export default function RsvpPage() {
                       }
                     </div></Td>
                   </Tr>
-                  {isExpanded && customFields.length > 0 && (
+                  {isExpanded && hasExtra && (
                     <Tr>
                       <Td colSpan={7} style={{ background: C.bg, padding: "10px 20px 14px" }}>
                         <div style={{ display: "flex", flexWrap: "wrap", gap: 20 }}>
+                          {loc && (
+                            <div style={{ flex: "0 0 100%", marginBottom: 4 }}>
+                              <p style={{ fontSize: 10, color: C.textMuted, margin: 0, textTransform: "uppercase", letterSpacing: "0.07em" }}>Location</p>
+                              <a
+                                href={`https://www.google.com/maps?q=${loc.lat},${loc.lng}`}
+                                target="_blank" rel="noopener noreferrer"
+                                style={{ fontSize: 13, color: C.gold, margin: "3px 0 0", fontWeight: 500, display: "flex", alignItems: "flex-start", gap: 5, textDecoration: "none" }}
+                                onClick={ev => ev.stopPropagation()}
+                              >
+                                <span>📍</span>
+                                <span style={{ lineHeight: 1.5 }}>{loc.displayName}</span>
+                              </a>
+                            </div>
+                          )}
                           {customFields.map(f => (
                             <div key={f.key}>
                               <p style={{ fontSize: 10, color: C.textMuted, margin: 0, textTransform: "uppercase", letterSpacing: "0.07em" }}>{f.label}</p>
@@ -465,6 +481,7 @@ export default function RsvpPage() {
             const busy = acting === e.id; const confirm = toConfirm === e.id;
             const extra: Record<string, string> = e.extraData ? (() => { try { return JSON.parse(e.extraData); } catch { return {}; } })() : {};
             const customFields = fieldConfig.filter(f => f.custom && f.visible);
+            const loc: { lat: number; lng: number; displayName: string } | null = e.location ? (() => { try { return JSON.parse(e.location); } catch { return null; } })() : null;
             return (
               <Card key={e.id} padding={14} style={{ opacity: busy ? 0.5 : 1 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
@@ -477,6 +494,13 @@ export default function RsvpPage() {
                 </div>
                 <p style={{ fontSize: 12, color: C.textSub, margin: "0 0 6px", lineHeight: 1.5 }}>{[e.village, e.postOffice, e.district, e.pinCode].filter(Boolean).join(", ") || e.address}</p>
                 {e.totalAttending && <p style={{ fontSize: 11, color: C.textMuted, margin: "0 0 6px" }}>Attending: <strong>{e.totalAttending}</strong></p>}
+                {loc && (
+                  <a href={`https://www.google.com/maps?q=${loc.lat},${loc.lng}`} target="_blank" rel="noopener noreferrer"
+                    style={{ display: "flex", alignItems: "flex-start", gap: 5, fontSize: 11, color: C.gold, textDecoration: "none", margin: "0 0 6px", lineHeight: 1.5 }}>
+                    <span>📍</span>
+                    <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}>{loc.displayName}</span>
+                  </a>
+                )}
                 {customFields.length > 0 && (
                   <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginBottom: 8, padding: "8px 0", borderTop: `1px solid ${C.border}` }}>
                     {customFields.map(f => extra[f.key] ? (
