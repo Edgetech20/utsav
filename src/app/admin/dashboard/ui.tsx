@@ -217,9 +217,9 @@ export function Th({ children, style }: { children?: ReactNode; style?: React.CS
     </th>
   );
 }
-export function Td({ children, style, colSpan }: { children?: ReactNode; style?: React.CSSProperties; colSpan?: number }) {
+export function Td({ children, style, colSpan, ...rest }: { children?: ReactNode; style?: React.CSSProperties; colSpan?: number } & React.TdHTMLAttributes<HTMLTableCellElement>) {
   return (
-    <td colSpan={colSpan} style={{
+    <td colSpan={colSpan} {...rest} style={{
       padding: "12px 16px",
       borderBottom: `1px solid ${C.borderLight}`,
       color: C.text, verticalAlign: "middle",
@@ -229,8 +229,8 @@ export function Td({ children, style, colSpan }: { children?: ReactNode; style?:
     </td>
   );
 }
-export function Tr({ children, style }: { children: ReactNode; style?: React.CSSProperties }) {
-  return <tr style={{ transition: "background 0.1s", ...style }}>{children}</tr>;
+export function Tr({ children, style, ...rest }: { children: ReactNode; style?: React.CSSProperties } & React.HTMLAttributes<HTMLTableRowElement>) {
+  return <tr {...rest} style={{ transition: "background 0.1s", ...style }}>{children}</tr>;
 }
 
 // ── Empty state ───────────────────────────────────────────────────────────────
