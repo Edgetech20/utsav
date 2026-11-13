@@ -1075,7 +1075,7 @@ export default function HomeClient({ initialSettings }: { initialSettings: Recor
         >
           <div
             className="w-full max-w-lg rounded-t-3xl px-5 pt-6 pb-10 flex flex-col gap-5"
-            style={{ background: T.formBg, border: `1px solid ${T.g20}`, borderBottom: "none" }}
+            style={{ background: T.formBg, borderTop: `1px solid ${T.g20}`, borderLeft: `1px solid ${T.g20}`, borderRight: `1px solid ${T.g20}`, borderBottom: "none" }}
           >
             {/* Handle + header */}
             <div className="flex flex-col items-center gap-4">
@@ -1220,7 +1220,7 @@ export default function HomeClient({ initialSettings }: { initialSettings: Recor
         >
           <div
             className="no-scrollbar w-full max-w-lg rounded-t-3xl px-5 pt-6 pb-10 flex flex-col gap-4"
-            style={{ background: T.formBg, border: `1px solid ${T.g20}`, borderBottom: "none", maxHeight: "90vh", overflowY: "auto" }}
+            style={{ background: T.formBg, borderTop: `1px solid ${T.g20}`, borderLeft: `1px solid ${T.g20}`, borderRight: `1px solid ${T.g20}`, borderBottom: "none", maxHeight: "90vh", overflowY: "auto" }}
           >
             {/* Handle + header */}
             <div className="flex flex-col items-center gap-3">
