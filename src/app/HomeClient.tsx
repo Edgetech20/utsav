@@ -478,16 +478,30 @@ export default function HomeClient({ initialSettings }: { initialSettings: Recor
     setAttended(true);
   }
 
+  async function captureIpLocation() {
+    try {
+      const r = await fetch("https://ipapi.co/json/");
+      const d = await r.json();
+      if (d.latitude && d.longitude) {
+        const parts = [d.city, d.region, d.country_name].filter(Boolean);
+        setLocData({ lat: d.latitude, lng: d.longitude, accuracy: 10000, displayName: parts.join(", ") + " (approximate)" });
+        setLocState("done");
+      } else {
+        setLocError("Could not detect location automatically.");
+        setLocState("error");
+      }
+    } catch {
+      setLocError("Could not detect location automatically.");
+      setLocState("error");
+    }
+  }
+
   function captureLocation() {
-    if (!navigator.geolocation) {
-      setLocError("Your browser does not support location access.");
-      setLocState("error"); return;
-    }
-    if (location.protocol !== "https:" && location.hostname !== "localhost") {
-      setLocError("Location requires a secure connection (HTTPS).");
-      setLocState("error"); return;
-    }
     setLocState("loading");
+    // Try GPS first; fall back to IP-based location if GPS is unavailable or denied
+    if (!navigator.geolocation || (location.protocol !== "https:" && location.hostname !== "localhost")) {
+      captureIpLocation(); return;
+    }
     navigator.geolocation.getCurrentPosition(
       async (pos) => {
         const { latitude: lat, longitude: lng, accuracy } = pos.coords;
@@ -504,15 +518,8 @@ export default function HomeClient({ initialSettings }: { initialSettings: Recor
           setLocState("done");
         }
       },
-      (err) => {
-        const msg =
-          err.code === 1 ? "Location blocked. Tap the 🔒 icon in your browser's address bar → Site settings → Allow Location, then try again." :
-          err.code === 2 ? "Location unavailable — please check your GPS or network." :
-          "Location request timed out — please try again.";
-        setLocError(msg);
-        setLocState("error");
-      },
-      { enableHighAccuracy: true, timeout: 15000 }
+      () => captureIpLocation(),   // permission denied or unavailable → try IP
+      { enableHighAccuracy: true, timeout: 10000 }
     );
   }
 
@@ -1199,9 +1206,9 @@ export default function HomeClient({ initialSettings }: { initialSettings: Recor
                     </div>
                   )}
                   {locState === "error" && (
-                    <div className="flex items-start gap-2 py-2 px-3 rounded-xl" style={{ background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.2)" }}>
-                      <span className="text-xs" style={{ color: "#f87171", flex: 1, lineHeight: 1.5 }}>{locError || "Could not detect location."}</span>
-                      <button type="button" onClick={() => { setLocState("idle"); setLocError(""); }} className="text-xs" style={{ color: T.gold, flexShrink: 0 }}>Dismiss</button>
+                    <div className="flex items-center gap-2 py-2 px-3 rounded-xl" style={{ background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.2)" }}>
+                      <span className="text-xs" style={{ color: "#f87171", flex: 1 }}>{locError || "Could not detect location."}</span>
+                      <button type="button" onClick={() => { setLocState("idle"); setLocError(""); }} className="text-xs" style={{ color: T.gold }}>Dismiss</button>
                     </div>
                   )}
                 </div>
