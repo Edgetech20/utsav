@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { Phone, Globe, Save, Calendar, MapPin, Mail, User, Link2, Camera, Play, X, Shield } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Phone, Globe, Save, Calendar, MapPin, Mail, User, Link2, Camera, Play, X, Shield, Music } from "lucide-react";
 import { Card, Button, C, useDesktop } from "../ui";
 import { useToast } from "../toast";
 
@@ -101,15 +101,37 @@ export default function SettingsPage() {
   const [vals, setVals]     = useState<Vals>({});
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [musicTs, setMusicTs]       = useState(() => Date.now());
+  const [uploading, setUploading]   = useState(false);
+  const [hasSong, setHasSong]       = useState(false);
+  const musicInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     fetch("/api/settings")
       .then(r => r.json())
       .then(d => { setVals(d); setLoading(false); });
+    fetch("/music.mp3", { method: "HEAD" }).then(r => setHasSong(r.ok)).catch(() => {});
   }, []);
 
   function set(key: string, value: string) {
     setVals(v => ({ ...v, [key]: value }));
+  }
+
+  async function uploadMusic(file: File) {
+    setUploading(true);
+    const form = new FormData();
+    form.append("file", file);
+    try {
+      const r = await fetch("/api/admin/music", { method: "POST", body: form });
+      if (!r.ok) throw new Error();
+      setMusicTs(Date.now());
+      setHasSong(true);
+      toast("Song uploaded", "success");
+    } catch {
+      toast("Upload failed", "error");
+    } finally {
+      setUploading(false);
+    }
   }
 
   async function save() {
@@ -157,6 +179,42 @@ export default function SettingsPage() {
           <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
             <Section label="Social Media Links">
               <FieldList fields={SOCIAL_FIELDS} vals={vals} onChange={set} />
+            </Section>
+            <Section label="Background Music">
+              <div style={{ padding: "16px 20px", display: "flex", flexDirection: "column", gap: 14 }}>
+                {/* Current song preview */}
+                <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                  <div style={{ width: 36, height: 36, borderRadius: 9, background: C.bg, border: `1px solid ${C.border}`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                    <Music size={16} color={C.textSub} />
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <p style={{ fontSize: 11, fontWeight: 600, color: C.textSub, textTransform: "uppercase", letterSpacing: "0.06em", margin: 0 }}>Current Song</p>
+                    {hasSong ? (
+                      <audio key={musicTs} controls src={`/music.mp3?t=${musicTs}`} style={{ width: "100%", marginTop: 6, height: 32 }} />
+                    ) : (
+                      <p style={{ fontSize: 12, color: C.textMuted, margin: "4px 0 0" }}>No song uploaded</p>
+                    )}
+                  </div>
+                </div>
+                {/* Upload */}
+                <input ref={musicInputRef} type="file" accept="audio/*" style={{ display: "none" }}
+                  onChange={e => { const f = e.target.files?.[0]; if (f) uploadMusic(f); e.target.value = ""; }} />
+                <Button onClick={() => musicInputRef.current?.click()} loading={uploading} icon={<Music size={14} />}>
+                  {hasSong ? "Replace Song" : "Upload Song"}
+                </Button>
+                {/* Auto-play toggle */}
+                <label style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer" }}>
+                  <input
+                    type="checkbox"
+                    checked={vals.music_autoplay !== "false"}
+                    onChange={e => set("music_autoplay", e.target.checked ? "true" : "false")}
+                  />
+                  <span style={{ fontSize: 13, color: C.text }}>Auto-play music when page opens</span>
+                </label>
+                <p style={{ fontSize: 11, color: C.textMuted, margin: 0 }}>
+                  When enabled, music plays automatically after the visitor taps "Enter". Click Save All to apply.
+                </p>
+              </div>
             </Section>
             <Section label="Security">
               <FieldList fields={SECURITY_FIELDS} vals={vals} onChange={set} />

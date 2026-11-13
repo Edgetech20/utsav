@@ -407,7 +407,7 @@ export default function HomeClient({ initialSettings }: { initialSettings: Recor
   function handleEnter() {
     setEntered(true);
     const audio = audioRef.current;
-    if (audio) audio.play().then(() => setPlaying(true)).catch(() => {});
+    if (audio && initialSettings.music_autoplay !== "false") audio.play().then(() => setPlaying(true)).catch(() => {});
   }
 
   function toggleMusic() {
