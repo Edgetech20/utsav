@@ -282,10 +282,12 @@ export default function HomeClient({ initialSettings }: { initialSettings: Recor
   const [rsvpForm, setRsvpForm] = useState({ name: "", whatsapp: "", village: "", postOffice: "", district: "", pinCode: "", totalAttending: "" });
   const [rsvpState, setRsvpState] = useState<"idle" | "loading" | "done" | "error">("idle");
   const [rsvpError, setRsvpError] = useState("");
-  const [locData, setLocData] = useState<{ lat: number; lng: number; accuracy: number; displayName: string } | null>(null);
-  const [locState, setLocState] = useState<"idle" | "loading" | "done" | "error" | "search">("idle");
+  const [locData, setLocData] = useState<{ lat: number; lng: number; displayName: string } | null>(null);
+  const [locState, setLocState] = useState<"idle" | "search" | "loading" | "done" | "error">("idle");
   const [locError, setLocError] = useState("");
-  const locInputRef = useRef<HTMLInputElement | null>(null);
+  const [locSuggestions, setLocSuggestions] = useState<{ placeId: string; text: string }[]>([]);
+  const [locSearching, setLocSearching] = useState(false);
+  const locTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [showRsvpModal, setShowRsvpModal] = useState(false);
   // dynamic form modal
   const [dynFormSlug, setDynFormSlug]   = useState<string | null>(null);
@@ -479,49 +481,35 @@ export default function HomeClient({ initialSettings }: { initialSettings: Recor
     setAttended(true);
   }
 
-  function loadGooglePlaces(): Promise<void> {
-    return new Promise((resolve, reject) => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      if ((window as any).google?.maps?.places) { resolve(); return; }
-      if (document.getElementById("__gmap_script")) {
-        document.getElementById("__gmap_script")!.addEventListener("load", () => resolve());
-        return;
-      }
-      const s = document.createElement("script");
-      s.id = "__gmap_script";
-      s.src = `https://maps.googleapis.com/maps/api/js?key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY}&libraries=places`;
-      s.onload = () => resolve();
-      s.onerror = () => reject();
-      document.head.appendChild(s);
-    });
+  function onLocInput(val: string) {
+    if (locTimer.current) clearTimeout(locTimer.current);
+    if (!val.trim()) { setLocSuggestions([]); return; }
+    locTimer.current = setTimeout(async () => {
+      setLocSearching(true);
+      try {
+        const r = await fetch(`/api/places?q=${encodeURIComponent(val)}`);
+        const d = await r.json();
+        setLocSuggestions(d.suggestions ?? []);
+      } catch { setLocSuggestions([]); }
+      setLocSearching(false);
+    }, 350);
   }
 
-  function initAutocomplete(el: HTMLInputElement) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const g = (window as any).google;
-    const ac = new g.maps.places.Autocomplete(el, {
-      types: ["geocode"],
-      componentRestrictions: { country: "in" },
-      fields: ["formatted_address", "geometry"],
-    });
-    ac.addListener("place_changed", () => {
-      const p = ac.getPlace();
-      if (!p.geometry?.location) return;
-      setLocData({ lat: p.geometry.location.lat(), lng: p.geometry.location.lng(), accuracy: 0, displayName: p.formatted_address ?? "" });
-      setLocState("done");
-    });
-  }
-
-  async function captureLocation() {
+  async function selectPlace(placeId: string, text: string) {
+    setLocSuggestions([]);
     setLocState("loading");
     try {
-      await loadGooglePlaces();
-      setLocState("search");
+      const r = await fetch(`/api/places?id=${placeId}`);
+      const d = await r.json();
+      setLocData({ lat: d.lat, lng: d.lng, displayName: d.address || text });
+      setLocState("done");
     } catch {
-      setLocError("Could not load location search. Please check your connection.");
+      setLocError("Could not get place details. Please try again.");
       setLocState("error");
     }
   }
+
+  function captureLocation() { setLocState("search"); setLocSuggestions([]); }
 
   return (
     <div data-inv-theme={theme} className="min-h-screen flex flex-col items-center justify-start" style={{ background: T.bg }}>
@@ -1190,43 +1178,49 @@ export default function HomeClient({ initialSettings }: { initialSettings: Recor
                       <span>📍</span> Share my location <span style={{ opacity: 0.5, fontSize: 11 }}>(optional)</span>
                     </button>
                   )}
+                  {locState === "search" && (
+                    <div className="flex flex-col gap-1.5" style={{ position: "relative" }}>
+                      <label className="text-xs uppercase tracking-widest" style={{ color: T.gold, opacity: 0.55 }}>📍 Search your location</label>
+                      <div style={{ position: "relative" }}>
+                        <input
+                          autoFocus
+                          type="text"
+                          placeholder="Type village, city or area…"
+                          onChange={e => onLocInput(e.target.value)}
+                          className="rounded-xl px-4 py-3 text-sm outline-none w-full"
+                          style={{ background: T.inputBg, border: `1px solid ${T.inputBdr}`, color: T.inputText, caretColor: T.gold }}
+                        />
+                        {locSearching && <span style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", width: 14, height: 14, border: `2px solid ${T.g35}`, borderTopColor: T.gold, borderRadius: "50%", display: "inline-block", animation: "spin 0.7s linear infinite" }} />}
+                      </div>
+                      {locSuggestions.length > 0 && (
+                        <div style={{ position: "absolute", top: "100%", left: 0, right: 0, zIndex: 200, background: T.formBg, border: `1px solid ${T.g25}`, borderRadius: 12, overflow: "hidden", boxShadow: "0 8px 24px rgba(0,0,0,0.25)", marginTop: 4 }}>
+                          {locSuggestions.map(s => (
+                            <button key={s.placeId} type="button" onClick={() => selectPlace(s.placeId, s.text)}
+                              style={{ display: "block", width: "100%", textAlign: "left", padding: "11px 16px", background: "none", border: "none", borderBottom: `1px solid ${T.g08}`, cursor: "pointer", fontSize: 13, color: T.text, fontFamily: "inherit" }}>
+                              <span style={{ marginRight: 8 }}>📍</span>{s.text}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                      <button type="button" onClick={() => { setLocState("idle"); setLocSuggestions([]); }} className="text-xs self-end" style={{ color: T.textC, background: "none", border: "none", cursor: "pointer", padding: 0 }}>Cancel</button>
+                    </div>
+                  )}
                   {locState === "loading" && (
                     <div className="flex items-center justify-center gap-2 py-2.5" style={{ color: T.gold, opacity: 0.65, fontSize: 13 }}>
                       <span style={{ width: 14, height: 14, border: `2px solid ${T.g35}`, borderTopColor: T.gold, borderRadius: "50%", display: "inline-block", animation: "spin 0.7s linear infinite" }} />
-                      Loading location search…
-                    </div>
-                  )}
-                  {locState === "search" && (
-                    <div className="flex flex-col gap-1.5">
-                      <label className="text-xs uppercase tracking-widest" style={{ color: T.gold, opacity: 0.55 }}>📍 Search your location</label>
-                      <input
-                        ref={(el) => {
-                          if (el && el !== locInputRef.current) {
-                            locInputRef.current = el;
-                            initAutocomplete(el);
-                          }
-                        }}
-                        type="text"
-                        autoFocus
-                        placeholder="Type your village, city or area…"
-                        className="rounded-xl px-4 py-3 text-sm outline-none"
-                        style={{ background: T.inputBg, border: `1px solid ${T.inputBdr}`, color: T.inputText, caretColor: T.gold }}
-                      />
-                      <button type="button" onClick={() => setLocState("idle")} className="text-xs self-end" style={{ color: T.textC, background: "none", border: "none", cursor: "pointer", padding: 0 }}>Cancel</button>
+                      Getting location…
                     </div>
                   )}
                   {locState === "done" && locData && (
                     <div className="rounded-xl px-3 py-2.5 flex items-start gap-2" style={{ background: T.g08, border: `1px solid ${T.g35}` }}>
                       <span style={{ fontSize: 16, flexShrink: 0 }}>📍</span>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs" style={{ color: T.gold, margin: 0, lineHeight: 1.5 }}>{locData.displayName}</p>
-                      </div>
-                      <button type="button" onClick={() => { setLocData(null); setLocState("idle"); locInputRef.current = null; }} style={{ background: "none", border: "none", cursor: "pointer", color: T.textC, fontSize: 11, flexShrink: 0, padding: 0, lineHeight: 1 }}>✕</button>
+                      <p className="text-xs flex-1" style={{ color: T.gold, margin: 0, lineHeight: 1.5 }}>{locData.displayName}</p>
+                      <button type="button" onClick={() => { setLocData(null); setLocState("idle"); }} style={{ background: "none", border: "none", cursor: "pointer", color: T.textC, fontSize: 11, flexShrink: 0, padding: 0 }}>✕</button>
                     </div>
                   )}
                   {locState === "error" && (
                     <div className="flex items-center gap-2 py-2 px-3 rounded-xl" style={{ background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.2)" }}>
-                      <span className="text-xs" style={{ color: "#f87171", flex: 1 }}>{locError || "Could not load location search."}</span>
+                      <span className="text-xs" style={{ color: "#f87171", flex: 1 }}>{locError}</span>
                       <button type="button" onClick={() => { setLocState("idle"); setLocError(""); }} className="text-xs" style={{ color: T.gold }}>Dismiss</button>
                     </div>
                   )}
