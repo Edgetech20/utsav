@@ -37,7 +37,7 @@ function LoginForm() {
     });
     const data = await res.json();
     setLoading(false);
-    if (res.ok) router.push(params.get("from") ?? "/admin/dashboard");
+    if (res.ok) window.location.href = params.get("from") ?? "/admin/dashboard";
     else setError(data.error ?? "Something went wrong");
   }
 

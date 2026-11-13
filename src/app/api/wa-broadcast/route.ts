@@ -1,18 +1,23 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { requireAdmin } from "@/lib/auth";
+import { getSessionUser, can, getIp } from "@/lib/auth";
+import { logChange } from "@/lib/changelog";
 
-// Returns recipient list for a given group so the UI can preview counts
 export async function GET(req: NextRequest) {
-  const deny = requireAdmin(req); if (deny) return deny;
+  const user = await getSessionUser(req);
+  if (!user) return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
+  if (!can(user, "whatsapp", "view")) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+
   const group = new URL(req.url).searchParams.get("group") ?? "rsvp";
   const recipients = await getRecipients(group);
   return NextResponse.json({ count: recipients.length, recipients });
 }
 
-// Adds entries to WaQueue — accepts either a group name or an explicit recipients array
 export async function POST(req: NextRequest) {
-  const deny = requireAdmin(req); if (deny) return deny;
+  const user = await getSessionUser(req);
+  if (!user) return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
+  if (!can(user, "whatsapp", "edit")) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+
   const { group, message, recipients: explicit } = await req.json();
   if (!message?.trim()) return NextResponse.json({ error: "message required" }, { status: 400 });
 
@@ -32,6 +37,7 @@ export async function POST(req: NextRequest) {
     skipDuplicates: false,
   });
 
+  await logChange(user.email, "broadcast", "whatsapp", { queued: recipients.length, group: group ?? "rsvp" }, getIp(req));
   return NextResponse.json({ queued: recipients.length });
 }
 

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { requireAdmin } from "@/lib/auth";
+import { getSessionUser, can } from "@/lib/auth";
 
 const SECRET = process.env.FEEDBACK_WEBHOOK_SECRET;
 
@@ -29,13 +29,19 @@ export async function POST(req: NextRequest) {
 }
 
 export async function GET(req: NextRequest) {
-  const deny = requireAdmin(req); if (deny) return deny;
+  const user = await getSessionUser(req);
+  if (!user) return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
+  if (!can(user, "feedback", "view")) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+
   const entries = await db.feedbackResponse.findMany({ orderBy: { submittedAt: "desc" } });
   return NextResponse.json({ entries });
 }
 
 export async function DELETE(req: NextRequest) {
-  const deny = requireAdmin(req); if (deny) return deny;
+  const user = await getSessionUser(req);
+  if (!user) return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
+  if (!can(user, "feedback", "edit")) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+
   const { id } = await req.json();
   await db.feedbackResponse.delete({ where: { id } });
   return NextResponse.json({ ok: true });

@@ -1,5 +1,29 @@
 import { NextRequest, NextResponse } from "next/server";
+import nodemailer from "nodemailer";
 import { db } from "@/lib/db";
+
+function sendNotifyEmail(formName: string, data: Record<string, string>, superEmails: string[]) {
+  if (!superEmails.length) return;
+  const transporter = nodemailer.createTransport({
+    service: "gmail",
+    auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS },
+  });
+  const rows = Object.entries(data)
+    .map(([k, v]) => `<tr><td style="padding:6px 12px;font-size:13px;color:#64748B;border-bottom:1px solid #F1F5F9;white-space:nowrap">${k}</td><td style="padding:6px 12px;font-size:13px;color:#0F172A;border-bottom:1px solid #F1F5F9">${v || "—"}</td></tr>`)
+    .join("");
+  const html = `
+    <div style="font-family:system-ui,sans-serif;max-width:560px;margin:0 auto;padding:32px">
+      <h2 style="color:#0F172A;margin:0 0 4px">New Response: ${formName}</h2>
+      <p style="color:#94A3B8;font-size:12px;margin:0 0 24px">${new Date().toLocaleString("en-IN")}</p>
+      <table style="width:100%;border-collapse:collapse;border:1px solid #E2E8F0;border-radius:10px;overflow:hidden">${rows}</table>
+    </div>`;
+  transporter.sendMail({
+    from: `"Priyabodhi Forms" <${process.env.SMTP_USER}>`,
+    to: superEmails.join(","),
+    subject: `New Response: ${formName}`,
+    html,
+  }).catch(() => {});
+}
 
 type FieldValidation = {
   format?: "email" | "phone" | "numeric";
@@ -107,6 +131,12 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ slu
         });
       }
     }
+  }
+
+  // Email all super admins if enabled
+  if (form.emailNotify) {
+    const supers = await db.adminUser.findMany({ where: { role: "super" }, select: { email: true } });
+    sendNotifyEmail(form.name, data, supers.map(s => s.email));
   }
 
   return NextResponse.json({ ok: true });

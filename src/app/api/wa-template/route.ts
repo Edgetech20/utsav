@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { requireAdmin } from "@/lib/auth";
+import { getSessionUser, can, getIp } from "@/lib/auth";
+import { logChange } from "@/lib/changelog";
 
 const DEFAULTS: Record<string, { name: string; body: string }> = {
   rsvp_auto: {
@@ -13,11 +14,11 @@ const DEFAULTS: Record<string, { name: string; body: string }> = {
   },
 };
 
-// GET — return all templates: seeded defaults + any dynamic form templates
 export async function GET(req: NextRequest) {
-  const deny = requireAdmin(req); if (deny) return deny;
+  const user = await getSessionUser(req);
+  if (!user) return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
+  if (!can(user, "templates", "view")) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
-  // seed the 3 fixed templates if missing
   const fixed = await Promise.all(
     Object.entries(DEFAULTS).map(async ([key, def]) => {
       const existing = await db.waTemplate.findUnique({ where: { key } });
@@ -26,16 +27,14 @@ export async function GET(req: NextRequest) {
     })
   );
 
-  // seed missing WaTemplates for any existing dynamic forms
   const forms = await db.dynamicForm.findMany({ select: { name: true, slug: true } });
   await Promise.all(
     forms.map(f =>
       db.waTemplate.upsert({
         where:  { key: `form_${f.slug}` },
         create: {
-          key:     `form_${f.slug}`,
-          name:    `${f.name} Auto-Message`,
-          body:    `Namaskar {name} 🙏\n\nYour ${f.name} registration has been received.\n\nThank you!\n\nJai Guru!`,
+          key: `form_${f.slug}`, name: `${f.name} Auto-Message`,
+          body: `Namaskar {name} 🙏\n\nYour ${f.name} registration has been received.\n\nThank you!\n\nJai Guru!`,
           enabled: false,
         },
         update: {},
@@ -43,7 +42,6 @@ export async function GET(req: NextRequest) {
     )
   );
 
-  // return all form_ templates
   const formTpls = await db.waTemplate.findMany({
     where: { key: { startsWith: "form_" } },
     orderBy: { key: "asc" },
@@ -52,9 +50,11 @@ export async function GET(req: NextRequest) {
   return NextResponse.json([...fixed, ...formTpls]);
 }
 
-// PUT — update body and/or enabled; allows both fixed keys and form_ keys
 export async function PUT(req: NextRequest) {
-  const deny = requireAdmin(req); if (deny) return deny;
+  const user = await getSessionUser(req);
+  if (!user) return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
+  if (!can(user, "templates", "edit")) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+
   const { key, body, enabled } = await req.json();
   if (!key) return NextResponse.json({ error: "key required" }, { status: 400 });
 
@@ -70,5 +70,6 @@ export async function PUT(req: NextRequest) {
   if (enabled !== undefined) data.enabled = enabled;
 
   const tpl = await db.waTemplate.update({ where: { key }, data });
+  await logChange(user.email, "update", `template:${key}`, { enabled: tpl.enabled }, getIp(req));
   return NextResponse.json(tpl);
 }

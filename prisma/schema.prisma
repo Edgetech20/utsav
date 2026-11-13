@@ -8,8 +8,46 @@ datasource db {
 }
 
 model AdminUser {
-  email     String   @id
+  email       String            @id
+  name        String?
+  role        String            @default("member")  // "super" | "member"
+  createdAt   DateTime          @default(now())
+  permissions AdminPermission[]
+  sessions    AdminSession[]
+}
+
+model AdminPermission {
+  id       Int       @id @default(autoincrement())
+  email    String
+  user     AdminUser @relation(fields: [email], references: [email], onDelete: Cascade)
+  resource String
+  action   String    // "view" | "edit"
+
+  @@unique([email, resource, action])
+  @@index([email])
+}
+
+model AdminSession {
+  token     String    @id
+  email     String
+  user      AdminUser @relation(fields: [email], references: [email], onDelete: Cascade)
+  expiresAt DateTime
+  createdAt DateTime  @default(now())
+
+  @@index([email])
+}
+
+model ChangeLog {
+  id        Int      @id @default(autoincrement())
+  email     String
+  action    String   // login | logout | create | update | delete | grant | broadcast
+  resource  String   // e.g. "setting:event_title", "form:slug", "user:email", "auth"
+  detail    String?  @db.Text  // JSON blob
+  ip        String?
   createdAt DateTime @default(now())
+
+  @@index([email])
+  @@index([createdAt])
 }
 
 model OtpStore {
@@ -19,17 +57,19 @@ model OtpStore {
 }
 
 model Rsvp {
-  id          Int      @id @default(autoincrement())
-  name        String
-  whatsapp    String  @unique
-  address     String
-  village     String?
-  postOffice  String?
-  district    String?
+  id             Int      @id @default(autoincrement())
+  name           String
+  whatsapp       String   @unique
+  address        String
+  village        String?
+  postOffice     String?
+  district       String?
   pinCode        String?
   totalAttending Int?
+  extraData      String?  @db.Text  // JSON: custom field values
+  notes          String?  @db.Text  // admin notes
   submittedAt    DateTime @default(now())
-  waSent      Boolean  @default(false)
+  waSent         Boolean  @default(false)
 }
 
 model ClickEvent {
@@ -146,6 +186,7 @@ model DynamicForm {
   waTemplate   String?               @db.Text   // message body, supports {name} {FieldLabel}
   waNameField  String?               // label of the name field for WA recipient name
   waPhoneField String?               // label of the phone field for WA delivery
+  emailNotify  Boolean               @default(false)  // email all super admins on submission
   fields       DynamicFormField[]
   responses    DynamicFormResponse[]
   createdAt    DateTime              @default(now())

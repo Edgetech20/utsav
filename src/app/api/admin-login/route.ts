@@ -2,9 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import nodemailer from "nodemailer";
 import crypto from "crypto";
 import { db } from "@/lib/db";
-
-const SECRET = process.env.ADMIN_SECRET;
-if (!SECRET) throw new Error("ADMIN_SECRET env var is not set");
+import { getIp } from "@/lib/auth";
+import { logChange } from "@/lib/changelog";
 
 async function sendOtpEmail(to: string, otp: string) {
   const transporter = nodemailer.createTransport({
@@ -33,6 +32,7 @@ async function sendOtpEmail(to: string, otp: string) {
 export async function POST(req: NextRequest) {
   const body = await req.json();
   const email = body.email?.trim().toLowerCase();
+  const ip = getIp(req);
 
   // ── Step 1: request OTP ──
   if (email && !body.otp) {
@@ -71,18 +71,39 @@ export async function POST(req: NextRequest) {
 
     await db.otpStore.delete({ where: { email } });
 
+    // Get session timeout from settings (default 24h)
+    const timeoutRow = await db.setting.findUnique({ where: { key: "session_timeout_hours" } });
+    const hours = Math.max(1, parseInt(timeoutRow?.value ?? "24", 10) || 24);
+    const expiresAt = new Date(Date.now() + hours * 3600 * 1000);
+
+    const token = crypto.randomBytes(32).toString("hex");
+    await db.adminSession.create({ data: { token, email, expiresAt } });
+
+    await logChange(email, "login", "auth", undefined, ip);
+
     const res = NextResponse.json({ ok: true });
-    res.cookies.set("admin_auth", SECRET!, {
-      httpOnly: true, sameSite: "lax", path: "/", maxAge: 60 * 60 * 24 * 7,
+    res.cookies.set("admin_session", token, {
+      httpOnly: true, sameSite: "lax", path: "/", maxAge: hours * 3600,
     });
+    // Clear legacy cookie if present
+    res.cookies.delete("admin_auth");
     return res;
   }
 
   return NextResponse.json({ error: "Invalid request" }, { status: 400 });
 }
 
-export async function DELETE() {
+export async function DELETE(req: NextRequest) {
+  const token = req.cookies.get("admin_session")?.value;
+  if (token) {
+    const session = await db.adminSession.findUnique({ where: { token } });
+    if (session) {
+      await logChange(session.email, "logout", "auth", undefined, getIp(req));
+      await db.adminSession.delete({ where: { token } }).catch(() => {});
+    }
+  }
   const res = NextResponse.json({ ok: true });
+  res.cookies.delete("admin_session");
   res.cookies.delete("admin_auth");
   return res;
 }

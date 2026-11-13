@@ -1,13 +1,15 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Phone, Globe, Save, Calendar, MapPin, Mail, User, Link2, Camera, Play, X } from "lucide-react";
+import { Phone, Globe, Save, Calendar, MapPin, Mail, User, Link2, Camera, Play, X, Shield } from "lucide-react";
 import { Card, Button, C, useDesktop } from "../ui";
 import { useToast } from "../toast";
 
 type Vals = Record<string, string>;
 
 const EVENT_FIELDS = [
+  { key: "event_honorific_line1", label: "Honorific Line 1 (small text)", icon: Calendar, placeholder: "যুগপুরুষোত্তম পরমপ্রেমময়" },
+  { key: "event_honorific_line2", label: "Honorific Line 2 (large text)", icon: Calendar, placeholder: "শ্রীশ্রীঠাকুর অনুকূলচন্দ্রের" },
   { key: "event_title",      label: "Event Title (Line 1)", icon: Calendar, placeholder: "প্ৰিয়বোধী" },
   { key: "event_title_sub",  label: "Event Title (Line 2)", icon: Calendar, placeholder: "মহোৎসব" },
   { key: "event_edition",    label: "Edition / Year Tag",  icon: Calendar, placeholder: "প্রথম বর্ষ" },
@@ -33,6 +35,10 @@ const SOCIAL_FIELDS = [
   { key: "social_whatsapp",  label: "WhatsApp",    icon: Phone,   placeholder: "https://wa.me/91XXXXXXXXXX" },
   { key: "social_twitter",   label: "Twitter / X", icon: X,       placeholder: "https://x.com/yourhandle" },
   { key: "social_website",   label: "Website",     icon: Globe,   placeholder: "https://yourwebsite.com" },
+] as const;
+
+const SECURITY_FIELDS = [
+  { key: "session_timeout_hours", label: "Session Timeout (hours)", icon: Shield, placeholder: "24" },
 ] as const;
 
 function FieldList({ fields, vals, onChange }: {
@@ -151,6 +157,12 @@ export default function SettingsPage() {
           <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
             <Section label="Social Media Links">
               <FieldList fields={SOCIAL_FIELDS} vals={vals} onChange={set} />
+            </Section>
+            <Section label="Security">
+              <FieldList fields={SECURITY_FIELDS} vals={vals} onChange={set} />
+              <div style={{ padding: "8px 20px 14px", fontSize: 11, color: C.textMuted }}>
+                How long an admin session stays active. Next login will use this value. Default: 24 hours.
+              </div>
             </Section>
           </div>
         </div>

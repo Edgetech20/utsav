@@ -1,11 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 
-const SECRET = process.env.ADMIN_SECRET;
-
 export function proxy(req: NextRequest) {
-  const auth = req.cookies.get("admin_auth")?.value;
+  const token = req.cookies.get("admin_session")?.value;
 
-  if (!SECRET || !auth || auth !== SECRET) {
+  if (!token) {
     const login = new URL("/admin/login", req.url);
     login.searchParams.set("from", req.nextUrl.pathname);
     return NextResponse.redirect(login);

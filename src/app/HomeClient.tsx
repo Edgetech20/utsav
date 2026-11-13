@@ -636,11 +636,10 @@ export default function HomeClient({ initialSettings }: { initialSettings: Recor
         </p>
 
         <p className="shimmer-text font-semibold text-center leading-relaxed mb-0" style={{ maxWidth: "min(90vw, 480px)" }}>
-          <span style={{ fontSize: "clamp(0.65rem, 2.5vw, 0.8rem)" }}>যুগপুরুষোত্তম পরমপ্রেমময়</span>
+          <span style={{ fontSize: "clamp(0.65rem, 2.5vw, 0.8rem)" }}>{initialSettings.event_honorific_line1 || "যুগপুরুষোত্তম পরমপ্রেমময়"}</span>
           <br />
-          <span style={{ fontSize: "clamp(1.5rem, 6vw, 2.2rem)", whiteSpace: "nowrap" }}>শ্রীশ্রীঠাকুর অনুকূলচন্দ্রের</span>
+          <span style={{ fontSize: "clamp(1.5rem, 6vw, 2.2rem)", whiteSpace: "nowrap" }}>{initialSettings.event_honorific_line2 || "শ্রীশ্রীঠাকুর অনুকূলচন্দ্রের"}</span>
           {" "}
-          {/* <span style={{ fontSize: "clamp(0.85rem, 3.5vw, 1.1rem)", whiteSpace: "nowrap" }}>শুভ ১৩৯তম জন্ম মহোৎসব তৎসহ</span> */}
         </p>
 
         <div className="flex flex-col items-center gap-0 mb-2 mt-1" style={{ overflow: "visible", padding: "12px 0" }}>
@@ -1095,29 +1094,42 @@ export default function HomeClient({ initialSettings }: { initialSettings: Recor
                 }}
                 className="flex flex-col gap-4"
               >
-                {([
-                  { key: "name",           label: "Full Name",              type: "text",   required: true  },
-                  { key: "whatsapp",       label: "WhatsApp No.",           type: "tel",    required: true  },
-                  { key: "village",        label: "Village / Town / Area",  type: "text",   required: true  },
-                  { key: "postOffice",     label: "Post Office",            type: "text",   required: false },
-                  { key: "pinCode",        label: "PIN Code",               type: "text",   required: true  },
-                  { key: "district",       label: "District",               type: "text",   required: false },
-                  { key: "totalAttending", label: "Total Attending",        type: "number", required: true  },
-                ] as const).map(({ key, label, type, required }) => (
-                  <div key={key} className="flex flex-col gap-1.5">
-                    <label className="text-xs uppercase tracking-widest" style={{ color: T.gold, opacity: 0.55 }}>
-                      {label}{required ? <span style={{ color: "#f87171" }}> *</span> : <span style={{ opacity: 0.5 }}> (optional)</span>}
-                    </label>
-                    <input
-                      type={type}
-                      required={required}
-                      value={rsvpForm[key]}
-                      onChange={(e) => setRsvpForm(p => ({ ...p, [key]: e.target.value }))}
-                      className="rounded-xl px-4 py-3 text-sm outline-none"
-                      style={{ background: T.inputBg, border: `1px solid ${T.inputBdr}`, color: T.inputText, caretColor: T.gold }}
-                    />
-                  </div>
-                ))}
+                {(() => {
+                  const defaults = [
+                    { key: "name",           label: "Full Name",             type: "text",   required: true,  visible: true },
+                    { key: "whatsapp",       label: "WhatsApp No.",          type: "tel",    required: true,  visible: true },
+                    { key: "village",        label: "Village / Town / Area", type: "text",   required: true,  visible: true },
+                    { key: "postOffice",     label: "Post Office",           type: "text",   required: false, visible: true },
+                    { key: "pinCode",        label: "PIN Code",              type: "text",   required: true,  visible: true },
+                    { key: "district",       label: "District",              type: "text",   required: false, visible: true },
+                    { key: "totalAttending", label: "Total Attending",       type: "number", required: true,  visible: true },
+                  ];
+                  type FldCfg = { key: string; label: string; type: string; required: boolean; visible: boolean; custom?: true };
+                  let fields: FldCfg[] = defaults;
+                  try {
+                    if (initialSettings.rsvp_field_config) {
+                      const cfg: FldCfg[] = JSON.parse(initialSettings.rsvp_field_config);
+                      const fixed = defaults.map(d => { const c = cfg.find(x => x.key === d.key); return c ? { ...d, label: c.label, required: c.required, visible: c.visible } : d; });
+                      const custom = cfg.filter(c => c.custom);
+                      fields = [...fixed, ...custom];
+                    }
+                  } catch {}
+                  return fields.filter(f => f.visible).map(({ key, label, type, required, custom }) => (
+                    <div key={key} className="flex flex-col gap-1.5">
+                      <label className="text-xs uppercase tracking-widest" style={{ color: T.gold, opacity: 0.55 }}>
+                        {label}{required ? <span style={{ color: "#f87171" }}> *</span> : <span style={{ opacity: 0.5 }}> (optional)</span>}
+                      </label>
+                      <input
+                        type={type}
+                        required={required}
+                        value={custom ? (rsvpForm as Record<string, string>)[key] ?? "" : rsvpForm[key as keyof typeof rsvpForm]}
+                        onChange={(e) => setRsvpForm(p => ({ ...p, [key]: e.target.value }))}
+                        className="rounded-xl px-4 py-3 text-sm outline-none"
+                        style={{ background: T.inputBg, border: `1px solid ${T.inputBdr}`, color: T.inputText, caretColor: T.gold }}
+                      />
+                    </div>
+                  ));
+                })()}
                 {rsvpState === "error" && (
                   <p className="text-xs text-center" style={{ color: "#ff6b6b" }}>{rsvpError}</p>
                 )}

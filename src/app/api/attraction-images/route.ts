@@ -2,13 +2,15 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { writeFile, mkdir } from "fs/promises";
 import { join } from "path";
-import { requireAdmin } from "@/lib/auth";
+import { getSessionUser, can } from "@/lib/auth";
 
 const ALLOWED_MIME = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
-const MAX_BYTES = 5 * 1024 * 1024; // 5 MB
+const MAX_BYTES = 5 * 1024 * 1024;
 
 export async function POST(req: NextRequest) {
-  const deny = requireAdmin(req); if (deny) return deny;
+  const user = await getSessionUser(req);
+  if (!user) return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
+  if (!can(user, "attractions", "edit")) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const form = await req.formData();
   const attractionId = Number(form.get("attractionId"));
@@ -28,8 +30,7 @@ export async function POST(req: NextRequest) {
   const filename = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
   const dir = join(process.cwd(), "public", "attractions");
   await mkdir(dir, { recursive: true });
-  const buffer = Buffer.from(await file.arrayBuffer());
-  await writeFile(join(dir, filename), buffer);
+  await writeFile(join(dir, filename), Buffer.from(await file.arrayBuffer()));
 
   const row = await db.attractionImage.create({
     data: { attractionId, imageUrl: `/attractions/${filename}` },
@@ -38,7 +39,10 @@ export async function POST(req: NextRequest) {
 }
 
 export async function DELETE(req: NextRequest) {
-  const deny = requireAdmin(req); if (deny) return deny;
+  const user = await getSessionUser(req);
+  if (!user) return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
+  if (!can(user, "attractions", "edit")) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+
   const { id } = await req.json();
   await db.attractionImage.delete({ where: { id } });
   return NextResponse.json({ ok: true });

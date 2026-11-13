@@ -5,56 +5,75 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import {
   LayoutDashboard, Wifi, Users, LogOut,
-  MessageSquare, ImageIcon, Menu, X, QrCode, FileText, Settings, ClipboardList, Globe, CalendarDays,
+  MessageSquare, ImageIcon, Menu, X, QrCode, FileText, Settings, ClipboardList, Globe, CalendarDays, History, ShieldCheck,
 } from "lucide-react";
 import { ToastProvider } from "./toast";
 import { C } from "./ui";
+import type { SessionUser } from "@/lib/auth";
 
-// ── Nav structure ─────────────────────────────────────────────────────────────
-const NAV_GROUPS = [
+type NavItem = { label: string; href: string; icon: React.ElementType; resource: string | null };
+
+const NAV_GROUPS: Array<{ label: string; items: NavItem[] }> = [
   {
     label: "Overview",
     items: [
-      { label: "Dashboard",      href: "/admin/dashboard",            icon: LayoutDashboard },
-      { label: "Location Stats", href: "/admin/dashboard/detailstats", icon: Globe          },
+      { label: "Dashboard",      href: "/admin/dashboard",             icon: LayoutDashboard, resource: null },
+      { label: "Location Stats", href: "/admin/dashboard/detailstats", icon: Globe,            resource: null },
     ],
   },
   {
     label: "Registrations",
     items: [
-      { label: "RSVP",          href: "/admin/dashboard/rsvp",          icon: Users },
+      { label: "RSVP",     href: "/admin/dashboard/rsvp",     icon: Users,          resource: "rsvp" },
+      { label: "Feedback", href: "/admin/dashboard/feedback", icon: MessageSquare,  resource: "feedback" },
     ],
   },
   {
     label: "Content",
     items: [
-      { label: "Feedback",    href: "/admin/dashboard/feedback",    icon: MessageSquare },
-      { label: "Attractions", href: "/admin/dashboard/attractions", icon: ImageIcon },
-      { label: "Programme",   href: "/admin/dashboard/programme",  icon: CalendarDays },
+      { label: "Attractions", href: "/admin/dashboard/attractions", icon: ImageIcon,    resource: "attractions" },
+      { label: "Programme",   href: "/admin/dashboard/programme",  icon: CalendarDays, resource: "programme" },
     ],
   },
   {
     label: "Operations",
     items: [
-      { label: "Users",       href: "/admin/dashboard/users",       icon: Users         },
-      { label: "Forms",       href: "/admin/dashboard/forms",       icon: ClipboardList },
-      { label: "QR Codes",    href: "/admin/dashboard/qr",         icon: QrCode    },
-      { label: "WhatsApp",    href: "/admin/dashboard/whatsapp",   icon: Wifi      },
-      { label: "Templates",   href: "/admin/dashboard/templates",  icon: FileText  },
-      { label: "Settings",    href: "/admin/dashboard/settings",   icon: Settings  },
+      { label: "Forms",     href: "/admin/dashboard/forms",     icon: ClipboardList, resource: "forms" },
+      { label: "QR Codes",  href: "/admin/dashboard/qr",        icon: QrCode,        resource: "qr" },
+      { label: "WhatsApp",  href: "/admin/dashboard/whatsapp",  icon: Wifi,          resource: "whatsapp" },
+      { label: "Templates", href: "/admin/dashboard/templates", icon: FileText,      resource: "templates" },
+    ],
+  },
+  {
+    label: "Admin",
+    items: [
+      { label: "Users",      href: "/admin/dashboard/users",     icon: ShieldCheck, resource: "users" },
+      { label: "Change Log", href: "/admin/dashboard/changelog", icon: History,     resource: "changelog" },
+      { label: "Settings",   href: "/admin/dashboard/settings",  icon: Settings,    resource: "settings" },
     ],
   },
 ];
 
-// Flat list for header label lookup
 const ALL_NAV = NAV_GROUPS.flatMap(g => g.items);
 
-// ── Sidebar ───────────────────────────────────────────────────────────────────
-export default function Sidebar({ children, eventTitle }: { children: React.ReactNode; eventTitle: string }) {
+function userCan(user: SessionUser, resource: string | null): boolean {
+  if (resource === null) return true;
+  if (user.role === "super") return true;
+  if (resource === "users") return false; // always super-only
+  return user.permissions.some(
+    p => p.resource === resource && (p.action === "view" || p.action === "edit")
+  );
+}
+
+export default function Sidebar({ children, eventTitle, user }: {
+  children: React.ReactNode;
+  eventTitle: string;
+  user: SessionUser;
+}) {
   const pathname  = usePathname();
   const router    = useRouter();
-  const [desktop, setDesktop]     = useState(false);
-  const [drawerOpen, setDrawer]   = useState(false);
+  const [desktop, setDesktop]   = useState(false);
+  const [drawerOpen, setDrawer] = useState(false);
 
   useEffect(() => {
     const mq = window.matchMedia("(min-width: 768px)");
@@ -73,7 +92,6 @@ export default function Sidebar({ children, eventTitle }: { children: React.Reac
 
   const currentLabel = ALL_NAV.find(n => n.href === pathname)?.label ?? "Dashboard";
 
-  // ── Nav item ───────────────────────────────────────────────────────────────
   function NavItem({ label, href, icon: Icon, onClick }: { label: string; href: string; icon: React.ElementType; onClick?: () => void }) {
     const active = pathname === href;
     return (
@@ -88,7 +106,7 @@ export default function Sidebar({ children, eventTitle }: { children: React.Reac
           background: active ? C.goldBg : "transparent",
           borderLeft: `3px solid ${active ? C.gold : "transparent"}`,
           transition: "background 0.12s, color 0.12s",
-          marginLeft: -3, // compensate border-left shifting content
+          marginLeft: -3,
         }}
       >
         <Icon size={15} color={active ? C.gold : C.textMuted} strokeWidth={active ? 2.2 : 1.8} />
@@ -97,29 +115,34 @@ export default function Sidebar({ children, eventTitle }: { children: React.Reac
     );
   }
 
-  // ── Nav body (shared between sidebar + drawer) ─────────────────────────────
   function NavBody({ onItemClick }: { onItemClick?: () => void }) {
     return (
       <nav style={{ flex: 1, padding: "12px 10px", display: "flex", flexDirection: "column", gap: 4, overflowY: "auto" }}>
-        {NAV_GROUPS.map(group => (
-          <div key={group.label} style={{ marginBottom: 4 }}>
-            <p style={{
-              fontSize: 10, fontWeight: 700, color: C.textMuted,
-              letterSpacing: "0.09em", textTransform: "uppercase",
-              padding: "6px 15px 4px", margin: 0,
-            }}>
-              {group.label}
-            </p>
-            {group.items.map(item => (
-              <NavItem key={item.href} {...item} onClick={onItemClick} />
-            ))}
-          </div>
-        ))}
+        {NAV_GROUPS.map(group => {
+          const visible = group.items.filter(item => userCan(user, item.resource));
+          if (!visible.length) return null;
+          return (
+            <div key={group.label} style={{ marginBottom: 4 }}>
+              <p style={{
+                fontSize: 10, fontWeight: 700, color: C.textMuted,
+                letterSpacing: "0.09em", textTransform: "uppercase",
+                padding: "6px 15px 4px", margin: 0,
+              }}>
+                {group.label}
+              </p>
+              {visible.map(item => (
+                <NavItem key={item.href} {...item} onClick={onItemClick} />
+              ))}
+            </div>
+          );
+        })}
       </nav>
     );
   }
 
-  // ── Logo ───────────────────────────────────────────────────────────────────
+  const displayName = user.name || user.email.split("@")[0];
+  const initials = displayName.slice(0, 2).toUpperCase();
+
   const Logo = (
     <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
       <div style={{
@@ -137,7 +160,6 @@ export default function Sidebar({ children, eventTitle }: { children: React.Reac
     </div>
   );
 
-  // ── Bottom user bar ────────────────────────────────────────────────────────
   const BottomBar = (
     <div style={{ padding: "10px 12px", borderTop: `1px solid ${C.border}` }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
@@ -148,11 +170,13 @@ export default function Sidebar({ children, eventTitle }: { children: React.Reac
             display: "flex", alignItems: "center", justifyContent: "center",
             fontSize: 11, fontWeight: 700, color: C.gold, flexShrink: 0,
           }}>
-            A
+            {initials}
           </div>
           <div>
-            <p style={{ fontSize: 12, fontWeight: 600, color: C.text, margin: 0, lineHeight: 1.2 }}>Admin</p>
-            <p style={{ fontSize: 10, color: C.textMuted, margin: 0 }}>{eventTitle}</p>
+            <p style={{ fontSize: 12, fontWeight: 600, color: C.text, margin: 0, lineHeight: 1.2 }}>{displayName}</p>
+            <p style={{ fontSize: 10, color: C.textMuted, margin: 0 }}>
+              {user.role === "super" ? "Super Admin" : "Member"}
+            </p>
           </div>
         </div>
         <button
@@ -178,7 +202,6 @@ export default function Sidebar({ children, eventTitle }: { children: React.Reac
         background: C.bg, fontFamily: "system-ui, -apple-system, sans-serif",
       }}>
 
-        {/* ── Desktop sidebar ────────────────────────────────────────────── */}
         {desktop && (
           <aside style={{
             width: 232, position: "fixed", top: 0, left: 0, bottom: 0, zIndex: 20,
@@ -193,7 +216,6 @@ export default function Sidebar({ children, eventTitle }: { children: React.Reac
           </aside>
         )}
 
-        {/* ── Mobile drawer overlay ──────────────────────────────────────── */}
         {!desktop && drawerOpen && (
           <>
             <div
@@ -221,10 +243,7 @@ export default function Sidebar({ children, eventTitle }: { children: React.Reac
           </>
         )}
 
-        {/* ── Main content ───────────────────────────────────────────────── */}
         <main style={{ flex: 1, marginLeft: desktop ? 232 : 0, minWidth: 0, display: "flex", flexDirection: "column" }}>
-
-          {/* Top bar */}
           <div style={{
             height: 54, background: C.surface, borderBottom: `1px solid ${C.border}`,
             display: "flex", alignItems: "center",
@@ -247,11 +266,9 @@ export default function Sidebar({ children, eventTitle }: { children: React.Reac
               </p>
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
-              {/* Today's date */}
               <span style={{ fontSize: 11, color: C.textMuted, whiteSpace: "nowrap" }}>
                 {new Date().toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short", year: "numeric" })}
               </span>
-              {/* Event countdown chip */}
               <div style={{
                 display: "flex", alignItems: "center", gap: 6,
                 background: C.goldBg, border: `1px solid ${C.goldBorder}`,
@@ -265,7 +282,6 @@ export default function Sidebar({ children, eventTitle }: { children: React.Reac
             </div>
           </div>
 
-          {/* Page content */}
           <div style={{ padding: desktop ? "28px 28px" : "16px", flex: 1 }}>
             {children}
           </div>

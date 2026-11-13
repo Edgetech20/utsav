@@ -1,23 +1,28 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { randomBytes } from "crypto";
-import { requireAdmin } from "@/lib/auth";
+import { getSessionUser, can, getIp } from "@/lib/auth";
+import { logChange } from "@/lib/changelog";
 
 export async function GET(req: NextRequest) {
-  const deny = requireAdmin(req); if (deny) return deny;
+  const user = await getSessionUser(req);
+  if (!user) return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
+  if (!can(user, "qr", "view")) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+
   const links = await db.qrLink.findMany({
     orderBy: { createdAt: "desc" },
     include: { _count: { select: { scans: true } }, scans: { select: { ip: true } } },
   });
   return NextResponse.json(links.map(({ scans: scanList, _count, ...l }) => ({
-    ...l,
-    scans: _count.scans,
-    uniqueScans: new Set(scanList.map(s => s.ip)).size,
+    ...l, scans: _count.scans, uniqueScans: new Set(scanList.map(s => s.ip)).size,
   })));
 }
 
 export async function POST(req: NextRequest) {
-  const deny = requireAdmin(req); if (deny) return deny;
+  const user = await getSessionUser(req);
+  if (!user) return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
+  if (!can(user, "qr", "edit")) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+
   const { name, targetUrl } = await req.json();
   if (!name?.trim()) return NextResponse.json({ error: "name required" }, { status: 400 });
   if (!targetUrl?.trim()) return NextResponse.json({ error: "url required" }, { status: 400 });
@@ -26,12 +31,17 @@ export async function POST(req: NextRequest) {
     data: { name: name.trim(), slug, targetUrl: targetUrl.trim() },
     include: { _count: { select: { scans: true } } },
   });
+  await logChange(user.email, "create", `qr:${link.id}`, { name: link.name }, getIp(req));
   return NextResponse.json({ ...link, scans: _count.scans, uniqueScans: 0 });
 }
 
 export async function DELETE(req: NextRequest) {
-  const deny = requireAdmin(req); if (deny) return deny;
+  const user = await getSessionUser(req);
+  if (!user) return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
+  if (!can(user, "qr", "edit")) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+
   const { id } = await req.json();
   await db.qrLink.delete({ where: { id } });
+  await logChange(user.email, "delete", `qr:${id}`, undefined, getIp(req));
   return NextResponse.json({ ok: true });
 }

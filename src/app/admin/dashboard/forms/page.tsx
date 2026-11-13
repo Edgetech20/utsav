@@ -56,6 +56,7 @@ type Form = {
   waTemplate: string | null;
   waNameField: string | null;
   waPhoneField: string | null;
+  emailNotify: boolean;
   fieldCount: number;
   responseCount: number;
   createdAt: string;
@@ -484,10 +485,11 @@ function BuilderModal({
       validation: parseValidation(f.validation as unknown as string | null),
     })) ?? []
   );
-  const [waEnabled, setWaEnabled]       = useState(initial?.waEnabled ?? false);
-  const [waNameField, setWaNameField]   = useState(initial?.waNameField ?? "");
-  const [waPhoneField, setWaPhoneField] = useState(initial?.waPhoneField ?? "");
-  const [saving, setSaving]             = useState(false);
+  const [waEnabled, setWaEnabled]           = useState(initial?.waEnabled ?? false);
+  const [waNameField, setWaNameField]       = useState(initial?.waNameField ?? "");
+  const [waPhoneField, setWaPhoneField]     = useState(initial?.waPhoneField ?? "");
+  const [emailNotify, setEmailNotify]       = useState(initial?.emailNotify ?? false);
+  const [saving, setSaving]                 = useState(false);
 
   const isEdit = !!initial;
   const fieldLabels = fields.map(f => f.label).filter(Boolean);
@@ -523,7 +525,7 @@ function BuilderModal({
         options: f.type === "select" ? f.options.filter(o => o.trim()) : [],
         validation: Object.keys(f.validation).length ? f.validation : null,
       })),
-      waEnabled, waNameField, waPhoneField,
+      waEnabled, waNameField, waPhoneField, emailNotify,
     };
 
     const url  = isEdit ? `/api/forms/${initial!.slug}` : "/api/forms";
@@ -636,6 +638,19 @@ function BuilderModal({
                   </div>
                 </div>
               )}
+            </div>
+
+            {/* Email notification */}
+            <div style={{ border: `1px solid ${C.border}`, borderRadius: 10, padding: 16 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <div>
+                  <p style={{ fontSize: 13, fontWeight: 700, color: C.text, margin: 0 }}>Email Notification</p>
+                  <p style={{ fontSize: 11, color: C.textMuted, margin: "3px 0 0" }}>Email all super admins on each submission</p>
+                </div>
+                <button onClick={() => setEmailNotify(v => !v)} style={{ border: "none", background: "none", cursor: "pointer", display: "flex", color: emailNotify ? C.green : C.textMuted }}>
+                  {emailNotify ? <ToggleRight size={28} /> : <ToggleLeft size={28} />}
+                </button>
+              </div>
             </div>
           </div>
 
