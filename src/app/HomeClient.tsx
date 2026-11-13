@@ -479,20 +479,30 @@ export default function HomeClient({ initialSettings }: { initialSettings: Recor
 
   async function requestLocation(): Promise<Loc | null> {
     if (!navigator.geolocation) return null;
+
+    async function geocode(lat: number, lng: number): Promise<Loc> {
+      try {
+        const r = await fetch(`/api/places?lat=${lat}&lng=${lng}`);
+        const d = await r.json();
+        return { lat, lng, displayName: d.address ?? `${lat.toFixed(5)}, ${lng.toFixed(5)}` };
+      } catch {
+        return { lat, lng, displayName: `${lat.toFixed(5)}, ${lng.toFixed(5)}` };
+      }
+    }
+
     return new Promise(resolve => {
+      // Try high-accuracy GPS first
       navigator.geolocation.getCurrentPosition(
-        async pos => {
-          const { latitude: lat, longitude: lng } = pos.coords;
-          try {
-            const r = await fetch(`/api/places?lat=${lat}&lng=${lng}`);
-            const d = await r.json();
-            resolve({ lat, lng, displayName: d.address ?? `${lat.toFixed(5)}, ${lng.toFixed(5)}` });
-          } catch {
-            resolve({ lat, lng, displayName: `${lat.toFixed(5)}, ${lng.toFixed(5)}` });
-          }
+        async pos => resolve(await geocode(pos.coords.latitude, pos.coords.longitude)),
+        () => {
+          // GPS failed (no hardware / denied) — retry with network/WiFi location
+          navigator.geolocation.getCurrentPosition(
+            async pos => resolve(await geocode(pos.coords.latitude, pos.coords.longitude)),
+            () => resolve(null),
+            { enableHighAccuracy: false, timeout: 10000 }
+          );
         },
-        () => resolve(null),
-        { enableHighAccuracy: true, timeout: 15000 }
+        { enableHighAccuracy: true, timeout: 8000 }
       );
     });
   }
