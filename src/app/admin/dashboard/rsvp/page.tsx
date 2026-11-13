@@ -424,7 +424,10 @@ export default function RsvpPage() {
                   <Tr style={{ opacity: busy ? 0.5 : 1, cursor: hasExtra ? "pointer" : "default" }} onClick={() => hasExtra && setExpanded(isExpanded ? null : e.id)}>
                     <Td><div style={{ display: "flex", alignItems: "center", gap: 10 }}><Avatar name={e.name} size={32} /><span style={{ fontWeight: 600, whiteSpace: "nowrap" }}>{e.name}</span></div></Td>
                     <Td><span style={{ fontFamily: "monospace", fontSize: 12, color: C.textSub }}>{e.whatsapp}</span></Td>
-                    <Td style={{ maxWidth: 220 }}><span style={{ display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: C.textSub, fontSize: 12 }}>{[e.village, e.postOffice, e.district, e.pinCode].filter(Boolean).join(", ") || e.address}</span></Td>
+                    <Td style={{ maxWidth: 240 }}>
+                      <span style={{ display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: C.textSub, fontSize: 12 }}>{[e.village, e.postOffice, e.district, e.pinCode].filter(Boolean).join(", ") || e.address}</span>
+                      {loc && <a href={`https://www.google.com/maps?q=${loc.lat},${loc.lng}`} target="_blank" rel="noopener noreferrer" onClick={ev => ev.stopPropagation()} style={{ display: "flex", alignItems: "center", gap: 3, fontSize: 11, color: C.gold, textDecoration: "none", marginTop: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>📍 {loc.displayName}</a>}
+                    </Td>
                     <Td style={{ textAlign: "center", fontWeight: 600, fontSize: 13 }}>{e.totalAttending ?? "—"}</Td>
                     <Td>{e.waSent ? <Badge variant="green" icon={<CheckCircle size={10} />}>Sent</Badge> : <Badge variant="orange" icon={<Clock size={10} />}>Pending</Badge>}</Td>
                     <Td style={{ color: C.textMuted, fontSize: 12, whiteSpace: "nowrap" }}>{new Date(e.submittedAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}</Td>
