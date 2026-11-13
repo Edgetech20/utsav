@@ -8,19 +8,77 @@ function sendNotifyEmail(formName: string, data: Record<string, string>, superEm
     service: "gmail",
     auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS },
   });
-  const rows = Object.entries(data)
-    .map(([k, v]) => `<tr><td style="padding:6px 12px;font-size:13px;color:#64748B;border-bottom:1px solid #F1F5F9;white-space:nowrap">${k}</td><td style="padding:6px 12px;font-size:13px;color:#0F172A;border-bottom:1px solid #F1F5F9">${v || "—"}</td></tr>`)
-    .join("");
-  const html = `
-    <div style="font-family:system-ui,sans-serif;max-width:560px;margin:0 auto;padding:32px">
-      <h2 style="color:#0F172A;margin:0 0 4px">New Response: ${formName}</h2>
-      <p style="color:#94A3B8;font-size:12px;margin:0 0 24px">${new Date().toLocaleString("en-IN")}</p>
-      <table style="width:100%;border-collapse:collapse;border:1px solid #E2E8F0;border-radius:10px;overflow:hidden">${rows}</table>
-    </div>`;
+
+  const timestamp = new Date().toLocaleString("en-IN", { dateStyle: "long", timeStyle: "short" });
+  const origin = process.env.NEXT_PUBLIC_BASE_URL || "";
+
+  const rows = Object.entries(data).map(([k, v], i) => {
+    const bg = i % 2 === 0 ? "#FAFAF8" : "#FFFFFF";
+    return `
+      <tr>
+        <td style="padding:12px 20px;font-size:13px;font-weight:600;color:#8B6914;background:${bg};width:38%;border-bottom:1px solid #F0EAD6;vertical-align:top">${k}</td>
+        <td style="padding:12px 20px;font-size:13px;color:#1C1C1E;background:${bg};border-bottom:1px solid #F0EAD6;vertical-align:top">${v || '<span style="color:#9CA3AF">—</span>'}</td>
+      </tr>`;
+  }).join("");
+
+  const html = `<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#F5F0E8;font-family:Georgia,serif">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#F5F0E8;padding:40px 16px">
+    <tr><td align="center">
+      <table width="100%" cellpadding="0" cellspacing="0" style="max-width:580px">
+
+        <!-- Header -->
+        <tr>
+          <td style="background:linear-gradient(135deg,#2C1A00,#1C1200);border-radius:16px 16px 0 0;padding:36px 32px;text-align:center">
+            <p style="margin:0 0 6px;font-size:11px;letter-spacing:0.15em;color:#C9A96E;text-transform:uppercase;font-family:system-ui,sans-serif">Form Notification</p>
+            <h1 style="margin:0;font-size:26px;color:#E8D5B0;font-family:Georgia,serif;font-weight:normal;line-height:1.3">${formName}</h1>
+            <p style="margin:10px 0 0;font-size:12px;color:rgba(201,169,110,0.65);font-family:system-ui,sans-serif">${timestamp}</p>
+          </td>
+        </tr>
+
+        <!-- Badge -->
+        <tr>
+          <td style="background:#C9A96E;padding:10px 32px;text-align:center">
+            <p style="margin:0;font-size:12px;font-weight:700;color:#1C1200;letter-spacing:0.08em;font-family:system-ui,sans-serif;text-transform:uppercase">✦ New Response Received ✦</p>
+          </td>
+        </tr>
+
+        <!-- Response table -->
+        <tr>
+          <td style="background:#FFFFFF;padding:0;border-left:1px solid #E8DEC8;border-right:1px solid #E8DEC8">
+            <table width="100%" cellpadding="0" cellspacing="0">
+              ${rows}
+            </table>
+          </td>
+        </tr>
+
+        <!-- CTA -->
+        ${origin ? `
+        <tr>
+          <td style="background:#FFFFFF;padding:24px 32px 32px;text-align:center;border-left:1px solid #E8DEC8;border-right:1px solid #E8DEC8">
+            <a href="${origin}/admin" style="display:inline-block;padding:12px 32px;background:linear-gradient(135deg,#C9A96E,#9A7840);color:#1C1200;font-size:13px;font-weight:700;text-decoration:none;border-radius:8px;letter-spacing:0.06em;font-family:system-ui,sans-serif;text-transform:uppercase">View in Admin Panel →</a>
+          </td>
+        </tr>` : ""}
+
+        <!-- Footer -->
+        <tr>
+          <td style="background:#2C1A00;border-radius:0 0 16px 16px;padding:20px 32px;text-align:center">
+            <p style="margin:0;font-size:11px;color:rgba(201,169,110,0.5);font-family:system-ui,sans-serif">This is an automated notification from your event management system.<br>Do not reply to this email.</p>
+          </td>
+        </tr>
+
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`;
+
   transporter.sendMail({
     from: `"Priyabodhi Forms" <${process.env.SMTP_USER}>`,
     to: superEmails.join(","),
-    subject: `New Response: ${formName}`,
+    subject: `📋 New Response: ${formName}`,
     html,
   }).catch(() => {});
 }
