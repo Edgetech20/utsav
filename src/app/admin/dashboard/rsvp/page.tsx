@@ -14,6 +14,7 @@ function SkeletonRows() {
         <Td><div style={{ display: "flex", alignItems: "center", gap: 10 }}><Skeleton width={32} height={32} radius={99} /><Skeleton width={120} height={13} /></div></Td>
         <Td><Skeleton width={110} height={13} /></Td>
         <Td><Skeleton width={160} height={13} /></Td>
+        <Td><Skeleton width={130} height={13} /></Td>
         <Td><Skeleton width={60} height={22} radius={20} /></Td>
         <Td><Skeleton width={80} height={13} /></Td>
         <Td><Skeleton width={90} height={28} radius={7} /></Td>
@@ -403,13 +404,13 @@ export default function RsvpPage() {
         <Table>
           <Thead>
             <Tr>
-              <Th>Name</Th><Th>Phone</Th><Th>Address</Th><Th>Attending</Th><Th>Status</Th><Th>Registered</Th>
+              <Th>Name</Th><Th>Phone</Th><Th>Address</Th><Th>Location</Th><Th>Attending</Th><Th>Status</Th><Th>Registered</Th>
               <Th style={{ textAlign: "right" }}>Actions</Th>
             </Tr>
           </Thead>
           <tbody>
             {loading ? <SkeletonRows /> : filtered.length === 0 ? (
-              <Tr><Td style={{ padding: 0, border: "none" }} colSpan={7}>
+              <Tr><Td style={{ padding: 0, border: "none" }} colSpan={8}>
                 <Empty icon={<Users size={40} />} title={search ? "No results" : "No registrations yet"} sub={search ? "Try a different search term" : "Registrations will appear here"} />
               </Td></Tr>
             ) : paginated.map(e => {
@@ -417,16 +418,21 @@ export default function RsvpPage() {
               const extra: Record<string, string> = e.extraData ? (() => { try { return JSON.parse(e.extraData); } catch { return {}; } })() : {};
               const customFields = fieldConfig.filter(f => f.custom && f.visible);
               const loc: { lat: number; lng: number; displayName: string } | null = e.location ? (() => { try { return JSON.parse(e.location); } catch { return null; } })() : null;
-              const hasExtra = customFields.length > 0 || !!loc;
+              const hasExtra = customFields.length > 0;
               const isExpanded = expanded === e.id;
               return (
                 <Fragment key={e.id}>
                   <Tr style={{ opacity: busy ? 0.5 : 1, cursor: hasExtra ? "pointer" : "default" }} onClick={() => hasExtra && setExpanded(isExpanded ? null : e.id)}>
                     <Td><div style={{ display: "flex", alignItems: "center", gap: 10 }}><Avatar name={e.name} size={32} /><span style={{ fontWeight: 600, whiteSpace: "nowrap" }}>{e.name}</span></div></Td>
                     <Td><span style={{ fontFamily: "monospace", fontSize: 12, color: C.textSub }}>{e.whatsapp}</span></Td>
-                    <Td style={{ maxWidth: 240 }}>
+                    <Td style={{ maxWidth: 200 }}>
                       <span style={{ display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: C.textSub, fontSize: 12 }}>{[e.village, e.postOffice, e.district, e.pinCode].filter(Boolean).join(", ") || e.address}</span>
-                      {loc && <a href={`https://www.google.com/maps?q=${loc.lat},${loc.lng}`} target="_blank" rel="noopener noreferrer" onClick={ev => ev.stopPropagation()} style={{ display: "flex", alignItems: "center", gap: 3, fontSize: 11, color: C.gold, textDecoration: "none", marginTop: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>📍 {loc.displayName}</a>}
+                    </Td>
+                    <Td style={{ maxWidth: 200 }}>
+                      {loc
+                        ? <a href={`https://www.google.com/maps?q=${loc.lat},${loc.lng}`} target="_blank" rel="noopener noreferrer" onClick={ev => ev.stopPropagation()} style={{ display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontSize: 12, color: C.gold, textDecoration: "none" }} title={loc.displayName}>📍 {loc.displayName}</a>
+                        : <span style={{ color: C.textMuted, fontSize: 12 }}>—</span>
+                      }
                     </Td>
                     <Td style={{ textAlign: "center", fontWeight: 600, fontSize: 13 }}>{e.totalAttending ?? "—"}</Td>
                     <Td>{e.waSent ? <Badge variant="green" icon={<CheckCircle size={10} />}>Sent</Badge> : <Badge variant="orange" icon={<Clock size={10} />}>Pending</Badge>}</Td>
@@ -445,22 +451,8 @@ export default function RsvpPage() {
                   </Tr>
                   {isExpanded && hasExtra && (
                     <Tr>
-                      <Td colSpan={7} style={{ background: C.bg, padding: "10px 20px 14px" }}>
+                      <Td colSpan={8} style={{ background: C.bg, padding: "10px 20px 14px" }}>
                         <div style={{ display: "flex", flexWrap: "wrap", gap: 20 }}>
-                          {loc && (
-                            <div style={{ flex: "0 0 100%", marginBottom: 4 }}>
-                              <p style={{ fontSize: 10, color: C.textMuted, margin: 0, textTransform: "uppercase", letterSpacing: "0.07em" }}>Location</p>
-                              <a
-                                href={`https://www.google.com/maps?q=${loc.lat},${loc.lng}`}
-                                target="_blank" rel="noopener noreferrer"
-                                style={{ fontSize: 13, color: C.gold, margin: "3px 0 0", fontWeight: 500, display: "flex", alignItems: "flex-start", gap: 5, textDecoration: "none" }}
-                                onClick={ev => ev.stopPropagation()}
-                              >
-                                <span>📍</span>
-                                <span style={{ lineHeight: 1.5 }}>{loc.displayName}</span>
-                              </a>
-                            </div>
-                          )}
                           {customFields.map(f => (
                             <div key={f.key}>
                               <p style={{ fontSize: 10, color: C.textMuted, margin: 0, textTransform: "uppercase", letterSpacing: "0.07em" }}>{f.label}</p>
