@@ -242,6 +242,7 @@ export default function RsvpPage() {
                         <option value="number">Number</option>
                         <option value="tel">Phone</option>
                         <option value="email">Email</option>
+                        <option value="location">Location</option>
                       </select>
                     ) : (
                       <p style={{ fontSize: 11, color: C.textMuted, margin: "2px 0 0" }}>{f.key} · {f.type}</p>

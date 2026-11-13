@@ -282,6 +282,8 @@ export default function HomeClient({ initialSettings }: { initialSettings: Recor
   const [rsvpForm, setRsvpForm] = useState({ name: "", whatsapp: "", village: "", postOffice: "", district: "", pinCode: "", totalAttending: "" });
   const [rsvpState, setRsvpState] = useState<"idle" | "loading" | "done" | "error">("idle");
   const [rsvpError, setRsvpError] = useState("");
+  const [locSugg, setLocSugg] = useState<Record<string, { placeId: string; text: string }[]>>({});
+  const locTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [showRsvpModal, setShowRsvpModal] = useState(false);
   // dynamic form modal
   const [dynFormSlug, setDynFormSlug]   = useState<string | null>(null);
@@ -473,6 +475,27 @@ export default function HomeClient({ initialSettings }: { initialSettings: Recor
     if (attended) return;
     await fetch("/api/track?type=attend", { method: "POST" });
     setAttended(true);
+  }
+
+  function fetchLocSugg(key: string, q: string) {
+    if (locTimerRef.current) clearTimeout(locTimerRef.current);
+    if (!q.trim()) { setLocSugg(p => ({ ...p, [key]: [] })); return; }
+    locTimerRef.current = setTimeout(async () => {
+      try {
+        const r = await fetch(`/api/places?q=${encodeURIComponent(q)}`);
+        const d = await r.json();
+        setLocSugg(p => ({ ...p, [key]: d.suggestions ?? [] }));
+      } catch {}
+    }, 300);
+  }
+
+  async function pickLocSugg(key: string, placeId: string) {
+    setLocSugg(p => ({ ...p, [key]: [] }));
+    try {
+      const r = await fetch(`/api/places?id=${placeId}`);
+      const d = await r.json();
+      setRsvpForm(p => ({ ...p, [key]: d.address ?? "" }));
+    } catch {}
   }
 
   type Loc = { lat: number; lng: number; displayName: string };
@@ -1154,21 +1177,54 @@ export default function HomeClient({ initialSettings }: { initialSettings: Recor
                       fields = [...fixed, ...custom];
                     }
                   } catch {}
-                  return fields.filter(f => f.visible).map(({ key, label, type, required, custom }) => (
-                    <div key={key} className="flex flex-col gap-1.5">
-                      <label className="text-xs uppercase tracking-widest" style={{ color: T.gold, opacity: 0.55 }}>
-                        {label}{required ? <span style={{ color: "#f87171" }}> *</span> : <span style={{ opacity: 0.5 }}> (optional)</span>}
-                      </label>
-                      <input
-                        type={type}
-                        required={required}
-                        value={custom ? (rsvpForm as Record<string, string>)[key] ?? "" : rsvpForm[key as keyof typeof rsvpForm]}
-                        onChange={(e) => setRsvpForm(p => ({ ...p, [key]: e.target.value }))}
-                        className="rounded-xl px-4 py-3 text-sm outline-none"
-                        style={{ background: T.inputBg, border: `1px solid ${T.inputBdr}`, color: T.inputText, caretColor: T.gold }}
-                      />
-                    </div>
-                  ));
+                  return fields.filter(f => f.visible).map(({ key, label, type, required, custom }) => {
+                    const val = custom ? (rsvpForm as Record<string, string>)[key] ?? "" : rsvpForm[key as keyof typeof rsvpForm];
+                    const inputStyle = { background: T.inputBg, border: `1px solid ${T.inputBdr}`, color: T.inputText, caretColor: T.gold };
+                    return (
+                      <div key={key} className="flex flex-col gap-1.5" style={{ position: "relative" }}>
+                        <label className="text-xs uppercase tracking-widest" style={{ color: T.gold, opacity: 0.55 }}>
+                          {label}{required ? <span style={{ color: "#f87171" }}> *</span> : <span style={{ opacity: 0.5 }}> (optional)</span>}
+                        </label>
+                        {type === "location" ? (
+                          <>
+                            <input
+                              type="text"
+                              required={required}
+                              value={val}
+                              onChange={(e) => { setRsvpForm(p => ({ ...p, [key]: e.target.value })); fetchLocSugg(key, e.target.value); }}
+                              onBlur={() => setTimeout(() => setLocSugg(p => ({ ...p, [key]: [] })), 150)}
+                              placeholder="Type to search address…"
+                              className="rounded-xl px-4 py-3 text-sm outline-none"
+                              style={inputStyle}
+                            />
+                            {(locSugg[key]?.length ?? 0) > 0 && (
+                              <div style={{ position: "absolute", top: "100%", left: 0, right: 0, zIndex: 50, background: T.inputBg, border: `1px solid ${T.inputBdr}`, borderRadius: 12, overflow: "hidden", marginTop: 4 }}>
+                                {locSugg[key].map(s => (
+                                  <button
+                                    key={s.placeId}
+                                    type="button"
+                                    onMouseDown={() => pickLocSugg(key, s.placeId)}
+                                    style={{ display: "block", width: "100%", textAlign: "left", padding: "10px 14px", fontSize: 13, color: T.inputText, background: "none", border: "none", cursor: "pointer", borderBottom: `1px solid ${T.inputBdr}` }}
+                                  >
+                                    {s.text}
+                                  </button>
+                                ))}
+                              </div>
+                            )}
+                          </>
+                        ) : (
+                          <input
+                            type={type}
+                            required={required}
+                            value={val}
+                            onChange={(e) => setRsvpForm(p => ({ ...p, [key]: e.target.value }))}
+                            className="rounded-xl px-4 py-3 text-sm outline-none"
+                            style={inputStyle}
+                          />
+                        )}
+                      </div>
+                    );
+                  });
                 })()}
 {rsvpState === "error" && (
                   <p className="text-xs text-center" style={{ color: "#ff6b6b" }}>{rsvpError}</p>
