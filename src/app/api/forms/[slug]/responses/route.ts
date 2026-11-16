@@ -18,6 +18,8 @@ export async function GET(req: NextRequest, { params }: Ctx) {
     where: { formId: form.id },
     orderBy: { submittedAt: "desc" },
   });
+  if (user.role !== "super")
+    await logChange(user.email, "view", `form-response:${slug}`, { count: responses.length }, getIp(req));
   return NextResponse.json(responses);
 }
 

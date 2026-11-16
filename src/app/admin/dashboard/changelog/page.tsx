@@ -23,6 +23,7 @@ const ACTION_STYLE: Record<string, { bg: string; color: string }> = {
   delete:    { bg: "#fee2e2", color: "#dc2626" },
   grant:     { bg: "#ede9fe", color: "#7c3aed" },
   broadcast: { bg: "#ccfbf1", color: "#0d9488" },
+  view:      { bg: "#f0f9ff", color: "#0369a1" },
 };
 
 function ActionBadge({ action }: { action: string }) {
