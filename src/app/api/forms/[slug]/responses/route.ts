@@ -20,6 +20,23 @@ export async function GET(req: NextRequest, { params }: Ctx) {
   return NextResponse.json(responses);
 }
 
+export async function PATCH(req: NextRequest, { params }: Ctx) {
+  const { slug } = await params;
+  const user = await getSessionUser(req);
+  if (!user) return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
+  if (!canForm(user, slug, "edit")) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+
+  const form = await db.dynamicForm.findUnique({ where: { slug } });
+  if (!form) return NextResponse.json({ error: "not found" }, { status: 404 });
+
+  const { id, data } = await req.json();
+  const updated = await db.dynamicFormResponse.update({
+    where: { id, formId: form.id },
+    data: { data: JSON.stringify(data) },
+  });
+  return NextResponse.json(updated);
+}
+
 export async function DELETE(req: NextRequest, { params }: Ctx) {
   const { slug } = await params;
   const user = await getSessionUser(req);

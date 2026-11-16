@@ -13,7 +13,7 @@ function LucideIcon({ name, size = 14 }: { name: string; size?: number }) {
 }
 import {
   C, Button, Badge, Card, PageHeader, Table, Thead, Th, Tbody, Td, Tr,
-  Skeleton, Empty, Spinner, useDesktop,
+  Skeleton, Empty, Spinner, Pagination, Search, Avatar, useDesktop,
 } from "../ui";
 import { useToast } from "../toast";
 
@@ -676,136 +676,271 @@ function BuilderModal({
 
 // ── Responses Modal ───────────────────────────────────────────────────────────
 const PAGE_SIZE = 20;
+const FORMS_PAGE_SIZE = 10;
+
+function safeParse(s: string): Record<string, string> {
+  try { return JSON.parse(s); } catch { return {}; }
+}
 
 function ResponsesModal({ form, onClose }: { form: Form; onClose: () => void }) {
   const { toast } = useToast();
   const [responses, setResponses] = useState<Response[]>([]);
   const [loading, setLoading]     = useState(true);
-  const [deleting, setDeleting]   = useState<number | null>(null);
-  const [page, setPage]           = useState(1);
+  const [error, setError]         = useState(false);
+  const [deleting, setDeleting]     = useState<number | null>(null);
+  const [confirmDel, setConfirmDel] = useState<number | null>(null);
+  const [editId, setEditId]         = useState<number | null>(null);
+  const [editData, setEditData]     = useState<Record<string, string>>({});
+  const [saving, setSaving]         = useState(false);
+  const [page, setPage]             = useState(1);
+  const [search, setSearch]         = useState("");
   const desktop = useDesktop();
 
   useEffect(() => {
     fetch(`/api/forms/${form.slug}/responses`)
       .then(r => r.json())
-      .then(data => { setResponses(Array.isArray(data) ? data : []); setLoading(false); });
+      .then(data => { setResponses(Array.isArray(data) ? data : []); setLoading(false); })
+      .catch(() => { setLoading(false); setError(true); });
   }, [form.slug]);
+
+  useEffect(() => {
+    function handleKey(e: KeyboardEvent) { if (e.key === "Escape") onClose(); }
+    document.addEventListener("keydown", handleKey);
+    return () => document.removeEventListener("keydown", handleKey);
+  }, [onClose]);
 
   async function del(id: number) {
     setDeleting(id);
-    await fetch(`/api/forms/${form.slug}/responses`, {
+    setConfirmDel(null);
+    const res = await fetch(`/api/forms/${form.slug}/responses`, {
       method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id }),
     });
-    setResponses(prev => prev.filter(r => r.id !== id));
     setDeleting(null);
+    if (!res.ok) { toast("Delete failed — please try again", "error"); return; }
+    setResponses(prev => prev.filter(r => r.id !== id));
     toast("Response deleted", "success");
   }
 
+  async function saveEdit(id: number) {
+    setSaving(true);
+    const res = await fetch(`/api/forms/${form.slug}/responses`, {
+      method: "PATCH", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id, data: editData }),
+    });
+    setSaving(false);
+    if (!res.ok) { toast("Update failed", "error"); return; }
+    setResponses(prev => prev.map(r => r.id === id ? { ...r, data: JSON.stringify(editData) } : r));
+    setEditId(null);
+    toast("Response updated", "success");
+  }
+
   // derive column headers from first response
-  const cols     = responses.length > 0 ? Object.keys(JSON.parse(responses[0].data)) : [];
-  const totalPages = Math.ceil(responses.length / PAGE_SIZE);
-  const paged    = responses.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  const cols     = responses.length > 0 ? Object.keys(safeParse(responses[0].data)) : [];
+  const filtered = search.trim()
+    ? responses.filter(r => {
+        const q = search.toLowerCase();
+        const d = safeParse(r.data);
+        return Object.values(d).some(v => String(v ?? "").toLowerCase().includes(q));
+      })
+    : responses;
+  const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
+  const paged    = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+
+  const TH: React.CSSProperties = {
+    padding: "10px 16px", textAlign: "left", fontSize: 11, fontWeight: 700,
+    color: C.textMuted, textTransform: "uppercase", letterSpacing: "0.07em",
+    whiteSpace: "nowrap", background: C.bg, borderBottom: `1px solid ${C.border}`,
+  };
+  const TD: React.CSSProperties = {
+    padding: "12px 16px", verticalAlign: "middle", borderBottom: `1px solid ${C.borderLight}`,
+  };
 
   return (
-    <div style={{ position: "fixed", inset: 0, zIndex: 100, background: "rgba(15,23,42,0.5)", display: "flex", flexDirection: "column" }}>
-      <div style={{ background: "#fff", flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
-        <div style={{ padding: "20px 24px 16px", borderBottom: `1px solid ${C.border}`, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <div>
-            <h2 style={{ fontSize: 16, fontWeight: 700, color: C.text, margin: 0 }}>{form.name}</h2>
-            <p style={{ fontSize: 12, color: C.textMuted, margin: "3px 0 0" }}>{responses.length} responses</p>
+    <div role="dialog" aria-modal="true" aria-labelledby="responses-modal-title" style={{ position: "fixed", inset: 0, zIndex: 100, background: "#fff", display: "flex", flexDirection: "column" }}>
+
+      {/* ── Header ── */}
+      <div style={{ padding: desktop ? "20px 28px" : "14px 16px 0", borderBottom: `1px solid ${C.border}`, flexShrink: 0, background: "#fff" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 12, paddingBottom: desktop ? 20 : 12 }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <h2 id="responses-modal-title" style={{ fontSize: 18, fontWeight: 700, color: C.text, margin: 0, letterSpacing: "-0.02em", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{form.name}</h2>
+            <p style={{ fontSize: 12, color: C.textMuted, margin: "4px 0 0" }}>
+              {loading ? "Loading…" : error ? "Failed to load" : `${responses.length} response${responses.length !== 1 ? "s" : ""}${search.trim() && filtered.length !== responses.length ? ` · ${filtered.length} matching` : ""}`}
+            </p>
           </div>
-          <button onClick={onClose} style={{ border: "none", background: "#F1F5F9", borderRadius: 7, padding: 8, cursor: "pointer", display: "flex" }}>
-            <X size={14} color={C.textSub} />
+          {desktop && (
+            <Search
+              placeholder="Search responses…"
+              value={search}
+              onChange={e => { setSearch(e.target.value); setPage(1); }}
+              width={260}
+            />
+          )}
+          <button onClick={onClose} style={{ display: "flex", alignItems: "center", gap: 7, border: `1px solid ${C.border}`, background: "#fff", borderRadius: 8, padding: "8px 14px", cursor: "pointer", color: C.textSub, fontSize: 13, fontWeight: 600, flexShrink: 0 }}>
+            <X size={14} /> Close
           </button>
         </div>
-
-        <div style={{ padding: "20px 24px", overflowY: "auto", flex: 1 }}>
-          {loading ? (
-            <div style={{ display: "flex", justifyContent: "center", padding: 40 }}><Spinner /></div>
-          ) : responses.length === 0 ? (
-            <Empty icon={<ClipboardList size={40} />} title="No responses yet" sub="Submissions will appear here" />
-          ) : desktop ? (
-            <Table>
-              <Thead>
-                <Tr>
-                  {cols.map(c => <Th key={c}>{c}</Th>)}
-                  <Th>Submitted</Th>
-                  <Th style={{ textAlign: "right" }}></Th>
-                </Tr>
-              </Thead>
-              <Tbody>
-                {paged.map(r => {
-                  const d = JSON.parse(r.data);
-                  return (
-                    <Tr key={r.id} style={{ opacity: deleting === r.id ? 0.4 : 1 }}>
-                      {cols.map(c => (
-                        <Td key={c} style={{ maxWidth: 180 }}>
-                          <span style={{ display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontSize: 12, color: C.textSub }}>
-                            {d[c] || "—"}
-                          </span>
-                        </Td>
-                      ))}
-                      <Td style={{ fontSize: 11, color: C.textMuted, whiteSpace: "nowrap" }}>
-                        {new Date(r.submittedAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
-                      </Td>
-                      <Td>
-                        <Button variant="ghost" size="sm" icon={<Trash2 size={11} />}
-                          loading={deleting === r.id}
-                          onClick={() => del(r.id)} style={{ color: C.red }}>Delete</Button>
-                      </Td>
-                    </Tr>
-                  );
-                })}
-              </Tbody>
-            </Table>
-          ) : (
-            // mobile cards
-            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              {paged.map(r => {
-                const d = JSON.parse(r.data);
-                return (
-                  <Card key={r.id} padding={14} style={{ opacity: deleting === r.id ? 0.4 : 1 }}>
-                    {cols.map(c => (
-                      <div key={c} style={{ marginBottom: 6 }}>
-                        <span style={{ fontSize: 10, fontWeight: 700, color: C.textMuted, textTransform: "uppercase", letterSpacing: "0.05em" }}>{c}</span>
-                        <p style={{ margin: "2px 0 0", fontSize: 13, color: C.text }}>{d[c] || "—"}</p>
-                      </div>
-                    ))}
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 8, paddingTop: 8, borderTop: `1px solid ${C.border}` }}>
-                      <span style={{ fontSize: 11, color: C.textMuted }}>
-                        {new Date(r.submittedAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
-                      </span>
-                      <Button variant="ghost" size="sm" icon={<Trash2 size={11} />}
-                        loading={deleting === r.id}
-                        onClick={() => del(r.id)} style={{ color: C.red }}>Delete</Button>
-                    </div>
-                  </Card>
-                );
-              })}
-            </div>
-          )}
-        </div>
-
-        {/* Pagination */}
-        {totalPages > 1 && (
-          <div style={{ padding: "12px 24px", borderTop: `1px solid ${C.border}`, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexShrink: 0 }}>
-            <span style={{ fontSize: 12, color: C.textMuted }}>
-              {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, responses.length)} of {responses.length}
-            </span>
-            <div style={{ display: "flex", gap: 6 }}>
-              <Button variant="secondary" size="sm" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}>← Prev</Button>
-              {Array.from({ length: totalPages }, (_, i) => i + 1).map(p => (
-                <button key={p} onClick={() => setPage(p)} style={{
-                  width: 30, height: 30, borderRadius: 6, border: `1px solid ${p === page ? C.primary : C.border}`,
-                  background: p === page ? C.primary : "#fff", color: p === page ? "#fff" : C.textSub,
-                  fontSize: 12, fontWeight: 600, cursor: "pointer",
-                }}>{p}</button>
-              ))}
-              <Button variant="secondary" size="sm" onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages}>Next →</Button>
-            </div>
+        {!desktop && (
+          <div style={{ paddingBottom: 12 }}>
+            <Search
+              placeholder="Search responses…"
+              value={search}
+              onChange={e => { setSearch(e.target.value); setPage(1); }}
+              width="100%"
+            />
           </div>
         )}
       </div>
+
+      {/* ── Body ── */}
+      <div style={{ flex: 1, overflowY: "auto", overflowX: "auto", background: "#fff" }}>
+        {loading ? (
+          <div style={{ display: "flex", justifyContent: "center", alignItems: "center", minHeight: 200 }}><Spinner /></div>
+        ) : error ? (
+          <Empty icon={<ClipboardList size={40} />} title="Failed to load" sub="Please close and try again" />
+        ) : responses.length === 0 ? (
+          <Empty icon={<ClipboardList size={40} />} title="No responses yet" sub="Submissions will appear here" />
+        ) : filtered.length === 0 ? (
+          <Empty icon={<ClipboardList size={40} />} title="No matches" sub={`No responses match "${search}"`} />
+        ) : desktop ? (
+          <table className="admin-table" style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+            <thead style={{ position: "sticky", top: 0, zIndex: 2 }}>
+              <tr>
+                <th style={{ ...TH, width: 52 }}>#</th>
+                {cols.map(c => <th key={c} style={TH}>{c}</th>)}
+                <th style={TH}>Submitted</th>
+                <th style={{ ...TH, width: 130 }} aria-label="Actions"></th>
+              </tr>
+            </thead>
+            <tbody>
+              {paged.map((r, ri) => {
+                const d = safeParse(r.data);
+                const idx      = (page - 1) * PAGE_SIZE + ri + 1;
+                const isDeleting = deleting === r.id;
+                const isConfirm  = confirmDel === r.id;
+                const isEditing  = editId === r.id;
+                const firstName  = d[cols[0]] ?? "";
+                return (
+                  <tr key={r.id} style={{ opacity: isDeleting ? 0.4 : 1, background: isEditing ? "#EEF2FF" : isConfirm ? "#FFF5F5" : undefined }}>
+                    <td style={{ ...TD, color: C.textMuted, fontSize: 11, fontWeight: 700, width: 52 }}>{idx}</td>
+                    {cols.map((c, ci) => (
+                      <td key={c} style={{ ...TD, maxWidth: 220 }}>
+                        {isEditing ? (
+                          <input
+                            aria-label={c}
+                            value={editData[c] ?? ""}
+                            onChange={e => setEditData(prev => ({ ...prev, [c]: e.target.value }))}
+                            style={{ width: "100%", padding: "5px 9px", border: `1.5px solid ${C.blue}`, borderRadius: 6, fontSize: 13, color: C.text, outline: "none", boxSizing: "border-box", background: "#fff" }}
+                          />
+                        ) : ci === 0 ? (
+                          <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
+                            <Avatar name={firstName || "?"} size={28} />
+                            <span style={{ fontWeight: 600, color: C.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                              {firstName || <span style={{ color: C.textMuted }}>—</span>}
+                            </span>
+                          </div>
+                        ) : (
+                          <span style={{ display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: C.textSub }}>
+                            {d[c] || <span style={{ color: C.textMuted }}>—</span>}
+                          </span>
+                        )}
+                      </td>
+                    ))}
+                    <td style={{ ...TD, whiteSpace: "nowrap" }}>
+                      <div style={{ fontSize: 12, color: C.text, fontWeight: 500 }}>
+                        {new Date(r.submittedAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
+                      </div>
+                      <div style={{ fontSize: 11, color: C.textMuted, marginTop: 2 }}>
+                        {new Date(r.submittedAt).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}
+                      </div>
+                    </td>
+                    <td style={{ ...TD, width: 130 }}>
+                      {isEditing ? (
+                        <div style={{ display: "flex", gap: 5 }}>
+                          <Button size="sm" loading={saving} onClick={() => saveEdit(r.id)}>Save</Button>
+                          <Button variant="secondary" size="sm" onClick={() => setEditId(null)}>Cancel</Button>
+                        </div>
+                      ) : isConfirm ? (
+                        <div style={{ display: "flex", gap: 5 }}>
+                          <Button variant="danger" size="sm" loading={isDeleting} onClick={() => del(r.id)}>Delete</Button>
+                          <Button variant="secondary" size="sm" onClick={() => setConfirmDel(null)}>Cancel</Button>
+                        </div>
+                      ) : (
+                        <div style={{ display: "flex", gap: 5 }}>
+                          <button
+                            onClick={() => { setConfirmDel(null); setEditId(r.id); setEditData(Object.fromEntries(cols.map(c => [c, d[c] ?? ""]))); }}
+                            style={{ display: "flex", alignItems: "center", gap: 5, padding: "6px 10px", border: `1px solid ${C.border}`, borderRadius: 6, background: "#fff", cursor: "pointer", color: C.textSub, fontSize: 12, fontWeight: 600 }}>
+                            <Edit2 size={12} /> Edit
+                          </button>
+                          <button
+                            aria-label={`Delete response ${idx}`}
+                            onClick={() => { setEditId(null); setEditData({}); setConfirmDel(r.id); }} disabled={isDeleting}
+                            style={{ display: "flex", alignItems: "center", padding: "6px 9px", border: `1px solid ${C.border}`, borderRadius: 6, background: "#fff", cursor: "pointer", color: C.textMuted }}>
+                            {isDeleting ? <Spinner size={12} /> : <Trash2 size={12} />}
+                          </button>
+                        </div>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        ) : (
+          <div style={{ padding: 16, display: "flex", flexDirection: "column", gap: 10 }}>
+            {paged.map(r => {
+              const d = safeParse(r.data);
+              const isDeleting = deleting === r.id;
+              const isConfirm  = confirmDel === r.id;
+              const firstName  = d[cols[0]] ?? "";
+              return (
+                <Card key={r.id} padding={14} style={{ opacity: isDeleting ? 0.4 : 1 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
+                    <Avatar name={firstName || "?"} size={36} />
+                    <div>
+                      <p style={{ margin: 0, fontWeight: 700, fontSize: 14, color: C.text }}>{firstName || "—"}</p>
+                      <p style={{ margin: "2px 0 0", fontSize: 11, color: C.textMuted }}>
+                        {new Date(r.submittedAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
+                        {" · "}
+                        {new Date(r.submittedAt).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}
+                      </p>
+                    </div>
+                  </div>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "6px 12px", paddingTop: 10, borderTop: `1px solid ${C.borderLight}` }}>
+                    {cols.slice(1).map(c => (
+                      <div key={c}>
+                        <span style={{ fontSize: 10, fontWeight: 700, color: C.textMuted, textTransform: "uppercase", letterSpacing: "0.06em" }}>{c}</span>
+                        <p style={{ margin: "2px 0 0", fontSize: 13, color: C.text }}>{d[c] || "—"}</p>
+                      </div>
+                    ))}
+                  </div>
+                  <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", marginTop: 10, paddingTop: 10, borderTop: `1px solid ${C.border}`, gap: 8 }}>
+                    {isConfirm ? (
+                      <>
+                        <Button variant="danger" size="sm" loading={isDeleting} onClick={() => del(r.id)}>Delete</Button>
+                        <Button variant="secondary" size="sm" onClick={() => setConfirmDel(null)}>Cancel</Button>
+                      </>
+                    ) : (
+                      <>
+                        <span style={{ fontSize: 10, color: C.textMuted, fontStyle: "italic", marginRight: "auto" }}>Edit on desktop</span>
+                        <Button variant="ghost" size="sm" icon={<Trash2 size={11} />}
+                          loading={isDeleting} onClick={() => setConfirmDel(r.id)} style={{ color: C.red }}>Delete</Button>
+                      </>
+                    )}
+                  </div>
+                </Card>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* ── Footer ── */}
+      {totalPages > 1 && (
+        <div style={{ padding: "14px 28px", borderTop: `1px solid ${C.border}`, flexShrink: 0, background: C.bg }}>
+          <Pagination page={page} total={filtered.length} perPage={PAGE_SIZE} onChange={setPage} />
+        </div>
+      )}
+
     </div>
   );
 }
@@ -821,10 +956,12 @@ export default function FormsPage() {
   const [toggling, setToggling]         = useState<number | null>(null);
   const [deleting, setDeleting]         = useState<number | null>(null);
   const [toConfirm, setToConfirm]       = useState<number | null>(null);
+  const [formsPage, setFormsPage]       = useState(1);
 
   async function load() {
     const data = await fetch("/api/forms").then(r => r.json()).catch(() => []);
     setForms(Array.isArray(data) ? data : []);
+    setFormsPage(1);
     setLoading(false);
   }
   useEffect(() => { load(); }, []);
@@ -852,6 +989,8 @@ export default function FormsPage() {
     await load();
     setDeleting(null);
   }
+
+  const pagedForms = forms.slice((formsPage - 1) * FORMS_PAGE_SIZE, formsPage * FORMS_PAGE_SIZE);
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
@@ -889,7 +1028,7 @@ export default function FormsPage() {
             </Tr>
           </Thead>
           <Tbody>
-            {forms.map(form => {
+            {pagedForms.map(form => {
               const busy = toggling === form.id || deleting === form.id;
               const confirm = toConfirm === form.id;
               return (
@@ -964,6 +1103,10 @@ export default function FormsPage() {
             );
           })}
         </div>
+      )}
+
+      {forms.length > FORMS_PAGE_SIZE && (
+        <Pagination page={formsPage} total={forms.length} perPage={FORMS_PAGE_SIZE} onChange={setFormsPage} />
       )}
 
       {/* Builder modal */}

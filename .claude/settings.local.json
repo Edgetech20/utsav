@@ -6,7 +6,23 @@
       "Bash(git push:*)",
       "Bash(git pull:*)",
       "Bash(npx prisma:*)",
-      "Bash(node:*)"
+      "Bash(node:*)",
+      "Bash(git add:*)",
+      "Bash(npx tsc:*)",
+      "Bash(git remote:*)",
+      "Bash(xargs grep:*)",
+      "Bash(python3:*)",
+      "Bash(.claude/skills/impeccable/scripts/impeccable.cmd context:*)",
+      "Bash(\"C:/Users/BPSVasset003/.claude/skills/impeccable/scripts/impeccable.cmd\" context:*)",
+      "Bash(\"C:/Users/BPSVasset003/.claude/skills/impeccable/scripts/impeccable.cmd\" signals:*)",
+      "Bash(\"C:/Users/BPSVasset003/.claude/skills/impeccable/scripts/impeccable.cmd\" detect:*)",
+      "Bash(\"C:/Users/BPSVasset003/.claude/skills/impeccable/scripts/impeccable.cmd\" critique-storage:*)",
+      "Bash(curl:*)",
+      "Bash(C:/Users/BPSVasset003/.claude/skills/impeccable/scripts/impeccable.cmd critique-storage:*)",
+      "Bash(.claude/skills/impeccable/scripts/impeccable context:*)",
+      "Bash(git -C /c/hdd/digital-invitation status)",
+      "Bash(git -C /c/hdd/digital-invitation diff)",
+      "Bash(git -C /c/hdd/digital-invitation log --oneline -5)"
     ]
   }
 }
