@@ -61,7 +61,8 @@ function userCan(user: SessionUser, resource: string | null): boolean {
   if (user.role === "super") return true;
   if (resource === "users") return false; // always super-only
   return user.permissions.some(
-    p => p.resource === resource && (p.action === "view" || p.action === "edit")
+    p => (p.resource === resource || (resource === "forms" && p.resource.startsWith("form:"))) &&
+         (p.action === "view" || p.action === "edit")
   );
 }
 

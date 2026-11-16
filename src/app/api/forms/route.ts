@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { getSessionUser, can, getIp } from "@/lib/auth";
+import { getSessionUser, can, canForm, getIp } from "@/lib/auth";
 import { logChange } from "@/lib/changelog";
 
 function slugify(name: string) {
@@ -10,13 +10,26 @@ function slugify(name: string) {
 export async function GET(req: NextRequest) {
   const user = await getSessionUser(req);
   if (!user) return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
-  if (!can(user, "forms", "view")) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+
+  // Allow global forms permission OR any per-form permission
+  const hasAnyAccess = user.role === "super" ||
+    user.permissions.some(p =>
+      (p.resource === "forms" || p.resource.startsWith("form:")) &&
+      (p.action === "view" || p.action === "edit")
+    );
+  if (!hasAnyAccess) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const forms = await db.dynamicForm.findMany({
     orderBy: { createdAt: "desc" },
     include: { _count: { select: { fields: true, responses: true } } },
   });
-  return NextResponse.json(forms.map(({ _count, ...f }) => ({
+
+  // Filter to only forms this user can view (no-op for super / global-forms users)
+  const visible = (user.role === "super" || can(user, "forms", "view"))
+    ? forms
+    : forms.filter(f => canForm(user, f.slug, "view"));
+
+  return NextResponse.json(visible.map(({ _count, ...f }) => ({
     ...f, fieldCount: _count.fields, responseCount: _count.responses,
   })));
 }
