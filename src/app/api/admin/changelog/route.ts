@@ -18,5 +18,9 @@ export async function GET(req: NextRequest) {
     take,
   });
 
-  return NextResponse.json(logs);
+  const emails = [...new Set(logs.map(l => l.email))];
+  const users  = await db.adminUser.findMany({ where: { email: { in: emails } }, select: { email: true, name: true } });
+  const nameMap = Object.fromEntries(users.map(u => [u.email, u.name]));
+
+  return NextResponse.json(logs.map(l => ({ ...l, name: nameMap[l.email] ?? null })));
 }

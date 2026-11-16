@@ -7,6 +7,7 @@ import { C, PageHeader, Table, Thead, Th, Tbody, Td, Tr, Skeleton, Empty, Avatar
 type LogEntry = {
   id: number;
   email: string;
+  name: string | null;
   action: string;
   resource: string;
   detail: string | null;
@@ -156,7 +157,7 @@ export default function ChangelogPage() {
               <Td>
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                   <Avatar name={l.email} size={28} />
-                  <span style={{ fontSize: 12, color: C.textSub }}>{l.email.split("@")[0]}</span>
+                  <span style={{ fontSize: 12, color: C.textSub }}>{l.name ?? l.email.split("@")[0]}</span>
                 </div>
               </Td>
               <Td><ActionBadge action={l.action} /></Td>
