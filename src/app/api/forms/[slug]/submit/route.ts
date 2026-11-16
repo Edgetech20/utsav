@@ -174,7 +174,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ slu
     const dup = existing.some(r => {
       try { return (JSON.parse(r.data)[field.label] ?? "").trim().toLowerCase() === value; } catch { return false; }
     });
-    if (dup) return NextResponse.json({ errors: [`${field.label}: this value has already been submitted`] }, { status: 422 });
+    if (dup) return NextResponse.json({ errors: [`${field.label}: Already registered with this ${field.label.toLowerCase()}`] }, { status: 422 });
   }
 
   // build clean data object (skip section headers)

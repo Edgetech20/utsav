@@ -166,7 +166,17 @@ export default function PublicFormPage({ params }: { params: Promise<{ slug: str
       setStatus("success");
     } else {
       const body = await res.json();
-      setSE(body.errors ?? [body.error ?? "Submission failed. Please try again."]);
+      const errs: string[] = body.errors ?? [body.error ?? "Submission failed. Please try again."];
+      // Map "FieldLabel: message" errors to inline field errors; rest go to the banner
+      const fieldErrs: Record<string, string> = {};
+      const globalErrs: string[] = [];
+      for (const err of errs) {
+        const match = form!.fields.find(f => err.startsWith(f.label + ":"));
+        if (match) fieldErrs[match.label] = err.slice(match.label.length + 1).trim();
+        else globalErrs.push(err);
+      }
+      if (Object.keys(fieldErrs).length) setErrors(fieldErrs);
+      setSE(globalErrs);
     }
   }
 
