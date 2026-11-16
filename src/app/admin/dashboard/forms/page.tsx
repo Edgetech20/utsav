@@ -33,6 +33,7 @@ type FieldValidation = {
   selectStyle?: "pills" | "dropdown";
   selectIcons?: string[];
   colSpan?: "full" | "half";
+  unique?: boolean;
 };
 
 type Field = {
@@ -242,6 +243,12 @@ function FieldRow({
                 <input type="checkbox" checked={field.required} style={{ accentColor: C.primary }}
                   onChange={e => set({ required: e.target.checked })} /> Required
               </label>
+              {!["checkbox", "file"].includes(field.type) && (
+                <label style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 12, color: C.textSub, cursor: "pointer" }}>
+                  <input type="checkbox" checked={!!v.unique} style={{ accentColor: C.primary }}
+                    onChange={e => setV({ unique: e.target.checked || undefined })} /> Unique
+                </label>
+              )}
               <div style={{ display: "flex", gap: 4 }}>
                 {(["full", "half"] as const).map(s => (
                   <button key={s} type="button" onClick={() => setV({ colSpan: s })}
@@ -339,6 +346,12 @@ function FieldRow({
               <input type="checkbox" checked={field.required} style={{ accentColor: C.primary }}
                 onChange={e => set({ required: e.target.checked })} /> Req
             </label>
+            {!["checkbox", "file"].includes(field.type) && (
+              <label style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 11, color: C.textSub, cursor: "pointer", whiteSpace: "nowrap" }}>
+                <input type="checkbox" checked={!!v.unique} style={{ accentColor: C.primary }}
+                  onChange={e => setV({ unique: e.target.checked || undefined })} /> Uniq
+              </label>
+            )}
             {(["full", "half"] as const).map(s => (
               <button key={s} type="button" onClick={() => setV({ colSpan: s })}
                 style={{ padding: "3px 8px", fontSize: 11, fontWeight: 600, borderRadius: 5, cursor: "pointer", whiteSpace: "nowrap",

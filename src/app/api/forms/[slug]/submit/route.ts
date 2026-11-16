@@ -162,6 +162,21 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ slu
   }
   if (errors.length > 0) return NextResponse.json({ errors }, { status: 422 });
 
+  // uniqueness check for fields marked unique
+  for (const field of form.fields) {
+    if (field.type === "section") continue;
+    let isUnique = false;
+    try { isUnique = field.validation ? JSON.parse(field.validation).unique === true : false; } catch { /* ignore */ }
+    if (!isUnique) continue;
+    const value = (body[field.label] ?? "").trim().toLowerCase();
+    if (!value) continue;
+    const existing = await db.dynamicFormResponse.findMany({ where: { formId: form.id }, select: { data: true } });
+    const dup = existing.some(r => {
+      try { return (JSON.parse(r.data)[field.label] ?? "").trim().toLowerCase() === value; } catch { return false; }
+    });
+    if (dup) return NextResponse.json({ errors: [`${field.label}: this value has already been submitted`] }, { status: 422 });
+  }
+
   // build clean data object (skip section headers)
   const data: Record<string, string> = {};
   for (const field of form.fields) {

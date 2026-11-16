@@ -94,8 +94,8 @@ function PermissionEditor({ target, onClose, onSaved }: {
     // Update permissions (only for members)
     const permissions: Perm[] = role === "super" ? [] :
       Array.from(perms).map(k => {
-        const [resource, action] = k.split(":");
-        return { resource, action };
+        const idx = k.lastIndexOf(":");
+        return { resource: k.slice(0, idx), action: k.slice(idx + 1) };
       });
 
     const pr = await fetch(`/api/admin/users/${encodeURIComponent(target.email)}/permissions`, {
