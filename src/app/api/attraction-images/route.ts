@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { writeFile, mkdir } from "fs/promises";
 import { join } from "path";
-import { getSessionUser, can } from "@/lib/auth";
+import { getSessionUser, can, getIp } from "@/lib/auth";
+import { logChange } from "@/lib/changelog";
 
 const ALLOWED_MIME = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
 const MAX_BYTES = 5 * 1024 * 1024;
@@ -35,6 +36,7 @@ export async function POST(req: NextRequest) {
   const row = await db.attractionImage.create({
     data: { attractionId, imageUrl: `/attractions/${filename}` },
   });
+  await logChange(user.email, "create", `attraction-image:${attractionId}`, { file: filename }, getIp(req));
   return NextResponse.json(row);
 }
 
@@ -45,5 +47,6 @@ export async function DELETE(req: NextRequest) {
 
   const { id } = await req.json();
   await db.attractionImage.delete({ where: { id } });
+  await logChange(user.email, "delete", `attraction-image:${id}`, undefined, getIp(req));
   return NextResponse.json({ ok: true });
 }

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { getSessionUser, can } from "@/lib/auth";
+import { getSessionUser, can, getIp } from "@/lib/auth";
+import { logChange } from "@/lib/changelog";
 
 export async function POST(req: NextRequest) {
   const user = await getSessionUser(req);
@@ -9,5 +10,6 @@ export async function POST(req: NextRequest) {
 
   const { id } = await req.json();
   await db.rsvp.update({ where: { id }, data: { waSent: false } });
+  await logChange(user.email, "update", `rsvp:${id}`, { action: "resend-wa" }, getIp(req));
   return NextResponse.json({ ok: true });
 }

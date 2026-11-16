@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { getSessionUser, canForm } from "@/lib/auth";
+import { getSessionUser, canForm, getIp } from "@/lib/auth";
+import { logChange } from "@/lib/changelog";
 
 type Ctx = { params: Promise<{ slug: string }> };
 
@@ -34,6 +35,7 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
     where: { id, formId: form.id },
     data: { data: JSON.stringify(data) },
   });
+  await logChange(user.email, "update", `form-response:${slug}`, { id }, getIp(req));
   return NextResponse.json(updated);
 }
 
@@ -48,5 +50,6 @@ export async function DELETE(req: NextRequest, { params }: Ctx) {
 
   const { id } = await req.json();
   await db.dynamicFormResponse.delete({ where: { id, formId: form.id } });
+  await logChange(user.email, "delete", `form-response:${slug}`, { id }, getIp(req));
   return NextResponse.json({ ok: true });
 }

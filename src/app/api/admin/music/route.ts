@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { writeFile } from "fs/promises";
 import { join } from "path";
-import { getSessionUser } from "@/lib/auth";
+import { getSessionUser, getIp } from "@/lib/auth";
+import { logChange } from "@/lib/changelog";
 
 export async function POST(req: NextRequest) {
   const user = await getSessionUser(req);
@@ -15,5 +16,6 @@ export async function POST(req: NextRequest) {
 
   const bytes = await file.arrayBuffer();
   await writeFile(join(process.cwd(), "public", "music.mp3"), Buffer.from(bytes));
+  await logChange(user.email, "update", "setting:music", { name: file.name }, getIp(req));
   return NextResponse.json({ ok: true, name: file.name });
 }

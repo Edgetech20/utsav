@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { History, RefreshCw } from "lucide-react";
-import { C, PageHeader, Table, Thead, Th, Tbody, Td, Tr, Skeleton, Empty, Avatar, Search } from "../ui";
+import { C, PageHeader, Table, Thead, Th, Tbody, Td, Tr, Skeleton, Empty, Avatar, Search, Pagination } from "../ui";
 
 type LogEntry = {
   id: number;
@@ -92,38 +92,55 @@ function SkeletonRows() {
   );
 }
 
+const PER_PAGE = 50;
+
 export default function ChangelogPage() {
   const [logs, setLogs]       = useState<LogEntry[]>([]);
+  const [total, setTotal]     = useState(0);
   const [loading, setLoading] = useState(true);
   const [search, setSearch]   = useState("");
+  const [page, setPage]       = useState(1);
   const [refreshing, setRefreshing] = useState(false);
 
-  async function load(showSpinner = true) {
+  async function load(p = page, q = search, showSpinner = true) {
     if (showSpinner) setRefreshing(true);
-    const r = await fetch("/api/admin/changelog?take=200");
-    if (r.ok) setLogs(await r.json());
+    const params = new URLSearchParams({ page: String(p), take: String(PER_PAGE) });
+    if (q.trim()) params.set("q", q.trim());
+    const r = await fetch(`/api/admin/changelog?${params}`);
+    if (r.ok) {
+      const data = await r.json();
+      setLogs(data.logs);
+      setTotal(data.total);
+    }
     setLoading(false);
     setRefreshing(false);
   }
 
-  useEffect(() => { load(false); }, []);
+  useEffect(() => { load(1, "", false); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const q = search.toLowerCase();
-  const filtered = logs.filter(l =>
-    l.email.includes(q) || l.action.includes(q) || l.resource.includes(q) ||
-    (l.detail ?? "").toLowerCase().includes(q)
-  );
+  function handleSearch(q: string) {
+    setSearch(q);
+    setPage(1);
+    load(1, q);
+  }
+
+  function handlePage(p: number) {
+    setPage(p);
+    load(p, search);
+  }
+
+  const filtered = logs; // filtering is now server-side
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
       <PageHeader
         title="Change Log"
-        sub={`${logs.length} recent events · super admin sees all, members see own`}
+        sub={`${total} event${total !== 1 ? "s" : ""} · super admin sees all, members see own`}
         actions={
           <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-            <Search placeholder="Search…" value={search} onChange={e => setSearch(e.target.value)} />
+            <Search placeholder="Search…" value={search} onChange={e => handleSearch(e.target.value)} />
             <button
-              onClick={() => load()}
+              onClick={() => load(page, search)}
               disabled={refreshing}
               style={{
                 display: "flex", alignItems: "center", gap: 6,
@@ -175,6 +192,10 @@ export default function ChangelogPage() {
           ))}
         </Tbody>
       </Table>
+
+      {total > PER_PAGE && (
+        <Pagination page={page} total={total} perPage={PER_PAGE} onChange={handlePage} />
+      )}
 
       <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
     </div>
