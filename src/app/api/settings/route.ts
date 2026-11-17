@@ -13,6 +13,8 @@ const ALLOWED_KEYS = [
   "contact_organiser", "contact_phone", "contact_whatsapp", "contact_email",
   "session_timeout_hours",
   "rsvp_field_config",
+  "camp_enabled",
+  "camp_form_slug",
 ];
 
 export async function GET() {

@@ -9,6 +9,15 @@ type Perm = { resource: string; action: string };
 type AdminUser = { email: string; name: string | null; role: string; createdAt: string; permissions: Perm[] };
 type Form = { slug: string; name: string };
 
+const CAMP_ROLES: { value: string; label: string; desc: string }[] = [
+  { value: "none",       label: "No Access",    desc: "Cannot access the camp module" },
+  { value: "view",       label: "View Only",    desc: "Reports and stats, read-only" },
+  { value: "medical",    label: "Medical User", desc: "Patient registration desk" },
+  { value: "doctor",     label: "Doctor",       desc: "Doctor console — call and consult patients" },
+  { value: "pharmacist", label: "Pharmacist",   desc: "Pharmacy queue — dispense medicines" },
+  { value: "edit",       label: "Camp Admin",   desc: "Full access including management" },
+];
+
 // ── Resource definitions ───────────────────────────────────────────────────────
 const RESOURCE_GROUPS = [
   {
@@ -52,8 +61,12 @@ function PermissionEditor({ target, onClose, onSaved }: {
   const { toast } = useToast();
   const [name, setName]       = useState(target.name ?? "");
   const [role, setRole]       = useState(target.role);
+  // camp permissions are managed separately via campRole
   const [perms, setPerms]     = useState<Set<string>>(
-    () => new Set(target.permissions.map(p => `${p.resource}:${p.action}`))
+    () => new Set(target.permissions.filter(p => p.resource !== "camp").map(p => `${p.resource}:${p.action}`))
+  );
+  const [campRole, setCampRole] = useState<string>(
+    () => target.permissions.find(p => p.resource === "camp")?.action ?? "none"
   );
   const [forms, setForms]     = useState<Form[]>([]);
   const [saving, setSaving]   = useState(false);
@@ -92,11 +105,14 @@ function PermissionEditor({ target, onClose, onSaved }: {
     if (!ur.ok) { toast("Failed to update user", "error"); setSaving(false); return; }
 
     // Update permissions (only for members)
-    const permissions: Perm[] = role === "super" ? [] :
-      Array.from(perms).map(k => {
+    const campPerm: Perm[] = campRole !== "none" ? [{ resource: "camp", action: campRole }] : [];
+    const permissions: Perm[] = role === "super" ? [] : [
+      ...Array.from(perms).map(k => {
         const idx = k.lastIndexOf(":");
         return { resource: k.slice(0, idx), action: k.slice(idx + 1) };
-      });
+      }),
+      ...campPerm,
+    ];
 
     const pr = await fetch(`/api/admin/users/${encodeURIComponent(target.email)}/permissions`, {
       method: "PUT",
@@ -105,7 +121,7 @@ function PermissionEditor({ target, onClose, onSaved }: {
     });
     if (!pr.ok) { toast("Failed to save permissions", "error"); setSaving(false); return; }
 
-    const updated: AdminUser = { ...target, name: name || null, role, permissions };
+    const updated: AdminUser = { ...target, name: name || null, role, permissions: [...permissions] };
     toast("Saved", "success");
     onSaved(updated);
     setSaving(false);
@@ -155,6 +171,35 @@ function PermissionEditor({ target, onClose, onSaved }: {
             <span style={{ fontSize: 11, color: C.textMuted }} />
             <span style={{ fontSize: 10, fontWeight: 700, color: C.textMuted, textAlign: "center", textTransform: "uppercase" }}>View</span>
             <span style={{ fontSize: 10, fontWeight: 700, color: C.textMuted, textAlign: "center", textTransform: "uppercase" }}>Edit</span>
+          </div>
+
+          {/* Medical Camp — role picker */}
+          <div style={{ marginBottom: 8 }}>
+            <p style={{ fontSize: 10, fontWeight: 700, color: C.textMuted, letterSpacing: "0.08em", textTransform: "uppercase", margin: "8px 0 6px", paddingLeft: 4 }}>Medical Camp</p>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 6, paddingLeft: 4 }}>
+              {CAMP_ROLES.map(opt => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  title={opt.desc}
+                  onClick={() => setCampRole(opt.value)}
+                  style={{
+                    padding: "5px 13px", borderRadius: 20, cursor: "pointer",
+                    border: `1px solid ${campRole === opt.value ? C.gold : C.border}`,
+                    background: campRole === opt.value ? C.goldBg : C.surface,
+                    color: campRole === opt.value ? C.gold : C.textSub,
+                    fontSize: 12, fontWeight: campRole === opt.value ? 700 : 400,
+                  }}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+            {campRole !== "none" && (
+              <p style={{ fontSize: 11, color: C.textMuted, margin: "5px 0 0 4px" }}>
+                {CAMP_ROLES.find(o => o.value === campRole)?.desc}
+              </p>
+            )}
           </div>
 
           {RESOURCE_GROUPS.map((group, gi) => (

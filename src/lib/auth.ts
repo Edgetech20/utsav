@@ -37,9 +37,17 @@ export async function getSessionUser(req: NextRequest): Promise<SessionUser | nu
  * Returns true if the user can perform the given action on the resource.
  * - Super role always returns true.
  * - "edit" permission implies "view".
+ * - For the "camp" resource, sub-roles (doctor/pharmacist/medical) imply both view and edit
+ *   so they can call camp APIs; page-level access is restricted by CampNav visibility.
  */
 export function can(user: SessionUser, resource: string, action: "view" | "edit"): boolean {
   if (user.role === "super") return true;
+  if (resource === "camp") {
+    const campPerms = user.permissions.filter(p => p.resource === "camp").map(p => p.action);
+    if (action === "view") return campPerms.length > 0;
+    // edit: granted by edit, doctor, pharmacist, or medical (view-only cannot edit)
+    return campPerms.some(a => a !== "view");
+  }
   return user.permissions.some(
     p => p.resource === resource && (p.action === action || (action === "view" && p.action === "edit"))
   );

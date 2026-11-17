@@ -228,3 +228,74 @@ model DynamicFormResponse {
 
   @@index([formId])
 }
+
+model CampDepartment {
+  id       Int           @id @default(autoincrement())
+  code     String        @unique  // "GM", "EY", "DN"
+  name     String                 // "General Medicine"
+  isActive Boolean       @default(true)
+  order    Int           @default(0)
+  patients CampPatient[]
+  doctors  CampDoctor[]
+}
+
+model CampPatient {
+  id           Int               @id @default(autoincrement())
+  token        String            @unique  // "GM-001"
+  name         String
+  age          Int
+  gender       String                     // Male | Female | Other
+  mobile       String
+  address      String?
+  problem      String?           // chief complaint / issue described at registration
+  departmentId Int
+  department   CampDepartment    @relation(fields: [departmentId], references: [id])
+  status       String            @default("waiting")  // waiting | called | doctor_done | completed
+  doctorName   String?           // set when doctor marks consultation done
+  registeredAt DateTime          @default(now())
+  calledAt     DateTime?
+  doctorDoneAt DateTime?
+  dispensedAt  DateTime?
+  completedAt  DateTime?
+  medicines    PatientMedicine[]
+
+  @@index([departmentId])
+  @@index([status])
+}
+
+model Medicine {
+  id        Int               @id @default(autoincrement())
+  name      String
+  unit      String            @default("tablet")  // tablet | capsule | ml | sachet | cream | drops
+  stock     Int               @default(0)
+  isActive  Boolean           @default(true)
+  dispensed PatientMedicine[]
+
+  @@index([isActive])
+}
+
+model PatientMedicine {
+  id          Int         @id @default(autoincrement())
+  patientId   Int
+  patient     CampPatient @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  medicineId  Int
+  medicine    Medicine    @relation(fields: [medicineId], references: [id])
+  quantity    Int
+  dosage      String?     // "1 tablet twice daily for 3 days"
+  dispensedAt DateTime    @default(now())
+  dispensedBy String?     // email
+
+  @@index([patientId])
+  @@index([medicineId])
+}
+
+model CampDoctor {
+  id           Int            @id @default(autoincrement())
+  name         String
+  departmentId Int
+  department   CampDepartment @relation(fields: [departmentId], references: [id])
+  isActive     Boolean        @default(true)
+  email        String?        // optional link to AdminUser for auto-filter on doctor page
+
+  @@index([departmentId])
+}
