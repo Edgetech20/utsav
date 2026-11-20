@@ -296,16 +296,6 @@ function AnalyticsTab() {
         </Button>
       </div>
 
-      {capReached && (
-        <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "14px 18px", borderRadius: 10, background: "rgba(34,197,94,0.1)", border: `1px solid ${C.green}` }}>
-          <CheckCircle size={18} color={C.green} style={{ flexShrink: 0 }} />
-          <div>
-            <p style={{ fontSize: 13, fontWeight: 700, color: C.green, margin: "0 0 2px" }}>Daily cap reached — sending paused</p>
-            <p style={{ fontSize: 11, color: C.textSub, margin: 0 }}>{totals.todaySent} of {totals.dailyCap} messages sent today. Bot will resume automatically at midnight.</p>
-          </div>
-        </div>
-      )}
-
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(140px,1fr))", gap: 12 }}>
         {kpis.map(k => (
           <Card key={k.label} padding="16px 18px">
@@ -313,6 +303,15 @@ function AnalyticsTab() {
             <p style={{ fontSize: 11, color: C.textMuted, margin: 0 }}>{k.label}</p>
           </Card>
         ))}
+        {capReached && (
+          <Card padding="16px 18px" style={{ border: `1px solid ${C.green}`, background: "rgba(34,197,94,0.07)" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
+              <CheckCircle size={14} color={C.green} />
+              <p style={{ fontSize: 13, fontWeight: 800, color: C.green, margin: 0, lineHeight: 1 }}>Cap Reached</p>
+            </div>
+            <p style={{ fontSize: 11, color: C.textSub, margin: 0 }}>{totals.todaySent} / {totals.dailyCap} sent today. Resumes at midnight.</p>
+          </Card>
+        )}
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
