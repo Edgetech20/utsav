@@ -140,8 +140,7 @@ const client = new Client({
   authStrategy: new LocalAuth({ dataPath: "/var/wwebjs_auth_utsav" }),
   puppeteer: {
     headless: true,
-    executablePath: "/usr/bin/google-chrome-stable",
-    args: [
+args: [
       "--no-sandbox",
       "--disable-setuid-sandbox",
       "--disable-dev-shm-usage",
