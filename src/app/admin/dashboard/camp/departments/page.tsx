@@ -138,8 +138,7 @@ export default function CampDepartmentsPage() {
       <PageHeader
         title="Camp Departments"
         sub="Manage medical departments and their token prefixes"
-        icon={<Tent size={18} color={C.gold} />}
-        action={<Button size="sm" icon={<Plus size={14} />} onClick={() => { setForm(EMPTY_FORM); setAddOpen(true); }}>Add Department</Button>}
+        actions={<Button size="sm" icon={<Plus size={14} />} onClick={() => { setForm(EMPTY_FORM); setAddOpen(true); }}>Add Department</Button>}
       />
 
       {loading ? (

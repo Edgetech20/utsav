@@ -55,7 +55,6 @@ export default function CampPatientsPage() {
       <PageHeader
         title="Camp Patients"
         sub={`${patients.length} patient${patients.length !== 1 ? "s" : ""} found`}
-        icon={<Users size={18} color={C.gold} />}
       />
 
       {/* Filters */}
