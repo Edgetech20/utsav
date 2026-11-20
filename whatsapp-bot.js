@@ -46,6 +46,11 @@ function checkCap(cap) {
   daySends++;
   return true;
 }
+async function seedDaySends() {
+  const start = new Date(); start.setHours(0, 0, 0, 0);
+  daySends = await prisma.waLog.count({ where: { status: "sent", sentAt: { gte: start } } });
+  console.log("[wa-bot] daySends seeded from DB:", daySends);
+}
 
 // Simulate typing for a human-looking pause before sending
 async function sendWithTyping(client, id, msg) {
@@ -188,6 +193,7 @@ client.on("authenticated", () => setStatus("authenticated").catch(console.error)
 client.on("ready", () => {
   setStatus("connected").catch(console.error);
   console.log("[wa-bot] ready — polling every 10s");
+  seedDaySends().catch(e => console.error("[wa-bot] seedDaySends:", e.message));
   sendRsvpAuto(client).catch(e => console.error("[wa-bot]", e.message));
   sendQueue(client).catch(e => console.error("[wa-bot]", e.message));
   setInterval(() => {
