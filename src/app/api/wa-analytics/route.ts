@@ -7,10 +7,12 @@ export async function GET(req: NextRequest) {
   if (!user) return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
   if (!can(user, "whatsapp", "view")) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
-  const [logs, pendingQueue] = await Promise.all([
+  const [logs, pendingBroadcast, pendingRsvp] = await Promise.all([
     db.waLog.findMany({ orderBy: { sentAt: "desc" } }),
     db.waQueue.count({ where: { status: "pending" } }),
+    db.rsvp.count({ where: { waSent: false } }),
   ]);
+  const pendingQueue = pendingBroadcast + pendingRsvp;
 
   const now   = new Date();
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
