@@ -1021,7 +1021,7 @@ function LogsTab({ rows, loading, onRefresh }: { rows: Row[]; loading: boolean; 
                 </Td>
                 <Td style={{ fontSize: 12, color: C.textMuted, whiteSpace: "nowrap" }}>{fmtDate(r.sentAt)}</Td>
                 <Td>
-                  {r.status === "failed" && (
+                  {r.status === "failed" && !r.error?.includes("No LID") && (
                     <Button
                       variant="secondary" size="sm"
                       icon={<RotateCcw size={11} />}
