@@ -228,10 +228,12 @@ function AnalyticsTab() {
   const [data, setData]     = useState<Analytics | null>(null);
   const [loading, setLoad]  = useState(true);
 
-  useEffect(() => {
+  function load() {
     setLoad(true);
     fetch("/api/wa-analytics").then(r => r.json()).then(d => { setData(d); setLoad(false); });
-  }, []);
+  }
+
+  useEffect(() => { load(); }, []);
 
   if (loading || !data) {
     return (
@@ -244,7 +246,8 @@ function AnalyticsTab() {
   }
 
   const { totals, daily, hourly, byType, topErrors, queueStats, successRate } = data;
-  const maxDaily  = Math.max(...daily.map(d => d.sent + d.failed), 1);
+  const week      = daily.slice(-7);
+  const maxDaily  = Math.max(...week.map(d => d.sent + d.failed), 1);
   const maxHourly = Math.max(...hourly.map(h => h.count), 1);
 
   const kpis = [
@@ -265,6 +268,11 @@ function AnalyticsTab() {
     <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
 
       {/* ── KPI row ── */}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end" }}>
+        <Button variant="secondary" size="sm" icon={<RefreshCw size={13} />} onClick={load} disabled={loading}>
+          {loading ? "Loading…" : "Refresh"}
+        </Button>
+      </div>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(140px,1fr))", gap: 12 }}>
         {kpis.map(k => (
           <Card key={k.label} padding="16px 18px">
@@ -274,40 +282,113 @@ function AnalyticsTab() {
         ))}
       </div>
 
-      {/* ── 14-day activity chart ── */}
-      <Card padding={0}>
-        <div style={{ padding: "14px 20px", borderBottom: `1px solid ${C.border}`, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <p style={{ fontSize: 13, fontWeight: 700, color: C.text, margin: 0 }}>14-Day Activity</p>
-          <div style={{ display: "flex", gap: 12 }}>
-            {[{ color: C.green, label: "Sent" }, { color: C.red, label: "Failed" }].map(l => (
-              <div key={l.label} style={{ display: "flex", alignItems: "center", gap: 5 }}>
-                <div style={{ width: 8, height: 8, borderRadius: 2, background: l.color }} />
-                <span style={{ fontSize: 11, color: C.textSub }}>{l.label}</span>
-              </div>
-            ))}
+      {/* ── Charts row: 7-day bar + 7-day success rate line ── */}
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+
+        {/* Bar chart */}
+        <Card padding={0}>
+          <div style={{ padding: "14px 20px", borderBottom: `1px solid ${C.border}`, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            <p style={{ fontSize: 13, fontWeight: 700, color: C.text, margin: 0 }}>7-Day Activity</p>
+            <div style={{ display: "flex", gap: 12 }}>
+              {[{ color: C.green, label: "Sent" }, { color: C.red, label: "Failed" }].map(l => (
+                <div key={l.label} style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                  <div style={{ width: 8, height: 8, borderRadius: 2, background: l.color }} />
+                  <span style={{ fontSize: 11, color: C.textSub }}>{l.label}</span>
+                </div>
+              ))}
+            </div>
           </div>
-        </div>
-        <div style={{ padding: "20px 20px 12px", overflowX: "auto" }}>
-          <div style={{ display: "flex", alignItems: "flex-end", gap: 6, minWidth: 480, height: 120 }}>
-            {daily.map(d => {
-              const sentH   = Math.round((d.sent   / maxDaily) * 100);
-              const failedH = Math.round((d.failed / maxDaily) * 100);
-              const label   = new Date(d.date + "T00:00:00").toLocaleDateString("en-IN", { day: "numeric", month: "short" });
-              return (
-                <div key={d.date} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 3 }}>
-                  <div style={{ width: "100%", display: "flex", flexDirection: "column", justifyContent: "flex-end", height: 96, gap: 2 }}>
-                    {d.failed > 0 && (
-                      <div title={`${d.failed} failed`} style={{ width: "100%", height: `${failedH}%`, minHeight: d.failed > 0 ? 3 : 0, background: C.red, borderRadius: "3px 3px 0 0", opacity: 0.8 }} />
-                    )}
-                    <div title={`${d.sent} sent`} style={{ width: "100%", height: `${sentH}%`, minHeight: d.sent > 0 ? 3 : 0, background: C.green, borderRadius: d.failed > 0 ? 0 : "3px 3px 0 0" }} />
+          <div style={{ padding: "16px 16px 12px" }}>
+            <div style={{ display: "flex", alignItems: "flex-end", gap: 6, height: 110 }}>
+              {week.map(d => {
+                const sentH   = Math.round((d.sent   / maxDaily) * 100);
+                const failedH = Math.round((d.failed / maxDaily) * 100);
+                const label   = new Date(d.date + "T00:00:00").toLocaleDateString("en-IN", { day: "numeric", month: "short" });
+                return (
+                  <div key={d.date} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 3 }}>
+                    <div style={{ width: "100%", display: "flex", flexDirection: "column", justifyContent: "flex-end", height: 88, gap: 2 }}>
+                      {d.failed > 0 && (
+                        <div title={`${d.failed} failed`} style={{ width: "100%", height: `${failedH}%`, minHeight: 3, background: C.red, borderRadius: "3px 3px 0 0", opacity: 0.8 }} />
+                      )}
+                      <div title={`${d.sent} sent`} style={{ width: "100%", height: `${sentH}%`, minHeight: d.sent > 0 ? 3 : 0, background: C.green, borderRadius: d.failed > 0 ? 0 : "3px 3px 0 0" }} />
+                    </div>
+                    <span style={{ fontSize: 9, color: C.textMuted, whiteSpace: "nowrap" }}>{label}</span>
                   </div>
-                  <span style={{ fontSize: 9, color: C.textMuted, whiteSpace: "nowrap" }}>{label}</span>
+                );
+              })}
+            </div>
+          </div>
+        </Card>
+
+        {/* Line chart — 7-day success rate */}
+        <Card padding={0}>
+          <div style={{ padding: "14px 20px", borderBottom: `1px solid ${C.border}`, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            <p style={{ fontSize: 13, fontWeight: 700, color: C.text, margin: 0 }}>7-Day Trend</p>
+            <div style={{ display: "flex", gap: 12 }}>
+              {[{ color: C.green, label: "Sent" }, { color: C.red, label: "Failed" }, { color: C.blue, label: "Total" }].map(l => (
+                <div key={l.label} style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                  <div style={{ width: 16, height: 2, background: l.color, borderRadius: 1 }} />
+                  <span style={{ fontSize: 11, color: C.textSub }}>{l.label}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+          <div style={{ padding: "16px 16px 12px" }}>
+            {(() => {
+              const W = 100, H = 88;
+              const maxVal = Math.max(...week.map(d => d.sent + d.failed), 1);
+              const xOf    = (i: number) => week.length === 1 ? W / 2 : (i / (week.length - 1)) * W;
+              const yOf    = (v: number) => H - (v / maxVal) * H;
+
+              const lines = [
+                { key: "total",  color: C.blue,  vals: week.map(d => d.sent + d.failed), dash: "3,2" },
+                { key: "sent",   color: C.green, vals: week.map(d => d.sent),            dash: ""    },
+                { key: "failed", color: C.red,   vals: week.map(d => d.failed),          dash: "2,2" },
+              ];
+
+              const labels = week.map(d =>
+                new Date(d.date + "T00:00:00").toLocaleDateString("en-IN", { day: "numeric", month: "short" })
+              );
+
+              return (
+                <div>
+                  <svg viewBox={`0 0 ${W} ${H}`} style={{ width: "100%", height: 96, overflow: "visible" }}>
+                    {/* grid lines */}
+                    {[0, 0.25, 0.5, 0.75, 1].map(v => (
+                      <line key={v} x1={0} y1={H * (1 - v)} x2={W} y2={H * (1 - v)}
+                        stroke="#E8ECF0" strokeWidth="0.5" />
+                    ))}
+                    {lines.map(({ key, color, vals, dash }) => {
+                      const pts    = vals.map((v, i) => `${xOf(i)},${yOf(v)}`).join(" ");
+                      return (
+                        <g key={key}>
+                          <polyline
+                            points={pts} fill="none" stroke={color} strokeWidth="1.8"
+                            strokeLinejoin="round" strokeLinecap="round"
+                            strokeDasharray={dash || undefined}
+                          />
+                          {vals.map((v, i) => (
+                            <circle key={i} cx={xOf(i)} cy={yOf(v)} r="2.2"
+                              fill={C.surface} stroke={color} strokeWidth="1.6">
+                              <title>{labels[i]} · {key}: {v}</title>
+                            </circle>
+                          ))}
+                        </g>
+                      );
+                    })}
+                  </svg>
+                  <div style={{ display: "flex", justifyContent: "space-between", marginTop: 2 }}>
+                    {labels.map((l, i) => (
+                      <span key={i} style={{ fontSize: 9, color: C.textMuted, flex: 1, textAlign: "center" }}>{l}</span>
+                    ))}
+                  </div>
                 </div>
               );
-            })}
+            })()}
           </div>
-        </div>
-      </Card>
+        </Card>
+
+      </div>
 
       {/* ── Queue burn-down + Type breakdown ── */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
