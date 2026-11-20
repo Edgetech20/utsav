@@ -236,7 +236,7 @@ function ConnectTab({ wa, onConnect, onShowQr }: { wa: WaStatus; onConnect: () =
 
 // ── Analytics types ───────────────────────────────────────────────────────────
 type Analytics = {
-  totals:      { sent: number; failed: number; pending: number; todaySent: number };
+  totals:      { sent: number; failed: number; pending: number; todaySent: number; dailyCap: number };
   daily:       { date: string; sent: number; failed: number }[];
   hourly:      { hour: number; count: number }[];
   byType:      Record<string, { sent: number; failed: number }>;
@@ -286,6 +286,8 @@ function AnalyticsTab() {
     broadcast: { label: "Broadcast", color: "#8B5CF6" },
   };
 
+  const capReached = totals.todaySent >= totals.dailyCap;
+
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end" }}>
@@ -293,6 +295,17 @@ function AnalyticsTab() {
           {loading ? "Loading…" : "Refresh"}
         </Button>
       </div>
+
+      {capReached && (
+        <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "14px 18px", borderRadius: 10, background: "rgba(34,197,94,0.1)", border: `1px solid ${C.green}` }}>
+          <CheckCircle size={18} color={C.green} style={{ flexShrink: 0 }} />
+          <div>
+            <p style={{ fontSize: 13, fontWeight: 700, color: C.green, margin: "0 0 2px" }}>Daily cap reached — sending paused</p>
+            <p style={{ fontSize: 11, color: C.textSub, margin: 0 }}>{totals.todaySent} of {totals.dailyCap} messages sent today. Bot will resume automatically at midnight.</p>
+          </div>
+        </div>
+      )}
+
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(140px,1fr))", gap: 12 }}>
         {kpis.map(k => (
           <Card key={k.label} padding="16px 18px">

@@ -7,11 +7,13 @@ export async function GET(req: NextRequest) {
   if (!user) return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
   if (!can(user, "whatsapp", "view")) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
-  const [logs, pendingBroadcast, pendingRsvp] = await Promise.all([
+  const [logs, pendingBroadcast, pendingRsvp, capSetting] = await Promise.all([
     db.waLog.findMany({ orderBy: { sentAt: "desc" } }),
     db.waQueue.count({ where: { status: "pending" } }),
     db.rsvp.count({ where: { waSent: false } }),
+    db.setting.findUnique({ where: { key: "wa_daily_cap" } }),
   ]);
+  const dailyCap = capSetting ? parseInt(capSetting.value, 10) : 50;
   const pendingQueue = pendingBroadcast + pendingRsvp;
 
   const now   = new Date();
@@ -67,7 +69,7 @@ export async function GET(req: NextRequest) {
   const todaySent = daily[daily.length - 1]?.sent ?? 0;
 
   return NextResponse.json({
-    totals:    { sent: sent.length, failed: failed.length, pending: pendingQueue, todaySent },
+    totals:    { sent: sent.length, failed: failed.length, pending: pendingQueue, todaySent, dailyCap },
     daily,
     hourly,
     byType,
