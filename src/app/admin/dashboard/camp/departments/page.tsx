@@ -137,7 +137,7 @@ export default function CampDepartmentsPage() {
     <>
       <PageHeader
         title="Camp Departments"
-        subtitle="Manage medical departments and their token prefixes"
+        sub="Manage medical departments and their token prefixes"
         icon={<Tent size={18} color={C.gold} />}
         action={<Button size="sm" icon={<Plus size={14} />} onClick={() => { setForm(EMPTY_FORM); setAddOpen(true); }}>Add Department</Button>}
       />
@@ -145,7 +145,7 @@ export default function CampDepartmentsPage() {
       {loading ? (
         <Card><div style={{ display: "flex", justifyContent: "center", padding: 40 }}><Spinner size={24} /></div></Card>
       ) : list.length === 0 ? (
-        <Card><Empty icon={<Tent size={32} color={C.textMuted} />} title="No departments yet" subtitle="Add departments like General Medicine, Eye, Dental…" /></Card>
+        <Card><Empty icon={<Tent size={32} color={C.textMuted} />} title="No departments yet" sub="Add departments like General Medicine, Eye, Dental…" /></Card>
       ) : (
         <Card padding={0}>
           <Table>

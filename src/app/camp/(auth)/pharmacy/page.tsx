@@ -259,7 +259,7 @@ export default function PharmacyPage() {
           <Empty
             icon={<Pill size={32} color={C.textMuted} />}
             title={q ? "No patients match" : "Queue is clear"}
-            subtitle={q ? "Adjust your search" : "No patients waiting for medicines"}
+            sub={q ? "Adjust your search" : "No patients waiting for medicines"}
           />
         </Card>
       ) : (

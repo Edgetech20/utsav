@@ -5,7 +5,7 @@ import { Plus, Pencil, Trash2, X, ToggleLeft, ToggleRight, Stethoscope } from "l
 import { C, Button, PageHeader, Card, Input, Spinner, Table, Thead, Tbody, Th, Td, Tr, Empty, Badge, useDesktop } from "@/app/admin/dashboard/ui";
 import { useToast } from "@/app/admin/dashboard/toast";
 
-type Dept   = { id: number; code: string; name: string };
+type Dept   = { id: number; code: string; name: string; isActive: boolean };
 type Doctor = { id: number; name: string; email: string | null; isActive: boolean; department: Dept };
 
 const EMPTY_FORM = { name: "", departmentId: "", email: "" };
@@ -149,7 +149,7 @@ export default function ManageDoctorsPage() {
       {loading ? (
         <Card><div style={{ display: "flex", justifyContent: "center", padding: 40 }}><Spinner size={24} /></div></Card>
       ) : list.length === 0 ? (
-        <Card><Empty icon={<Stethoscope size={32} color={C.textMuted} />} title="No doctors yet" subtitle="Add doctors and assign them to departments" /></Card>
+        <Card><Empty icon={<Stethoscope size={32} color={C.textMuted} />} title="No doctors yet" sub="Add doctors and assign them to departments" /></Card>
       ) : (
         <Card padding={0}>
           <Table>

@@ -164,7 +164,7 @@ export default function PharmacyReportsPage() {
           <Empty
             icon={<Pill size={32} color={C.textMuted} />}
             title="No records found"
-            subtitle={q || medFilter ? "Adjust your filters" : "No medicines have been dispensed yet"}
+            sub={q || medFilter ? "Adjust your filters" : "No medicines have been dispensed yet"}
           />
         </Card>
       ) : (

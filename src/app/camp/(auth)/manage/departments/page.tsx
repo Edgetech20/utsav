@@ -137,7 +137,7 @@ export default function ManageDepartmentsPage() {
       {loading ? (
         <Card><div style={{ display: "flex", justifyContent: "center", padding: 40 }}><Spinner size={24} /></div></Card>
       ) : list.length === 0 ? (
-        <Card><Empty icon={<Tent size={32} color={C.textMuted} />} title="No departments yet" subtitle="Add departments like General Medicine, Eye, Dental…" /></Card>
+        <Card><Empty icon={<Tent size={32} color={C.textMuted} />} title="No departments yet" sub="Add departments like General Medicine, Eye, Dental…" /></Card>
       ) : (
         <Card padding={0}>
           <Table>

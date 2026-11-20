@@ -831,7 +831,7 @@ export default function PatientPage() {
       {loading ? (
         <Card><div style={{ display: "flex", justifyContent: "center", padding: 40 }}><Spinner size={24} /></div></Card>
       ) : patients.length === 0 ? (
-        <Card><Empty icon={<UserPlus size={32} color={C.textMuted} />} title="No patients found" subtitle="Add a patient or adjust filters" /></Card>
+        <Card><Empty icon={<UserPlus size={32} color={C.textMuted} />} title="No patients found" sub="Add a patient or adjust filters" /></Card>
       ) : (
         <Card padding={0}>
           <Table>

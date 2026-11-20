@@ -54,7 +54,7 @@ export default function CampPatientsPage() {
     <>
       <PageHeader
         title="Camp Patients"
-        subtitle={`${patients.length} patient${patients.length !== 1 ? "s" : ""} found`}
+        sub={`${patients.length} patient${patients.length !== 1 ? "s" : ""} found`}
         icon={<Users size={18} color={C.gold} />}
       />
 
@@ -80,7 +80,7 @@ export default function CampPatientsPage() {
       {loading ? (
         <Card><div style={{ display: "flex", justifyContent: "center", padding: 40 }}><Spinner size={24} /></div></Card>
       ) : patients.length === 0 ? (
-        <Card><Empty icon={<Users size={32} color={C.textMuted} />} title="No patients found" subtitle="Try adjusting your filters" /></Card>
+        <Card><Empty icon={<Users size={32} color={C.textMuted} />} title="No patients found" sub="Try adjusting your filters" /></Card>
       ) : (
         <Card padding={0}>
           <Table>

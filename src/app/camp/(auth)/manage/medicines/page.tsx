@@ -382,7 +382,7 @@ export default function MedicinesPage() {
       {loading ? (
         <Card><div style={{ display: "flex", justifyContent: "center", padding: 40 }}><Spinner size={24} /></div></Card>
       ) : active.length === 0 ? (
-        <Card><Empty icon={<Pill size={32} color={C.textMuted} />} title="No medicines yet" subtitle="Add medicines to build your inventory" /></Card>
+        <Card><Empty icon={<Pill size={32} color={C.textMuted} />} title="No medicines yet" sub="Add medicines to build your inventory" /></Card>
       ) : (
         <Card padding={0} style={{ marginBottom: 16 }}>
           <Table>

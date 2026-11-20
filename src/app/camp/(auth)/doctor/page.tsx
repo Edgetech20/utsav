@@ -16,7 +16,7 @@ const C = {
 } as const;
 
 type Dept    = { id: number; code: string; name: string; isActive: boolean };
-type Doctor  = { id: number; name: string; email: string | null; departmentId: number; department: Dept };
+type Doctor  = { id: number; name: string; email: string | null; departmentId: number; department: Dept; isActive: boolean };
 type Patient = {
   id: number; token: string; name: string; age: number; gender: string;
   mobile: string; problem: string | null; status: string; registeredAt: string;
