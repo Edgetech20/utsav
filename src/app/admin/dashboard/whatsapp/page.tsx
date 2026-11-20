@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Wifi, QrCode, CheckCircle, XCircle, Clock, RefreshCw, ScrollText, X, Send, Users, CheckSquare, Square } from "lucide-react";
+import { Wifi, QrCode, CheckCircle, XCircle, Clock, RefreshCw, ScrollText, X, Send, Users, CheckSquare, Square, RotateCcw } from "lucide-react";
 import { C, Button, Badge, Card, Spinner, Table, Thead, Th, Tbody, Td, Tr, Skeleton, Empty, Pagination, useDesktop } from "../ui";
 import { useToast } from "../toast";
 
@@ -954,8 +954,30 @@ function SettingsTab() {
 
 // ── Logs tab ──────────────────────────────────────────────────────────────────
 function LogsTab({ rows, loading, onRefresh }: { rows: Row[]; loading: boolean; onRefresh: () => void }) {
-  const [page, setPage] = useState(1);
+  const { toast }             = useToast();
+  const [page, setPage]       = useState(1);
+  const [resending, setRes]   = useState<number | null>(null);
   const PER_PAGE = 25;
+
+  async function resend(r: Row) {
+    setRes(r.id);
+    try {
+      const res = await fetch("/api/wa-resend", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ type: r.type, whatsapp: r.whatsapp }),
+      });
+      if (res.ok) {
+        toast(`Queued for resend → ${r.whatsapp}`, "success");
+        onRefresh();
+      } else {
+        const d = await res.json();
+        toast(d.error ?? "Resend failed", "error");
+      }
+    } finally {
+      setRes(null);
+    }
+  }
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
@@ -973,6 +995,7 @@ function LogsTab({ rows, loading, onRefresh }: { rows: Row[]; loading: boolean; 
             <Th>Name</Th>
             <Th>Phone</Th>
             <Th>Sent At</Th>
+            <Th></Th>
           </Tr>
         </Thead>
         <Tbody>
@@ -980,7 +1003,7 @@ function LogsTab({ rows, loading, onRefresh }: { rows: Row[]; loading: boolean; 
             <SkeletonRows />
           ) : rows.length === 0 ? (
             <Tr>
-              <Td style={{ padding: 0, border: "none" }} colSpan={5}>
+              <Td style={{ padding: 0, border: "none" }} colSpan={6}>
                 <Empty icon={<ScrollText size={40} />} title="No messages yet" />
               </Td>
             </Tr>
@@ -997,6 +1020,18 @@ function LogsTab({ rows, loading, onRefresh }: { rows: Row[]; loading: boolean; 
                   {r.error && <p style={{ fontSize: 11, color: C.red, margin: "2px 0 0" }}>{r.error}</p>}
                 </Td>
                 <Td style={{ fontSize: 12, color: C.textMuted, whiteSpace: "nowrap" }}>{fmtDate(r.sentAt)}</Td>
+                <Td>
+                  {r.status === "failed" && (
+                    <Button
+                      variant="secondary" size="sm"
+                      icon={<RotateCcw size={11} />}
+                      loading={resending === r.id}
+                      onClick={() => resend(r)}
+                    >
+                      Resend
+                    </Button>
+                  )}
+                </Td>
               </Tr>
             );
           })}
