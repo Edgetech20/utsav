@@ -393,12 +393,6 @@ export default function RsvpPage() {
         );
       })()}
 
-      {/* Summary pills */}
-      <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-        <Badge variant="gray" dot>{entries.length} Total</Badge>
-        <Badge variant="green" dot>{sent} Messaged</Badge>
-        <Badge variant="orange" dot>{pending} Pending</Badge>
-      </div>
 
       {/* Table (desktop) / Cards (mobile) */}
       {desktop ? (
