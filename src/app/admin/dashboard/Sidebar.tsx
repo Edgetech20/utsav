@@ -11,7 +11,7 @@ import { ToastProvider } from "./toast";
 import { C } from "./ui";
 import type { SessionUser } from "@/lib/auth";
 
-type NavItem = { label: string; href: string; icon: React.ElementType; resource: string | null };
+type NavItem = { label: string; sub?: string; href: string; icon: React.ElementType; resource: string | null };
 
 const NAV_GROUPS: Array<{ label: string; items: NavItem[] }> = [
   {
@@ -40,7 +40,7 @@ const NAV_GROUPS: Array<{ label: string; items: NavItem[] }> = [
     items: [
       { label: "Forms",     href: "/admin/dashboard/forms",     icon: ClipboardList, resource: "forms" },
       { label: "QR Codes",  href: "/admin/dashboard/qr",        icon: QrCode,        resource: "qr" },
-      { label: "WhatsApp",  href: "/admin/dashboard/whatsapp",  icon: Wifi,          resource: "whatsapp" },
+      { label: "WhatsApp",  sub: "Bot management and message delivery", href: "/admin/dashboard/whatsapp",  icon: Wifi, resource: "whatsapp" },
       { label: "Templates", href: "/admin/dashboard/templates", icon: FileText,      resource: "templates" },
     ],
   },
@@ -97,7 +97,9 @@ export default function Sidebar({ children, eventTitle, user }: {
     router.push("/admin");
   }
 
-  const currentLabel = ALL_NAV.find(n => n.href === pathname)?.label ?? "Dashboard";
+  const currentNav   = ALL_NAV.find(n => n.href === pathname);
+  const currentLabel = currentNav?.label ?? "Dashboard";
+  const currentSub   = currentNav?.sub;
 
   function NavItem({ label, href, icon: Icon, onClick }: { label: string; href: string; icon: React.ElementType; onClick?: () => void }) {
     const active = pathname === href;
@@ -268,9 +270,16 @@ export default function Sidebar({ children, eventTitle, user }: {
                   <Menu size={20} />
                 </button>
               )}
-              <p style={{ fontSize: 14, fontWeight: 600, color: C.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                {currentLabel}
-              </p>
+              <div style={{ overflow: "hidden" }}>
+                <p style={{ fontSize: 14, fontWeight: 600, color: C.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", margin: 0 }}>
+                  {currentLabel}
+                </p>
+                {currentSub && (
+                  <p style={{ fontSize: 11, color: C.textMuted, margin: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                    {currentSub}
+                  </p>
+                )}
+              </div>
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
               <span style={{ fontSize: 11, color: C.textMuted, whiteSpace: "nowrap" }}>
