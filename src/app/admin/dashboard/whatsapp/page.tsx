@@ -847,7 +847,8 @@ function SettingsTab() {
   const intMax   = parseInt(cfg.wa_interval_max);
 
   return (
-    <div style={{ maxWidth: 500, display: "flex", flexDirection: "column", gap: 16 }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16 }}>
 
       {/* Send Interval */}
       <Card padding={0}>
@@ -945,6 +946,7 @@ function SettingsTab() {
         </div>
       </Card>
 
+      </div>
       <Button disabled={!dirty} loading={saving} onClick={save}>Save Settings</Button>
     </div>
   );
@@ -1035,7 +1037,7 @@ export default function WhatsAppPage() {
   }
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
       <TabBar active={tab} onChange={setTab} />
 
       {tab === "connect"   && <ConnectTab wa={wa} onConnect={handleConnect} onShowQr={() => setShow(true)} />}
