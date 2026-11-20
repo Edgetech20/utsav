@@ -11,13 +11,13 @@ globalThis.__waInline = true;
 globalThis.__waClient = waClient;
 globalThis.__waStart  = startBot; // admin can trigger via /api/wa-start
 
-// Auto-reconnect only if bot was previously connected
+// Auto-reconnect if session files exist on disk (survives deploys)
 (async () => {
   const prisma = new PrismaClient();
   try {
-    const row = await prisma.waStatus.findFirst({ orderBy: { id: "desc" } });
-    if (row?.status === "connected") {
-      console.log("[wa-bot] was connected, auto-reconnecting…");
+    const hasSession = require("fs").existsSync("/var/wwebjs_auth_utsav");
+    if (hasSession) {
+      console.log("[wa-bot] session found, auto-reconnecting…");
       startBot().catch(e => console.error("[wa-bot] start error:", e.message));
     } else {
       console.log("[wa-bot] idle — trigger via admin panel to connect");
