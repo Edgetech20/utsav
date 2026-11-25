@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, Fragment } from "react";
-import { Trash2, RefreshCw, CheckCircle, Clock, Users, SlidersHorizontal, Save, X, Plus, Pencil, MessageSquare } from "lucide-react";
+import { Trash2, RefreshCw, CheckCircle, Clock, Users, SlidersHorizontal, Save, X, Plus, Pencil, MessageSquare, Download } from "lucide-react";
 import { C, Badge, Button, Search, PageHeader, Table, Thead, Th, Tbody, Td, Tr, Skeleton, Empty, Avatar, Pagination, Card, useDesktop } from "../ui";
 import { useToast } from "../toast";
 
@@ -42,6 +42,9 @@ export default function RsvpPage() {
   const [entries, setEntries] = useState<Entry[]>([]);
   const [loading, setLoading]   = useState(true);
   const [search, setSearch]     = useState("");
+  const [filterKey, setFilterKey] = useState("village");
+  const [filterVal, setFilterVal] = useState("");
+  const [exportChoice, setExportChoice] = useState(false);
   const [acting, setActing]     = useState<number | null>(null);
   const [toConfirm, setToConfirm] = useState<number | null>(null);
   const [page, setPage] = useState(1);
@@ -193,8 +196,35 @@ export default function RsvpPage() {
     setActing(null);
   }
 
+  function exportExcel(list: Entry[], suffix = "") {
+    setExportChoice(false);
+    const cols = fieldConfig.filter(f => f.visible && f.key !== "totalAttending");
+    const esc = (v: unknown) => `"${String(v ?? "").replace(/"/g, '""')}"`;
+    const rows = list.map(e => {
+      const extra: Record<string, string> = (() => { try { return JSON.parse(e.extraData ?? "{}"); } catch { return {}; } })();
+      return [
+        ...cols.map(f => {
+          const v = f.custom ? extra[f.key] : (e as unknown as Record<string, unknown>)[f.key];
+          // ="..." keeps Excel from turning phone numbers into 9.19E+11
+          return f.type === "tel" && v ? `="${v}"` : esc(v);
+        }),
+        esc(new Date(e.submittedAt).toLocaleString("en-IN")),
+      ].join(",");
+    });
+    const header = [...cols.map(f => f.label), "Registered"].map(esc).join(",");
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(new Blob(["﻿" + [header, ...rows].join("\r\n")], { type: "text/csv;charset=utf-8" }));
+    a.download = `rsvp${suffix}-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+  }
+
   const q = search.toLowerCase();
-  const filtered = entries.filter(e =>
+  const fq = filterVal.trim().toLowerCase();
+  const fieldVal = (e: Entry, key: string) => {
+    if (!key.startsWith("custom_")) return String((e as unknown as Record<string, unknown>)[key] ?? "");
+    try { return String(JSON.parse(e.extraData ?? "{}")[key] ?? ""); } catch { return ""; }
+  };
+  const filtered = entries.filter(e => !fq || fieldVal(e, filterKey).toLowerCase().includes(fq)).filter(e =>
     e.name.toLowerCase().includes(q) ||
     e.whatsapp.includes(q) ||
     e.address.toLowerCase().includes(q) ||
@@ -213,12 +243,31 @@ export default function RsvpPage() {
         title="RSVP Registrations"
         sub={`${entries.length} total · ${sent} messaged · ${pending} pending`}
         actions={
-          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
             <Search placeholder="Search name, phone, address…" value={search} onChange={e => setSearch(e.target.value)} />
+            <select value={filterKey} onChange={e => { setFilterKey(e.target.value); setPage(1); }} title="Filter field"
+              style={{ padding: "7px 10px", border: `1px solid ${C.border}`, borderRadius: 8, fontSize: 13, color: C.text, background: C.surface }}>
+              {fieldConfig.filter(f => f.visible).map(f => <option key={f.key} value={f.key}>{f.label}</option>)}
+            </select>
+            <input value={filterVal} onChange={e => { setFilterVal(e.target.value); setPage(1); }} placeholder="Filter value (e.g. Bhatar)"
+              style={{ padding: "7px 10px", border: `1px solid ${C.border}`, borderRadius: 8, fontSize: 13, color: C.text, background: C.surface, outline: "none", width: 170 }} />
+            {filterVal && <Button variant="ghost" size="sm" icon={<X size={12} />} onClick={() => setFilterVal("")} title="Clear filter">{filtered.length}</Button>}
+            <Button variant="ghost" icon={<Download size={14} />} onClick={() => filtered.length !== entries.length ? setExportChoice(true) : exportExcel(entries)} disabled={!entries.length}>Export Excel</Button>
             <Button variant="ghost" icon={<SlidersHorizontal size={14} />} onClick={openEditor}>Edit Form</Button>
           </div>
         }
       />
+
+      {exportChoice && (
+        <div onClick={() => setExportChoice(false)} style={{ position: "fixed", inset: 0, zIndex: 50, background: "rgba(15,23,42,0.5)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
+          <div onClick={e => e.stopPropagation()} style={{ background: C.surface, borderRadius: 16, width: "100%", maxWidth: 380, boxShadow: "0 8px 40px rgba(0,0,0,0.18)", padding: 24, display: "flex", flexDirection: "column", gap: 10 }}>
+            <p style={{ fontWeight: 700, fontSize: 15, color: C.text, margin: "0 0 6px" }}>Export to Excel</p>
+            <Button icon={<Download size={14} />} disabled={!filtered.length} onClick={() => exportExcel(filtered, "-filtered")}>Filtered ({filtered.length})</Button>
+            <Button variant="secondary" icon={<Download size={14} />} onClick={() => exportExcel(entries)}>Complete ({entries.length})</Button>
+            <Button variant="ghost" onClick={() => setExportChoice(false)}>Cancel</Button>
+          </div>
+        </div>
+      )}
 
       {showEditor && (
         <div style={{ position: "fixed", inset: 0, zIndex: 50, background: "rgba(15,23,42,0.5)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
