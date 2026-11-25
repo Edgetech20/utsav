@@ -1,15 +1,30 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Globe, RefreshCw, MapPin } from "lucide-react";
+import { Globe, RefreshCw, MapPin, Navigation } from "lucide-react";
 import { C, Card, PageHeader, Skeleton, Pagination } from "../ui";
 
 type Location   = { city: string; region: string; country: string; unique: number; views: number };
 type GeoData    = { locations: Location[]; total: number; resolved: number };
-type RsvpEntry  = { village: string | null; district: string | null; totalAttending: number | null };
+type RsvpEntry  = { village: string | null; district: string | null; totalAttending: number | null; location: string | null; address: string | null };
 type VillageRow = { village: string; district: string; rsvps: number; attending: number };
 
-type Tab = "geo" | "rsvp";
+type Tab = "geo" | "rsvp" | "gps";
+
+// "House, Road, Locality, City, Assam 781001, India" → { area: "Locality", city: "City" }
+// ponytail: comma-split heuristic on Google formatted_address; store address_components at RSVP time if it misgroups
+function gpsArea(location: string | null, address: string | null): { area: string; city: string } | null {
+  let name = "";
+  try { name = JSON.parse(location ?? "null")?.displayName ?? ""; } catch {}
+  return parseArea(name) ?? parseArea(address ?? "");
+}
+
+function parseArea(name: string): { area: string; city: string } | null {
+  const parts = name.split(",").map(x => x.trim())
+    .filter(x => x && x !== "India" && !/\d{6}/.test(x) && /[a-z]/i.test(x));
+  if (!parts.length) return null;
+  return parts.length === 1 ? { area: parts[0], city: "" } : { area: parts[parts.length - 2], city: parts[parts.length - 1] };
+}
 
 const PER_PAGE = 15;
 
@@ -24,6 +39,10 @@ export default function DetailStatsPage() {
   const [villages, setVillages]    = useState<VillageRow[]>([]);
   const [rsvpLoading, setRsvpLoad] = useState(true);
   const [rsvpPage, setRsvpPage]    = useState(1);
+
+  const [gps, setGps]              = useState<VillageRow[]>([]);
+  const [gpsNone, setGpsNone]      = useState(0);
+  const [gpsPage, setGpsPage]      = useState(1);
 
   async function loadGeo(refresh = false) {
     if (refresh) setGeoRef(true); else setGeoLoad(true);
@@ -50,6 +69,20 @@ export default function DetailStatsPage() {
       }
       setVillages(Array.from(map.values()).sort((a, b) => b.rsvps - a.rsvps));
       setRsvpPage(1);
+
+      const gmap = new Map<string, VillageRow>();
+      let none = 0;
+      for (const e of entries) {
+        const g = gpsArea(e.location, e.address);
+        if (!g) { none++; continue; }
+        const key = `${g.area}|${g.city}`.toLowerCase();
+        const row = gmap.get(key);
+        if (row) { row.rsvps++; row.attending += e.totalAttending ?? 0; }
+        else gmap.set(key, { village: g.area, district: g.city, rsvps: 1, attending: e.totalAttending ?? 0 });
+      }
+      setGps(Array.from(gmap.values()).sort((a, b) => b.rsvps - a.rsvps));
+      setGpsNone(none);
+      setGpsPage(1);
     } finally { setRsvpLoad(false); }
   }
 
@@ -61,9 +94,13 @@ export default function DetailStatsPage() {
   const rsvpSlice    = villages.slice((rsvpPage - 1) * PER_PAGE, rsvpPage * PER_PAGE);
   const maxRsvp      = villages[0]?.rsvps ?? 1;
 
+  const gpsSlice     = gps.slice((gpsPage - 1) * PER_PAGE, gpsPage * PER_PAGE);
+  const maxGps       = gps[0]?.rsvps ?? 1;
+
   const TABS: { key: Tab; label: string; icon: React.ReactNode }[] = [
     { key: "geo",  label: "IP Geo",        icon: <Globe size={13} />  },
     { key: "rsvp", label: "RSVP Villages", icon: <MapPin size={13} /> },
+    { key: "gps",  label: "RSVP Location", icon: <Navigation size={13} /> },
   ];
 
   return (
@@ -74,7 +111,7 @@ export default function DetailStatsPage() {
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
         <PageHeader
           title="Location Stats"
-          sub={tab === "geo" ? "Visitor locations resolved from IP addresses" : "Villages from RSVP registrations"}
+          sub={tab === "geo" ? "Visitor locations resolved from IP addresses" : tab === "rsvp" ? "Villages from RSVP registrations" : "Areas from GPS location, or address when GPS not shared"}
         />
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           {/* Toggle */}
@@ -193,6 +230,44 @@ export default function DetailStatsPage() {
                   }))}
                 />
                 <Pagination page={rsvpPage} total={villages.length} perPage={PER_PAGE} onChange={setRsvpPage} />
+              </>
+            )}
+          </Card>
+        </>
+      )}
+
+      {/* ── RSVP GPS Location tab ──────────────────────────────────────────── */}
+      {tab === "gps" && (
+        <>
+          {!rsvpLoading && (gps.length > 0 || gpsNone > 0) && (
+            <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+              {[
+                { label: "Areas",           value: gps.length },
+                { label: "RSVPs grouped",   value: gps.reduce((s, v) => s + v.rsvps, 0) },
+                { label: "No location",     value: gpsNone },
+                { label: "Total Attending", value: gps.reduce((s, v) => s + v.attending, 0) },
+              ].map(({ label, value }) => (
+                <Pill key={label} label={label} value={value} />
+              ))}
+            </div>
+          )}
+
+          <Card>
+            <p style={{ fontSize: 12, fontWeight: 700, color: C.textSub, textTransform: "uppercase", letterSpacing: "0.07em", margin: "0 0 14px" }}>
+              Areas by RSVP Count (GPS / Address)
+            </p>
+            {rsvpLoading ? <SkeletonRows /> : gps.length === 0 ? (
+              <Empty icon={<Navigation size={36} />} text="No RSVP location data yet" />
+            ) : (
+              <>
+                <TableLayout
+                  header={["Area", "Distribution", "RSVPs", "Attending"]}
+                  rows={gpsSlice.map((v, i) => ({
+                    key: i, primary: v.village, secondary: v.district,
+                    bar: v.rsvps / maxGps, col1: v.rsvps, col2: v.attending,
+                  }))}
+                />
+                <Pagination page={gpsPage} total={gps.length} perPage={PER_PAGE} onChange={setGpsPage} />
               </>
             )}
           </Card>

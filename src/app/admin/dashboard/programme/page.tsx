@@ -5,9 +5,15 @@ import { Plus, Pencil, Trash2, X, ChevronUp, ChevronDown, CalendarDays } from "l
 import { C, Button, PageHeader, Card, Input, Spinner, Table, Thead, Tbody, Th, Td, Tr, Empty, useDesktop } from "../ui";
 import { useToast } from "../toast";
 
-type Programme = { id: number; title: string; time: string; description: string | null; venue: string | null; order: number };
+type Programme = { id: number; title: string; time: string; date: string | null; description: string | null; venue: string | null; order: number };
 
-const EMPTY_FORM = { title: "", time: "", description: "", venue: "" };
+const fmtDate = (d: string | null) => d ? new Date(d + "T00:00").toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }) : "";
+
+const PROGRAMME_FIELD_DEFAULTS = { date: true, time: true, venue: true, description: false };
+type FieldKey = keyof typeof PROGRAMME_FIELD_DEFAULTS;
+const FIELD_LABELS: Record<FieldKey, string> = { date: "Date", time: "Time", venue: "Venue", description: "Description" };
+
+const EMPTY_FORM = { title: "", time: "", date: "", description: "", venue: "" };
 
 // ── Modal ─────────────────────────────────────────────────────────────────────
 function Modal({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
@@ -39,7 +45,8 @@ function ProgrammeForm({ form, setForm, saving, onSubmit, onCancel, submitLabel 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
       <Input label="Programme Title *" value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} placeholder="e.g. Inauguration Ceremony" />
-      <Input label="Time *" value={form.time} onChange={e => setForm({ ...form, time: e.target.value })} placeholder="e.g. 10:00 AM – 11:00 AM" />
+      <Input label="Date (optional)" type="date" value={form.date} onChange={e => setForm({ ...form, date: e.target.value })} />
+      <Input label="Time *"value={form.time} onChange={e => setForm({ ...form, time: e.target.value })} placeholder="e.g. 10:00 AM – 11:00 AM" />
       <Input label="Venue (optional)" value={form.venue} onChange={e => setForm({ ...form, venue: e.target.value })} placeholder="e.g. Thakur Bari" />
       <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
         <label style={{ fontSize: 11, fontWeight: 600, color: C.textSub, textTransform: "uppercase", letterSpacing: "0.06em" }}>Description (optional)</label>
@@ -70,6 +77,20 @@ export default function ProgrammePage() {
   const [editItem, setEditItem] = useState<Programme | null>(null);
   const [deleteId, setDeleteId] = useState<number | null>(null);
   const [form, setForm]       = useState(EMPTY_FORM);
+  const [show, setShow]       = useState(PROGRAMME_FIELD_DEFAULTS);
+
+  useEffect(() => {
+    fetch("/api/settings").then(r => r.json()).then(s => {
+      try { if (s.programme_fields) setShow({ ...PROGRAMME_FIELD_DEFAULTS, ...JSON.parse(s.programme_fields) }); } catch {}
+    }).catch(() => {});
+  }, []);
+
+  async function toggleField(k: FieldKey) {
+    const next = { ...show, [k]: !show[k] };
+    setShow(next);
+    const r = await fetch("/api/settings", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ programme_fields: JSON.stringify(next) }) });
+    if (!r.ok) { setShow(show); toast("Failed to save", "error"); }
+  }
 
   async function load() {
     setLoading(true);
@@ -82,7 +103,7 @@ export default function ProgrammePage() {
 
   function openAdd() { setForm(EMPTY_FORM); setAddOpen(true); }
   function openEdit(p: Programme) {
-    setForm({ title: p.title, time: p.time, description: p.description ?? "", venue: p.venue ?? "" });
+    setForm({ title: p.title, time: p.time, date: p.date ?? "", description: p.description ?? "", venue: p.venue ?? "" });
     setEditItem(p);
   }
 
@@ -137,6 +158,18 @@ export default function ProgrammePage() {
         actions={<Button size="sm" icon={<Plus size={14} />} onClick={openAdd}>Add Programme</Button>}
       />
 
+      <Card padding={14} style={{ marginBottom: 14 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+          <span style={{ fontSize: 11, fontWeight: 700, color: C.textSub, textTransform: "uppercase", letterSpacing: "0.06em" }}>Show on website</span>
+          {(Object.keys(FIELD_LABELS) as FieldKey[]).map(k => (
+            <label key={k} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, color: C.text, cursor: "pointer" }}>
+              <input type="checkbox" checked={show[k]} onChange={() => toggleField(k)} style={{ accentColor: C.gold, cursor: "pointer" }} />
+              {FIELD_LABELS[k]}
+            </label>
+          ))}
+        </div>
+      </Card>
+
       {loading ? (
         <div style={{ display: "flex", justifyContent: "center", padding: 48 }}><Spinner size={24} /></div>
       ) : list.length === 0 ? (
@@ -150,6 +183,7 @@ export default function ProgrammePage() {
             <tr>
               <Th style={{ width: 60 }}>Order</Th>
               <Th>Programme</Th>
+              <Th>Date</Th>
               <Th>Time</Th>
               <Th>Venue</Th>
               <Th>Description</Th>
@@ -166,6 +200,7 @@ export default function ProgrammePage() {
                   </div>
                 </Td>
                 <Td><span style={{ fontWeight: 600, color: C.text }}>{p.title}</span></Td>
+                <Td><span style={{ color: C.textSub, fontSize: 12, whiteSpace: "nowrap" }}>{fmtDate(p.date) || "—"}</span></Td>
                 <Td><span style={{ color: C.gold, fontWeight: 600, fontSize: 12 }}>{p.time}</span></Td>
                 <Td><span style={{ color: C.textSub, fontSize: 12 }}>{p.venue || "—"}</span></Td>
                 <Td><span style={{ color: C.textMuted, fontSize: 12 }}>{p.description || "—"}</span></Td>
@@ -195,6 +230,7 @@ export default function ProgrammePage() {
                     <p style={{ fontWeight: 700, fontSize: 14, color: C.text, margin: 0 }}>{p.title}</p>
                     <span style={{ fontSize: 11, fontWeight: 700, color: C.gold, background: C.goldBg, padding: "2px 8px", borderRadius: 20, whiteSpace: "nowrap" }}>{p.time}</span>
                   </div>
+                  {p.date && <p style={{ fontSize: 12, color: C.textSub, margin: "4px 0 0" }}>{fmtDate(p.date)}</p>}
                   {p.venue && <p style={{ fontSize: 12, color: C.textSub, margin: "4px 0 0" }}>{p.venue}</p>}
                   {p.description && <p style={{ fontSize: 12, color: C.textMuted, margin: "4px 0 0" }}>{p.description}</p>}
                   <div style={{ display: "flex", gap: 6, marginTop: 10 }}>

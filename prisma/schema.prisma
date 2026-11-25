@@ -213,6 +213,7 @@ model Programme {
   id          Int      @id @default(autoincrement())
   title       String
   time        String   // e.g. "10:00 AM – 11:00 AM"
+  date        String?  // YYYY-MM-DD
   description String?
   venue       String?  @map("speaker")
   order       Int      @default(0)

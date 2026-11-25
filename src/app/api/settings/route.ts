@@ -15,6 +15,7 @@ const ALLOWED_KEYS = [
   "rsvp_field_config",
   "camp_enabled",
   "camp_form_slug",
+  "programme_fields",
 ];
 
 export async function GET() {
@@ -26,10 +27,11 @@ export async function GET() {
 export async function PUT(req: NextRequest) {
   const user = await getSessionUser(req);
   if (!user) return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
-  if (!can(user, "settings", "edit")) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-
   const body: Record<string, string> = await req.json();
   const keys = ALLOWED_KEYS.filter(k => k in body);
+  // programme editors may change programme_fields without full settings access
+  const resource = keys.length && keys.every(k => k === "programme_fields") ? "programme" : "settings";
+  if (!can(user, resource, "edit")) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   // Gather old values for changelog
   const oldRows = await db.setting.findMany({ where: { key: { in: keys } } });

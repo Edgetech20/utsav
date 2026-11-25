@@ -378,7 +378,7 @@ export default function HomeClient({ initialSettings }: { initialSettings: Recor
     return () => window.removeEventListener("resize", check);
   }, []);
   const [dbAttractions, setDbAttractions] = useState<{ id: number; name: string; description: string | null; url: string | null; navigateToVenue: boolean; formSlug: string | null; images: { id: number; imageUrl: string }[] }[]>([]);
-  const [programmes, setProgrammes] = useState<{ id: number; title: string; time: string; description: string | null; venue: string | null }[]>([]);
+  const [programmes, setProgrammes] = useState<{ id: number; title: string; time: string; date: string | null; description: string | null; venue: string | null }[]>([]);
   const [event] = useState(() => ({
     date:     initialSettings.event_date       || DEFAULT_EVENT.date,
     dateIso:  initialSettings.event_date_iso   || DEFAULT_EVENT.dateIso,
@@ -1073,40 +1073,50 @@ export default function HomeClient({ initialSettings }: { initialSettings: Recor
             <div className="flex-1 h-px" style={{ background: `linear-gradient(90deg, ${T.gold}, transparent)` }} />
           </div>
 
-          {/* Table */}
-          <div style={{ borderRadius: 10, border: `1px solid ${T.g25}`, overflow: "hidden", background: T.bg3 }}>
-
-            {/* Header row */}
-            <div style={{ display: "grid", gridTemplateColumns: "2fr 1.3fr 1.3fr", background: T.g06 }}>
-              {["Event name", "Time", "Venue"].map((h, i) => (
-                <div key={h} style={{
-                  padding: "12px 16px", fontSize: 13, fontWeight: 600, color: T.gold,
-                  borderRight: i < 2 ? `1px solid ${T.g15}` : "none",
-                  borderBottom: `1px solid ${T.g25}`,
-                  letterSpacing: "0.04em",
-                }}>
-                  {h}
+          {/* Table — columns driven by admin "Show on website" toggles (programme_fields) */}
+          {(() => {
+            let show = { date: true, time: true, venue: true, description: false };
+            try { show = { ...show, ...JSON.parse(initialSettings.programme_fields || "{}") }; } catch {}
+            const whenLabel = show.date && show.time ? "Date / Time" : show.date ? "Date" : show.time ? "Time" : "";
+            const headers = ["Event name", ...(whenLabel ? [whenLabel] : []), ...(show.venue ? ["Venue"] : [])];
+            const grid = ["2fr", ...(whenLabel ? ["1.3fr"] : []), ...(show.venue ? ["1.3fr"] : [])].join(" ");
+            const cell = (last: boolean) => ({ padding: "13px 16px", fontSize: 14, lineHeight: 1.45, borderRight: last ? "none" : `1px solid ${T.g08}` });
+            return (
+              <div style={{ borderRadius: 10, border: `1px solid ${T.g25}`, overflow: "hidden", background: T.bg3 }}>
+                <div style={{ display: "grid", gridTemplateColumns: grid, background: T.g06 }}>
+                  {headers.map((h, i) => (
+                    <div key={h} style={{
+                      padding: "12px 16px", fontSize: 13, fontWeight: 600, color: T.gold,
+                      borderRight: i < headers.length - 1 ? `1px solid ${T.g15}` : "none",
+                      borderBottom: `1px solid ${T.g25}`,
+                      letterSpacing: "0.04em",
+                    }}>
+                      {h}
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
-
-            {/* Data rows */}
-            {programmes.map((p, i) => (
-              <div key={p.id} style={{ display: "grid", gridTemplateColumns: "2fr 1.3fr 1.3fr", borderBottom: i < programmes.length - 1 ? `1px solid ${T.g08}` : "none" }}>
-                <div style={{ padding: "13px 16px", fontSize: 14, color: T.text, borderRight: `1px solid ${T.g08}`, lineHeight: 1.45 }}>
-                  {p.title}
-                  {p.description && <div style={{ fontSize: 12, color: T.gold, opacity: 0.5, marginTop: 2 }}>{p.description}</div>}
-                </div>
-                <div style={{ padding: "13px 16px", fontSize: 14, color: T.gold, borderRight: `1px solid ${T.g08}`, lineHeight: 1.45, whiteSpace: "pre-line", fontWeight: 500 }}>
-                  {p.time || "—"}
-                </div>
-                <div style={{ padding: "13px 16px", fontSize: 14, color: T.textB, lineHeight: 1.45 }}>
-                  {p.venue || "—"}
-                </div>
+                {programmes.map((p, i) => (
+                  <div key={p.id} style={{ display: "grid", gridTemplateColumns: grid, borderBottom: i < programmes.length - 1 ? `1px solid ${T.g08}` : "none" }}>
+                    <div style={{ ...cell(headers.length === 1), color: T.text }}>
+                      {p.title}
+                      {show.description && p.description && <div style={{ fontSize: 12, color: T.gold, opacity: 0.5, marginTop: 2 }}>{p.description}</div>}
+                    </div>
+                    {whenLabel && (
+                      <div style={{ ...cell(!show.venue), color: T.gold, whiteSpace: "pre-line", fontWeight: 500 }}>
+                        {show.date && p.date && <div style={{ fontSize: 12, color: T.textB, fontWeight: 400 }}>{new Date(p.date + "T00:00").toLocaleDateString("en-IN", { day: "numeric", month: "short" })}</div>}
+                        {show.time ? (p.time || "—") : !p.date && "—"}
+                      </div>
+                    )}
+                    {show.venue && (
+                      <div style={{ ...cell(true), color: T.textB }}>
+                        {p.venue || "—"}
+                      </div>
+                    )}
+                  </div>
+                ))}
               </div>
-            ))}
-
-          </div>
+            );
+          })()}
         </div>
       )}
 
