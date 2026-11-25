@@ -3,28 +3,14 @@
 import { useEffect, useState } from "react";
 import { Globe, RefreshCw, MapPin, Navigation } from "lucide-react";
 import { C, Card, PageHeader, Skeleton, Pagination } from "../ui";
+import { groupByArea } from "@/lib/rsvpArea";
 
 type Location   = { city: string; region: string; country: string; unique: number; views: number };
 type GeoData    = { locations: Location[]; total: number; resolved: number };
-type RsvpEntry  = { village: string | null; district: string | null; totalAttending: number | null; location: string | null; address: string | null };
+type RsvpEntry  = { village: string | null; district: string | null; totalAttending: number | null; location: string | null; address: string | null; extraData: string | null };
 type VillageRow = { village: string; district: string; rsvps: number; attending: number };
 
 type Tab = "geo" | "rsvp" | "gps";
-
-// "House, Road, Locality, City, Assam 781001, India" → { area: "Locality", city: "City" }
-// ponytail: comma-split heuristic on Google formatted_address; store address_components at RSVP time if it misgroups
-function gpsArea(location: string | null, address: string | null): { area: string; city: string } | null {
-  let name = "";
-  try { name = JSON.parse(location ?? "null")?.displayName ?? ""; } catch {}
-  return parseArea(name) ?? parseArea(address ?? "");
-}
-
-function parseArea(name: string): { area: string; city: string } | null {
-  const parts = name.split(",").map(x => x.trim())
-    .filter(x => x && x !== "India" && !/\d{6}/.test(x) && /[a-z]/i.test(x));
-  if (!parts.length) return null;
-  return parts.length === 1 ? { area: parts[0], city: "" } : { area: parts[parts.length - 2], city: parts[parts.length - 1] };
-}
 
 const PER_PAGE = 15;
 
@@ -70,17 +56,8 @@ export default function DetailStatsPage() {
       setVillages(Array.from(map.values()).sort((a, b) => b.rsvps - a.rsvps));
       setRsvpPage(1);
 
-      const gmap = new Map<string, VillageRow>();
-      let none = 0;
-      for (const e of entries) {
-        const g = gpsArea(e.location, e.address);
-        if (!g) { none++; continue; }
-        const key = `${g.area}|${g.city}`.toLowerCase();
-        const row = gmap.get(key);
-        if (row) { row.rsvps++; row.attending += e.totalAttending ?? 0; }
-        else gmap.set(key, { village: g.area, district: g.city, rsvps: 1, attending: e.totalAttending ?? 0 });
-      }
-      setGps(Array.from(gmap.values()).sort((a, b) => b.rsvps - a.rsvps));
+      const { areas, none } = groupByArea(entries);
+      setGps(areas);
       setGpsNone(none);
       setGpsPage(1);
     } finally { setRsvpLoad(false); }

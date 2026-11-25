@@ -2,7 +2,7 @@
 
 import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { Globe, MapPin, RefreshCw } from "lucide-react";
+import { Globe, MapPin, Navigation, RefreshCw } from "lucide-react";
 
 const GOLD  = "#C9A96E";
 const DARK  = "#0E0E0E";
@@ -15,7 +15,7 @@ type Location   = { city: string; region: string; country: string; unique: numbe
 type GeoData    = { locations: Location[]; total: number; resolved: number };
 type VillageRow = { village: string; district: string; rsvps: number; attending: number };
 
-type Tab = "geo" | "rsvp";
+type Tab = "geo" | "rsvp" | "area";
 const PER_PAGE = 15;
 
 export default function StatsPageWrapper() {
@@ -24,7 +24,7 @@ export default function StatsPageWrapper() {
 
 function StatsPage() {
   const searchParams            = useSearchParams();
-  const [tab, setTab]           = useState<Tab>(() => searchParams.get("tab") === "rsvp" ? "rsvp" : "geo");
+  const [tab, setTab]           = useState<Tab>(() => { const t = searchParams.get("tab"); return t === "rsvp" || t === "area" ? t : "geo"; });
   const [track, setTrack]       = useState<TrackStats | null>(null);
   const [geo, setGeo]           = useState<GeoData | null>(null);
   const [geoLoading, setGeoLoad] = useState(true);
@@ -33,6 +33,9 @@ function StatsPage() {
   const [villages, setVillages]  = useState<VillageRow[]>([]);
   const [rsvpLoading, setRsvpLoad] = useState(true);
   const [rsvpPage, setRsvpPage]    = useState(1);
+  const [areas, setAreas]          = useState<VillageRow[]>([]);
+  const [areasNone, setAreasNone]  = useState(0);
+  const [areaPage, setAreaPage]    = useState(1);
 
   async function loadTrack() {
     const res = await fetch("/api/track").catch(() => null);
@@ -49,7 +52,7 @@ function StatsPage() {
   async function loadVillages() {
     setRsvpLoad(true);
     const res = await fetch("/api/rsvp/villages").catch(() => null);
-    if (res?.ok) { const d = await res.json(); setVillages(d.villages ?? []); setRsvpPage(1); }
+    if (res?.ok) { const d = await res.json(); setVillages(d.villages ?? []); setRsvpPage(1); setAreas(d.areas ?? []); setAreasNone(d.areasNone ?? 0); setAreaPage(1); }
     setRsvpLoad(false);
   }
 
@@ -61,6 +64,8 @@ function StatsPage() {
   const maxGeo      = geo?.locations[0]?.unique ?? 1;
   const rsvpSlice   = villages.slice((rsvpPage - 1) * PER_PAGE, rsvpPage * PER_PAGE);
   const maxRsvp     = villages[0]?.rsvps ?? 1;
+  const areaSlice   = areas.slice((areaPage - 1) * PER_PAGE, areaPage * PER_PAGE);
+  const maxArea     = areas[0]?.rsvps ?? 1;
   const totalRsvps  = villages.reduce((s, v) => s + v.rsvps, 0);
   const totalAtt    = villages.reduce((s, v) => s + v.attending, 0);
 
@@ -138,6 +143,7 @@ function StatsPage() {
           {([
             { key: "geo"  as Tab, label: "IP Geo",        icon: <Globe size={13} />  },
             { key: "rsvp" as Tab, label: "RSVP Villages", icon: <MapPin size={13} /> },
+            { key: "area" as Tab, label: "RSVP Location", icon: <Navigation size={13} /> },
           ]).map(t => (
             <button key={t.key} onClick={() => setTab(t.key)} style={{
               display: "flex", alignItems: "center", gap: 6,
@@ -216,6 +222,31 @@ function StatsPage() {
                 bar: v.rsvps / maxRsvp, col1: v.rsvps, col2: v.attending, col3: undefined,
               }))}
               page={rsvpPage} total={villages.length} perPage={PER_PAGE} onPage={setRsvpPage}
+            />
+          </div>
+        )}
+
+        {/* ── RSVP Location (GPS / Address) ── */}
+        {tab === "area" && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+            {!rsvpLoading && (areas.length > 0 || areasNone > 0) && (
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                {[
+                  { label: "Areas",         value: areas.length },
+                  { label: "RSVPs grouped", value: areas.reduce((s, v) => s + v.rsvps, 0) },
+                  { label: "No location",   value: areasNone },
+                ].map(({ label, value }) => <StatChip key={label} label={label} value={value} />)}
+              </div>
+            )}
+            <LocationTable
+              header={["Area", "Dist.", "RSVPs", "Attending", ""]}
+              loading={rsvpLoading}
+              empty={<EmptyState icon={<Navigation size={32} />} text="No RSVP location data yet" />}
+              rows={areaSlice.map((v, i) => ({
+                key: i, primary: v.village, secondary: v.district,
+                bar: v.rsvps / maxArea, col1: v.rsvps, col2: v.attending, col3: undefined,
+              }))}
+              page={areaPage} total={areas.length} perPage={PER_PAGE} onPage={setAreaPage}
             />
           </div>
         )}

@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { groupByArea } from "@/lib/rsvpArea";
 
 export async function GET() {
   const entries = await db.rsvp.findMany({
-    select: { village: true, district: true, totalAttending: true },
+    select: { village: true, district: true, totalAttending: true, location: true, address: true, extraData: true },
   });
 
   const map = new Map<string, { village: string; district: string; rsvps: number; attending: number }>();
@@ -17,5 +18,6 @@ export async function GET() {
   }
 
   const villages = Array.from(map.values()).sort((a, b) => b.rsvps - a.rsvps);
-  return NextResponse.json({ villages, total: entries.length });
+  const { areas, none } = groupByArea(entries);
+  return NextResponse.json({ villages, areas, areasNone: none, total: entries.length });
 }
