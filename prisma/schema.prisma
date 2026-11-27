@@ -12,8 +12,36 @@ model AdminUser {
   name        String?
   role        String            @default("member")  // "super" | "member"
   createdAt   DateTime          @default(now())
-  permissions AdminPermission[]
+  permissions AdminPermission[]   // legacy — read alongside roles until the users UI moves to roles
+  roles       UserRole[]
   sessions    AdminSession[]
+}
+
+model Role {
+  id          Int              @id @default(autoincrement())
+  name        String           @unique
+  description String?
+  createdAt   DateTime         @default(now())
+  permissions RolePermission[]
+  users       UserRole[]
+}
+
+model RolePermission {
+  roleId Int
+  role   Role   @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  perm   String // "rsvp:edit", "camp:consult", "form:volunteer-reg:view"
+
+  @@id([roleId, perm])
+}
+
+model UserRole {
+  email  String
+  user   AdminUser @relation(fields: [email], references: [email], onDelete: Cascade)
+  roleId Int
+  role   Role      @relation(fields: [roleId], references: [id], onDelete: Restrict) // can't delete a role still assigned
+
+  @@id([email, roleId])
+  @@index([roleId])
 }
 
 model AdminPermission {

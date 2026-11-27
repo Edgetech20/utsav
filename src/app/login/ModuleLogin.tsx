@@ -29,12 +29,15 @@ type Props = { title: string; icon: React.ElementType; home: string };
 
 function LoginForm({ title, icon: Icon, home }: Props) {
   const ERROR_MSG: Record<string, string> = {
-    access:   `You don't have access to the ${title} module. Contact your administrator.`,
-    disabled: `The ${title} module is not currently active.`,
+    access:   "You don't have access to that module. Contact your administrator.",
+    disabled: "That module is not currently active.",
   };
   const router  = useRouter();
   const params  = useSearchParams();
   const extErr  = params.get("error");
+  const next    = params.get("next") ?? "";
+  // same-origin paths only — "//evil.com" would be an open redirect
+  const target  = next.startsWith("/") && !next.startsWith("//") ? next : home;
 
   const [step,     setStep]     = useState<"email" | "otp">("email");
   const [email,    setEmail]    = useState("");
@@ -66,7 +69,7 @@ function LoginForm({ title, icon: Icon, home }: Props) {
     });
     const data = await res.json();
     setLoading(false);
-    if (res.ok) router.push(home);
+    if (res.ok) router.push(target);
     else setError(data.error ?? "Invalid OTP");
   }
 

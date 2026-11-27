@@ -117,7 +117,7 @@ export default function CampNav({
   ];
 
   const cfg: ModuleCfg = mod ?? {
-    name: "Medical Camp", icon: Tent, home: "/camp", login: "/camp/login", roleLabel,
+    name: "Medical Camp", icon: Tent, home: "/camp", login: "/login", roleLabel,
     sections: [{ label: "Manage", links: MANAGE }, { label: "Pharmacy", links: PHARMACY }, { label: "", links: NAV }],
   };
   const ModIcon  = cfg.icon;

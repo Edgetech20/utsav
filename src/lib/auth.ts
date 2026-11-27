@@ -1,21 +1,25 @@
 import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
+import { splitPerm } from "@/lib/permissions";
 
 export type SessionUser = {
   email: string;
   name: string | null;
   role: string;
+  roles: string[];
   permissions: Array<{ resource: string; action: string }>;
 };
 
-/** Look up the session cookie and return the user, or null if invalid/expired. */
-export async function getSessionUser(req: NextRequest): Promise<SessionUser | null> {
-  const token = req.cookies.get("admin_session")?.value;
+/** Resolve a session token to the user with permissions flattened from their roles. */
+export async function getUserByToken(token: string | undefined): Promise<SessionUser | null> {
   if (!token) return null;
 
   const session = await db.adminSession.findUnique({
     where: { token },
-    include: { user: { include: { permissions: true } } },
+    include: { user: { include: {
+      permissions: true,
+      roles: { include: { role: { include: { permissions: true } } } },
+    } } },
   });
 
   if (!session) return null;
@@ -25,12 +29,25 @@ export async function getSessionUser(req: NextRequest): Promise<SessionUser | nu
     return null;
   }
 
+  const { user } = session;
+  // ponytail: legacy AdminPermission rows still merged in until Phase 2 moves the users UI to roles
+  const keys = new Set([
+    ...user.permissions.map(p => `${p.resource}:${p.action}`),
+    ...user.roles.flatMap(ur => ur.role.permissions.map(rp => rp.perm)),
+  ]);
+
   return {
-    email: session.user.email,
-    name: session.user.name,
-    role: session.user.role,
-    permissions: session.user.permissions,
+    email: user.email,
+    name: user.name,
+    role: user.role,
+    roles: user.roles.map(ur => ur.role.name),
+    permissions: [...keys].map(splitPerm),
   };
+}
+
+/** Look up the session cookie and return the user, or null if invalid/expired. */
+export function getSessionUser(req: NextRequest): Promise<SessionUser | null> {
+  return getUserByToken(req.cookies.get("admin_session")?.value);
 }
 
 /**
