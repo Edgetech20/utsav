@@ -12,6 +12,7 @@ model AdminUser {
   name        String?
   role        String            @default("member")  // "super" | "member"
   createdAt   DateTime          @default(now())
+  welcomedAt  DateTime?         // welcome email sent; null = older user, Users page offers "Send welcome"
   permissions AdminPermission[]   // legacy — only read by scripts/migrate-roles.ts; drop once all sites migrated
   roles       UserRole[]
   sessions    AdminSession[]

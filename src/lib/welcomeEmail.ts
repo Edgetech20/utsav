@@ -4,7 +4,7 @@ import { db } from "@/lib/db";
 const esc = (s: string) => s.replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]!));
 
 /**
- * Invite email for a new admin user. Fire-and-forget: never throws.
+ * Invite email for an admin user. Never throws; resolves true once sent and stamps AdminUser.welcomedAt.
  * Branding comes from the site's settings so every client deployment sends its own name.
  */
 export async function sendWelcomeEmail(opts: {
@@ -78,7 +78,10 @@ export async function sendWelcomeEmail(opts: {
       subject: `You've been given admin access — ${event}`,
       html, text,
     });
+    await db.adminUser.update({ where: { email: opts.to }, data: { welcomedAt: new Date() } });
+    return true;
   } catch (e) {
     console.error("[welcome-email] failed:", e);
+    return false;
   }
 }

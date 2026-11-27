@@ -80,6 +80,27 @@ export async function PUT(req: NextRequest) {
   return NextResponse.json(updated);
 }
 
+// Send the welcome email to an existing user (older users never got one)
+export async function PATCH(req: NextRequest) {
+  const user = await getSessionUser(req);
+  if (!user) return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
+  if (user.role !== "super") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+
+  const clean: string = (await req.json()).email?.trim().toLowerCase() ?? "";
+  const target = clean && await db.adminUser.findUnique({
+    where: { email: clean }, include: { roles: { include: { role: { select: { name: true } } } } },
+  });
+  if (!target) return NextResponse.json({ error: "User not found" }, { status: 404 });
+
+  const ok = await sendWelcomeEmail({
+    to: target.email, name: target.name || target.email.split("@")[0], roles: target.roles.map(r => r.role.name),
+    isSuper: target.role === "super", invitedBy: user.name || user.email, origin: req.nextUrl.origin,
+  });
+  if (!ok) return NextResponse.json({ error: "Email could not be sent — check SMTP settings" }, { status: 502 });
+  await logChange(user.email, "update", `user:${clean}`, { welcome: "sent" }, getIp(req));
+  return NextResponse.json({ ok: true });
+}
+
 export async function DELETE(req: NextRequest) {
   const user = await getSessionUser(req);
   if (!user) return NextResponse.json({ error: "Unauthorised" }, { status: 401 });

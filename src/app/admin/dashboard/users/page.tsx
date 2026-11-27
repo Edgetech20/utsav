@@ -2,13 +2,13 @@
 
 import { useEffect, useRef, useState, useCallback } from "react";
 import Link from "next/link";
-import { UserPlus, Users, Trash2, Pencil, ShieldCheck, Save, X } from "lucide-react";
+import { UserPlus, Users, Trash2, Pencil, ShieldCheck, Save, X, Mail } from "lucide-react";
 import { C, Button, PageHeader, Table, Thead, Th, Tbody, Td, Tr, Skeleton, Empty, Avatar, Search } from "../ui";
 import { useToast } from "../toast";
 import type { Role } from "../roles/RolesManager";
 
 type RoleRef = { id: number; name: string };
-type AdminUser = { email: string; name: string | null; role: string; createdAt: string; roles: RoleRef[] };
+type AdminUser = { email: string; name: string | null; role: string; createdAt: string; welcomedAt?: string | null; roles: RoleRef[] };
 
 // ── Skeleton ──────────────────────────────────────────────────────────────────
 function SkeletonRows() {
@@ -198,6 +198,7 @@ export default function UsersPage() {
   const [loading, setLoading]   = useState(true);
   const [search, setSearch]     = useState("");
   const [deleting, setDeleting] = useState<string | null>(null);
+  const [welcoming, setWelcoming] = useState<string | null>(null);
   const [dialog, setDialog]     = useState<AdminUser | "new" | null>(null);
   const [roles, setRoles]       = useState<Role[]>([]);
 
@@ -230,6 +231,17 @@ export default function UsersPage() {
     setDeleting(null);
   }
 
+  async function sendWelcome(em: string) {
+    setWelcoming(em);
+    const r = await fetch("/api/admin/users", {
+      method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: em }),
+    });
+    setWelcoming(null);
+    if (!r.ok) { toast((await r.json().catch(() => ({}))).error ?? "Failed to send", "error"); return; }
+    toast("Welcome email sent", "success");
+    setUsers(us => us.map(x => x.email === em ? { ...x, welcomedAt: new Date().toISOString() } : x));
+  }
+
   const q = search.toLowerCase();
   const filtered = users.filter(u => u.email.toLowerCase().includes(q) || (u.name ?? "").toLowerCase().includes(q));
 
@@ -253,7 +265,8 @@ export default function UsersPage() {
           roles={roles}
           onClose={() => setDialog(null)}
           onSaved={(u, isNew) => {
-            setUsers(prev => isNew ? [...prev, u] : prev.map(x => x.email === u.email ? u : x));
+            // new users get the welcome email automatically (stamped server-side a moment later)
+            setUsers(prev => isNew ? [...prev, { ...u, welcomedAt: new Date().toISOString() }] : prev.map(x => x.email === u.email ? { ...u, welcomedAt: x.welcomedAt } : x));
             setDialog(null);
             loadRoles(); // role "assigned to" counts changed
           }}
@@ -266,7 +279,7 @@ export default function UsersPage() {
             <Th>User</Th>
             <Th>Roles</Th>
             <Th>Added</Th>
-            <Th style={{ width: 120 }} />
+            <Th />
           </Tr>
         </Thead>
         <Tbody>
@@ -303,6 +316,13 @@ export default function UsersPage() {
               </Td>
               <Td>
                 <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                  {!u.welcomedAt && (
+                    <Button variant="secondary" size="sm" icon={<Mail size={13} />} loading={welcoming === u.email}
+                      title="Email this user their sign-in instructions"
+                      onClick={e => { e.stopPropagation(); sendWelcome(u.email); }}>
+                      Send welcome
+                    </Button>
+                  )}
                   <Button variant="ghost" size="sm" icon={<Pencil size={13} />}
                     onClick={e => { e.stopPropagation(); setDialog(u); }}>
                     Edit

@@ -258,13 +258,13 @@ export default function RolesManager({ roles, loading, reload }: { roles: Role[]
               <Td style={{ verticalAlign: "top" }}>
                 <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
                   {confirmId === r.id ? (<>
+                    {r.users.length > 0 && <span style={{ fontSize: 11, color: C.textSub, alignSelf: "center" }}>Removes it from {r.users.length} user(s)</span>}
                     <Button variant="danger" size="sm" onClick={() => remove(r)}>Confirm</Button>
                     <Button variant="secondary" size="sm" onClick={() => setConfirmId(null)}>Cancel</Button>
                   </>) : (<>
                     <Button variant="ghost" size="sm" icon={<Pencil size={12} />} onClick={() => setEditing(r)}>Edit</Button>
                     <Button variant="danger" size="sm" icon={<Trash2 size={12} />} loading={deleting === r.id}
-                      disabled={r.users.length > 0}
-                      title={r.users.length ? `Assigned to ${r.users.length} user(s) — unassign first` : "Delete role"}
+                      title={r.users.length ? `Delete and unassign from: ${r.users.join(", ")}` : "Delete role"}
                       onClick={() => setConfirmId(r.id)}>Delete</Button>
                   </>)}
                 </div>

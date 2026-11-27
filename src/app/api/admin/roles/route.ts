@@ -86,11 +86,13 @@ export async function DELETE(req: NextRequest) {
 
   const role = await db.role.findUnique({ where: { id }, include });
   if (!role) return NextResponse.json({ error: "Role not found" }, { status: 404 });
-  if (role.users.length)
-    return NextResponse.json({ error: `Still assigned to: ${role.users.map(u => u.email).join(", ")}` }, { status: 409 });
-
-  await db.role.delete({ where: { id } });
-  await logChange(user.email, "delete", `role:${role.name}`, {}, getIp(req));
+  // Unassign first (UserRole is onDelete: Restrict), then delete — one transaction
+  const unassigned = role.users.map(u => u.email);
+  await db.$transaction([
+    db.userRole.deleteMany({ where: { roleId: id } }),
+    db.role.delete({ where: { id } }),
+  ]);
+  await logChange(user.email, "delete", `role:${role.name}`, { unassigned }, getIp(req));
   // caller pool may have changed → even out RSVP assignments (never fails the request)
   await rebalance().then(r => { if (r.moved) return logChange(user.email, "update", "rsvp-assign:rebalance", { ...r, reason: `role deleted: ${role.name}` }, getIp(req)); })
     .catch(e => console.error("[rsvp] rebalance failed:", e));
