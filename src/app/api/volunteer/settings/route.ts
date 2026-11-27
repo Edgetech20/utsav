@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { requirePerm } from "@/lib/auth";
 
-const VOL_KEYS = ["vol_form_slug"];
+const VOL_KEYS = ["vol_form_slug", "vol_card_size"];
 const READ_KEYS = [...VOL_KEYS, "event_title", "event_title_sub"];
 
 export async function GET(req: NextRequest) {

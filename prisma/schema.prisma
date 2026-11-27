@@ -343,6 +343,7 @@ model VolDepartment {
   order      Int         @default(0)
   cardBg     String?              // ID card background for this department (falls back to vol_card_bg)
   cardText   String?              // ID card text colour (falls back to vol_card_text)
+  cardLayout String?  @db.Text    // JSON field positions on the uploaded design, see card.ts
   volunteers Volunteer[]
 }
 

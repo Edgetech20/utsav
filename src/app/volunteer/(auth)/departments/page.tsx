@@ -5,7 +5,7 @@ import { Upload, Trash2 } from "lucide-react";
 import { C, Button, Spinner } from "@/app/admin/dashboard/ui";
 import { useToast } from "@/app/admin/dashboard/toast";
 import DeptManager, { type DeptFormState } from "@/app/camp/(auth)/manage/departments/DeptManager";
-import { buildCardsHTML, type CardOpts } from "../card";
+import { buildCardsHTML, parseLayout, CARD_SIZES, type CardOpts, type FieldKey } from "../card";
 
 const label: React.CSSProperties = { fontSize: 11, fontWeight: 600, color: C.textSub, textTransform: "uppercase", letterSpacing: "0.07em", display: "block", marginBottom: 6 };
 
@@ -23,8 +23,31 @@ function CardDesign({ form, setForm, titles }: { form: DeptFormState; setForm: (
     setForm({ ...form, cardBg: data.url });
   }
 
+  // Drag fields inside the preview iframe; move the DOM live, save to the form on release (one iframe reload)
+  function enableDrag(frame: HTMLIFrameElement) {
+    const doc = frame.contentDocument;
+    doc?.querySelectorAll<HTMLElement>(".f").forEach(el => {
+      el.onpointerdown = e => {
+        el.setPointerCapture(e.pointerId);
+        const card = el.parentElement!.getBoundingClientRect();
+        const pos = (ev: PointerEvent) => ({
+          x: +Math.min(100, Math.max(0, (ev.clientX - card.left) / card.width * 100)).toFixed(1),
+          y: +Math.min(100, Math.max(0, (ev.clientY - card.top) / card.height * 100)).toFixed(1),
+        });
+        el.onpointermove = ev => { const p = pos(ev); el.style.left = p.x + "%"; el.style.top = p.y + "%"; };
+        el.onpointerup = ev => {
+          el.onpointermove = el.onpointerup = null;
+          const k = el.dataset.k as FieldKey;
+          setForm({ ...form, cardLayout: JSON.stringify({ ...parseLayout(form.cardLayout), [k]: pos(ev) }) });
+        };
+      };
+    });
+  }
+
+  const size = CARD_SIZES[titles.size ?? ""] ?? CARD_SIZES["54x86"];
+  const px = (mm: number) => Math.ceil(mm * 3.78) + 12; // card + iframe padding/border
   const preview = buildCardsHTML(
-    [{ code: `${form.code || "SEC"}-001`, name: "Sample Name", department: { name: form.name || "Department", cardBg: form.cardBg, cardText: form.cardText } }],
+    [{ code: `${form.code || "SEC"}-001`, name: "Sample Name", mobile: "9876543210", department: { name: form.name || "Department", cardBg: form.cardBg, cardText: form.cardText, cardLayout: form.cardLayout } }],
     titles, false,
   );
 
@@ -43,8 +66,12 @@ function CardDesign({ form, setForm, titles }: { form: DeptFormState; setForm: (
             {form.cardBg && <Button variant="ghost" size="sm" icon={<Trash2 size={12} />} onClick={() => setForm({ ...form, cardBg: "" })}>Remove</Button>}
           </div>
           <p style={{ fontSize: 11, color: C.textMuted, margin: "6px 0 0", lineHeight: 1.5 }}>
-            Portrait, <strong>638 × 1016 px</strong>. Keep the bottom 35% plain for name and ID. Without an image the default design is used.
+            Portrait, <strong>800 × 1200 px</strong>, with blank Name / Dept. / Ph No. lines. Without an image the default design is used.
           </p>
+          {form.cardBg && <p style={{ fontSize: 11, color: C.textMuted, margin: "6px 0 0", lineHeight: 1.5 }}>
+            <strong>Drag</strong> the dashed fields on the preview to line them up.{" "}
+            {form.cardLayout && <button onClick={() => setForm({ ...form, cardLayout: "" })} style={{ border: "none", background: "none", padding: 0, color: C.gold, cursor: "pointer", fontSize: 11 }}>Reset positions</button>}
+          </p>}
         </div>
         <div>
           <span style={label}>Text colour</span>
@@ -52,7 +79,7 @@ function CardDesign({ form, setForm, titles }: { form: DeptFormState; setForm: (
             style={{ width: 52, height: 32, border: `1px solid ${C.border}`, borderRadius: 7, padding: 2, background: C.surface }} />
         </div>
       </div>
-      <iframe title="Card preview" srcDoc={preview} style={{ width: 215, height: 340, border: `1px solid ${C.border}`, borderRadius: 8, background: "#fff" }} />
+      <iframe title="Card preview" srcDoc={preview} onLoad={e => enableDrag(e.currentTarget)} style={{ width: px(size.w), height: px(size.h), border: `1px solid ${C.border}`, borderRadius: 8, background: "#fff" }} />
     </div>
   );
 }
@@ -60,7 +87,7 @@ function CardDesign({ form, setForm, titles }: { form: DeptFormState; setForm: (
 export default function VolunteerDepartmentsPage() {
   const [titles, setTitles] = useState<CardOpts>({});
   useEffect(() => {
-    fetch("/api/volunteer/settings").then(r => r.json()).then(s => setTitles({ title: s.event_title, titleSub: s.event_title_sub }));
+    fetch("/api/volunteer/settings").then(r => r.json()).then(s => setTitles({ title: s.event_title, titleSub: s.event_title_sub, size: s.vol_card_size }));
   }, []);
 
   return (

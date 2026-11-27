@@ -4,8 +4,9 @@ import { useEffect, useState } from "react";
 import { Save } from "lucide-react";
 import { C, Card, PageHeader, Button, Spinner } from "@/app/admin/dashboard/ui";
 import { useToast } from "@/app/admin/dashboard/toast";
+import { CARD_SIZES } from "../card";
 
-type S = { vol_form_slug?: string; forms?: { slug: string; name: string }[] };
+type S = { vol_form_slug?: string; vol_card_size?: string; forms?: { slug: string; name: string }[] };
 
 export default function VolunteerSettingsPage() {
   const { toast } = useToast();
@@ -18,7 +19,7 @@ export default function VolunteerSettingsPage() {
     setSaving(true);
     const res = await fetch("/api/volunteer/settings", {
       method: "PUT", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ vol_form_slug: s?.vol_form_slug ?? "" }),
+      body: JSON.stringify({ vol_form_slug: s?.vol_form_slug ?? "", vol_card_size: s?.vol_card_size ?? "54x86" }),
     });
     setSaving(false);
     toast(res.ok ? "Settings saved" : "Failed to save", res.ok ? "success" : "error");
@@ -38,6 +39,18 @@ export default function VolunteerSettingsPage() {
         </select>
         <p style={{ fontSize: 12, color: C.textMuted, margin: 0 }}>
           Entries from this form appear under Volunteers → Import. Fields are matched by label: name, mobile/phone/whatsapp, address/village, department/team.
+        </p>
+      </Card>
+      <Card style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+        <span style={{ fontSize: 11, fontWeight: 600, color: C.textSub, textTransform: "uppercase", letterSpacing: "0.07em" }}>ID card print size</span>
+        {Object.entries(CARD_SIZES).map(([k, z]) => (
+          <label key={k} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: C.text, cursor: "pointer" }}>
+            <input type="radio" name="card_size" checked={(s.vol_card_size || "54x86") === k} onChange={() => setS({ ...s, vol_card_size: k })} />
+            {z.label}
+          </label>
+        ))}
+        <p style={{ fontSize: 12, color: C.textMuted, margin: 0 }}>
+          Standard badge holders fit 54 × 86 mm only. Text and dragged field positions scale with the size.
         </p>
       </Card>
     </div>

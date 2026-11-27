@@ -6,7 +6,7 @@ import { C, Button, Search, PageHeader, Table, Thead, Th, Tbody, Td, Tr, Card, E
 import { useToast } from "@/app/admin/dashboard/toast";
 import { useCampUser } from "@/app/camp/(auth)/CampNav";
 import { volCanEdit, volCanDelete } from "../VolNav";
-import { printCards, type CardOpts } from "../card";
+import { printCards } from "../card";
 
 type Dept = { id: number; code: string; name: string; isActive: boolean };
 type Vol  = { id: number; code: string; name: string; mobile: string; address: string | null; departmentId: number; department: Dept };
@@ -44,7 +44,6 @@ export default function VolunteerListPage() {
   const [deptF,   setDeptF]   = useState("");
   const [page,    setPage]    = useState(1);
   const [sel,     setSel]     = useState<Set<number>>(new Set());
-  const [cardOpts, setCardOpts] = useState<CardOpts>({});
 
   const [form,    setForm]    = useState<typeof EMPTY | null>(null);
   const [editId,  setEditId]  = useState<number | null>(null);
@@ -54,6 +53,7 @@ export default function VolunteerListPage() {
   const [pending, setPending] = useState<Pending[] | null>(null);
   const [formName, setFormName] = useState<string | null>(null);
   const [showImport, setShowImport] = useState(false);
+  const [impQ, setImpQ] = useState("");
   const [busyResp, setBusyResp] = useState<number | null>(null);
 
   async function load() {
@@ -71,8 +71,6 @@ export default function VolunteerListPage() {
   useEffect(() => {
     load();
     if (edit) loadPending();
-    fetch("/api/volunteer/settings").then(r => r.json()).then(s =>
-      setCardOpts({ title: s.event_title, titleSub: s.event_title_sub }));
     const q = new URLSearchParams(window.location.search);
     if (q.get("dept")) setDeptF(q.get("dept")!);
     if (q.get("import")) setShowImport(true);
@@ -93,7 +91,7 @@ export default function VolunteerListPage() {
 
   function print(list: Vol[]) {
     if (!list.length) return;
-    if (!printCards(list, cardOpts)) toast("Allow pop-ups for this site to print", "error");
+    if (!printCards(list)) toast("Allow pop-ups for this site to print", "error");
   }
 
   function openAdd() { setEditId(null); setForm({ ...EMPTY, departmentId: deptF }); }
@@ -253,7 +251,8 @@ export default function VolunteerListPage() {
                 <p style={{ fontSize: 12, color: C.textMuted, margin: 0 }}>{pending.length} waiting · pick a department where it wasn&apos;t matched</p>
                 <Button size="sm" onClick={importAllMatched} disabled={busyResp !== null || !pending.some(p => p.departmentId && p.name && p.mobile)}>Register all with department</Button>
               </div>
-              {pending.map(p => (
+              <Search placeholder="Search name, mobile, address, department…" value={impQ} onChange={e => setImpQ(e.target.value)} />
+              {pending.filter(p => !impQ.trim() || [p.name, p.mobile, p.address, p.department].join(" ").toLowerCase().includes(impQ.trim().toLowerCase())).map(p => (
                 <div key={p.responseId} style={{ display: "grid", gridTemplateColumns: desktop ? "1fr 180px auto" : "1fr", gap: 8, alignItems: "center", padding: "10px 12px", border: `1px solid ${C.border}`, borderRadius: 10 }}>
                   <div style={{ minWidth: 0 }}>
                     <p style={{ fontSize: 13, fontWeight: 600, color: C.text, margin: 0 }}>{p.name || <em style={{ color: C.red }}>no name</em>}</p>

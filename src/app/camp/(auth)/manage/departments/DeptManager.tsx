@@ -5,9 +5,9 @@ import { Plus, Pencil, Trash2, X, ToggleLeft, ToggleRight, Tent } from "lucide-r
 import { C, Button, PageHeader, Card, Input, Spinner, Table, Thead, Tbody, Th, Td, Tr, Empty, Badge, useDesktop } from "@/app/admin/dashboard/ui";
 import { useToast } from "@/app/admin/dashboard/toast";
 
-type Dept = { id: number; code: string; name: string; isActive: boolean; order: number; cardBg?: string | null; cardText?: string | null };
+type Dept = { id: number; code: string; name: string; isActive: boolean; order: number; cardBg?: string | null; cardText?: string | null; cardLayout?: string | null };
 
-const EMPTY_FORM = { code: "", name: "", cardBg: "", cardText: "" };
+const EMPTY_FORM = { code: "", name: "", cardBg: "", cardText: "", cardLayout: "" };
 export type DeptFormState = typeof EMPTY_FORM;
 /** Extra fields a module adds to the department form (e.g. volunteer ID card design). */
 export type DeptExtra = (form: DeptFormState, setForm: (f: DeptFormState) => void) => React.ReactNode;
@@ -163,7 +163,7 @@ export default function DeptManager({ api, sub, members, idLabel, extra }: { api
                       <Button variant="ghost" size="sm" icon={dept.isActive ? <ToggleRight size={13} /> : <ToggleLeft size={13} />} onClick={() => toggleActive(dept)}>
                         {desktop ? (dept.isActive ? "Deactivate" : "Activate") : ""}
                       </Button>
-                      <Button variant="ghost" size="sm" icon={<Pencil size={13} />} onClick={() => { setEditItem(dept); setForm({ code: dept.code, name: dept.name, cardBg: dept.cardBg ?? "", cardText: dept.cardText ?? "" }); }}>
+                      <Button variant="ghost" size="sm" icon={<Pencil size={13} />} onClick={() => { setEditItem(dept); setForm({ code: dept.code, name: dept.name, cardBg: dept.cardBg ?? "", cardText: dept.cardText ?? "", cardLayout: dept.cardLayout ?? "" }); }}>
                         {desktop ? "Edit" : ""}
                       </Button>
                       <Button variant="danger" size="sm" icon={<Trash2 size={13} />} onClick={() => setDeleteId(dept.id)}>
