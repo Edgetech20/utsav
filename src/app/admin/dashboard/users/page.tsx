@@ -41,6 +41,7 @@ const RESOURCE_GROUPS = [
       { key: "qr",        label: "QR Codes",    actions: ["view", "edit"] },
       { key: "whatsapp",  label: "WhatsApp",    actions: ["view", "edit"] },
       { key: "templates", label: "Templates",   actions: ["view", "edit"] },
+      { key: "volunteer", label: "Volunteers",  actions: ["view", "edit"] },
     ],
   },
   {

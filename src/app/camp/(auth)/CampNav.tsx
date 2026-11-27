@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useState, useEffect } from "react";
+import { createContext, useContext, useState, useEffect, Fragment } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
@@ -37,15 +37,17 @@ const COLLAPSED_W = 60;
 const LS_KEY      = "camp_sidebar_collapsed";
 
 // ── Nav definitions ───────────────────────────────────────────────────────────
-type NavLink = { label: string; href: string; icon: React.ElementType; visible: boolean };
+export type NavLink = { label: string; href: string; icon: React.ElementType; visible: boolean };
+export type ModuleCfg = { name: string; icon: React.ElementType; home: string; login: string; roleLabel: string; sections: { label: string; links: NavLink[] }[] };
 
 // ── Main component ────────────────────────────────────────────────────────────
 export default function CampNav({
-  user, eventTitle, children,
+  user, eventTitle, children, module: mod,
 }: {
   user: SessionUser;
   eventTitle: string;
   children: React.ReactNode;
+  module?: ModuleCfg; // other modules (e.g. volunteer) reuse this shell; defaults to Medical Camp
 }) {
   const pathname  = usePathname();
   const router    = useRouter();
@@ -79,7 +81,7 @@ export default function CampNav({
 
   async function logout() {
     await fetch("/api/admin-login", { method: "DELETE" });
-    router.push("/camp/login");
+    router.push(cfg.login);
   }
 
   const campPerms    = user.permissions.filter(p => p.resource === "camp").map(p => p.action);
@@ -114,9 +116,12 @@ export default function CampNav({
     { label: "Reports",        href: "/camp/reports",   icon: BarChart2,   visible: hasAny },
   ];
 
-  const visibleNav      = NAV.filter(l => l.visible);
-  const visibleManage   = MANAGE.filter(l => l.visible);
-  const visiblePharmacy = PHARMACY.filter(l => l.visible);
+  const cfg: ModuleCfg = mod ?? {
+    name: "Medical Camp", icon: Tent, home: "/camp", login: "/camp/login", roleLabel,
+    sections: [{ label: "Manage", links: MANAGE }, { label: "Pharmacy", links: PHARMACY }, { label: "", links: NAV }],
+  };
+  const ModIcon  = cfg.icon;
+  const sections = cfg.sections.map(s => ({ ...s, links: s.links.filter(l => l.visible) })).filter(s => s.links.length);
 
   const displayName = user.name || user.email.split("@")[0];
   const initials    = displayName.slice(0, 2).toUpperCase();
@@ -124,7 +129,7 @@ export default function CampNav({
 
   // ── Sidebar nav item ─────────────────────────────────────────────────────────
   function SideNavItem({ link, onClick }: { link: NavLink; onClick?: () => void }) {
-    const active = pathname === link.href || pathname.startsWith(link.href + "/");
+    const active = pathname === link.href || (link.href !== cfg.home && pathname.startsWith(link.href + "/"));
     const Icon   = link.icon;
 
     return (
@@ -165,14 +170,14 @@ export default function CampNav({
             style={{
               display: "flex", alignItems: "center", gap: 9,
               padding: "8px 12px", borderRadius: 8, textDecoration: "none",
-              fontSize: 13, fontWeight: (pathname === link.href || pathname.startsWith(link.href + "/")) ? 600 : 500,
-              color: (pathname === link.href || pathname.startsWith(link.href + "/")) ? C.text : C.textSub,
-              background: (pathname === link.href || pathname.startsWith(link.href + "/")) ? C.goldBg : "transparent",
-              borderLeft: `3px solid ${(pathname === link.href || pathname.startsWith(link.href + "/")) ? C.gold : "transparent"}`,
+              fontSize: 13, fontWeight: (pathname === link.href || (link.href !== cfg.home && pathname.startsWith(link.href + "/"))) ? 600 : 500,
+              color: (pathname === link.href || (link.href !== cfg.home && pathname.startsWith(link.href + "/"))) ? C.text : C.textSub,
+              background: (pathname === link.href || (link.href !== cfg.home && pathname.startsWith(link.href + "/"))) ? C.goldBg : "transparent",
+              borderLeft: `3px solid ${(pathname === link.href || (link.href !== cfg.home && pathname.startsWith(link.href + "/"))) ? C.gold : "transparent"}`,
               marginLeft: -3,
             }}
           >
-            {(() => { const Icon = link.icon; const active = pathname === link.href || pathname.startsWith(link.href + "/"); return <Icon size={15} color={active ? C.gold : C.textMuted} strokeWidth={active ? 2.2 : 1.8} />; })()}
+            {(() => { const Icon = link.icon; const active = pathname === link.href || (link.href !== cfg.home && pathname.startsWith(link.href + "/")); return <Icon size={15} color={active ? C.gold : C.textMuted} strokeWidth={active ? 2.2 : 1.8} />; })()}
             {link.label}
           </Link>
         )
@@ -193,11 +198,12 @@ export default function CampNav({
 
     return (
       <nav style={{ flex: 1, padding: "12px 10px", display: "flex", flexDirection: "column" as const, gap: 4, overflowY: "auto" as const }}>
-        <Section label="Manage"   links={visibleManage}   />
-        {visibleManage.length > 0 && visiblePharmacy.length > 0 && <div style={{ height: 1, background: C.border, margin: "4px 10px 8px" }} />}
-        <Section label="Pharmacy" links={visiblePharmacy} />
-        {(visibleManage.length > 0 || visiblePharmacy.length > 0) && visibleNav.length > 0 && <div style={{ height: 1, background: C.border, margin: "4px 10px 8px" }} />}
-        {visibleNav.map(link => <NavItemEl key={link.href} link={link} />)}
+        {sections.map((s, i) => (
+          <Fragment key={s.label || i}>
+            {i > 0 && <div style={{ height: 1, background: C.border, margin: "4px 10px 8px" }} />}
+            {s.label ? <Section label={s.label} links={s.links} /> : s.links.map(link => <NavItemEl key={link.href} link={link} />)}
+          </Fragment>
+        ))}
       </nav>
     );
   }
@@ -224,18 +230,18 @@ export default function CampNav({
               borderBottom: `1px solid ${C.border}`,
               display: "flex", justifyContent: collapsed ? "center" : "flex-start",
             }}>
-              <Link href="/camp" style={{ display: "flex", alignItems: "center", gap: collapsed ? 0 : 10, textDecoration: "none", minWidth: 0 }}>
+              <Link href={cfg.home} style={{ display: "flex", alignItems: "center", gap: collapsed ? 0 : 10, textDecoration: "none", minWidth: 0 }}>
                 <div style={{
                   width: 34, height: 34, borderRadius: 9, flexShrink: 0,
                   background: "linear-gradient(135deg,#1a1a2e,#16213e)",
                   display: "flex", alignItems: "center", justifyContent: "center",
                 }}>
-                  <Tent size={16} color={C.gold} />
+                  <ModIcon size={16} color={C.gold} />
                 </div>
                 {!collapsed && (
                   <div style={{ overflow: "hidden" }}>
                     <p style={{ fontSize: 13, fontWeight: 700, color: C.text, margin: 0, lineHeight: 1.2, whiteSpace: "nowrap" }}>{eventTitle}</p>
-                    <p style={{ fontSize: 10, color: C.textMuted, margin: 0 }}>Medical Camp</p>
+                    <p style={{ fontSize: 10, color: C.textMuted, margin: 0 }}>{cfg.name}</p>
                   </div>
                 )}
               </Link>
@@ -267,7 +273,7 @@ export default function CampNav({
                     <div style={{ minWidth: 0 }}>
                       <p style={{ fontSize: 12, fontWeight: 600, color: C.text, margin: 0, lineHeight: 1.2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{displayName}</p>
                       <p style={{ fontSize: 10, color: C.textMuted, margin: 0 }}>
-                        {roleLabel}
+                        {cfg.roleLabel}
                       </p>
                     </div>
                   </div>
@@ -299,9 +305,9 @@ export default function CampNav({
               </button>
               <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
                 <div style={{ width: 26, height: 26, borderRadius: 7, background: "linear-gradient(135deg,#1a1a2e,#16213e)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                  <Tent size={13} color={C.gold} />
+                  <ModIcon size={13} color={C.gold} />
                 </div>
-                <p style={{ fontSize: 13, fontWeight: 700, color: C.text, margin: 0 }}>{eventTitle} · Medical Camp</p>
+                <p style={{ fontSize: 13, fontWeight: 700, color: C.text, margin: 0 }}>{eventTitle} · {cfg.name}</p>
               </div>
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -323,11 +329,11 @@ export default function CampNav({
               <div style={{ padding: "14px 16px 12px", borderBottom: `1px solid ${C.border}`, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
                   <div style={{ width: 30, height: 30, borderRadius: 8, background: "linear-gradient(135deg,#1a1a2e,#16213e)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                    <Tent size={14} color={C.gold} />
+                    <ModIcon size={14} color={C.gold} />
                   </div>
                   <div>
                     <p style={{ fontSize: 13, fontWeight: 700, color: C.text, margin: 0, lineHeight: 1.2 }}>{eventTitle}</p>
-                    <p style={{ fontSize: 10, color: C.textMuted, margin: 0 }}>Medical Camp</p>
+                    <p style={{ fontSize: 10, color: C.textMuted, margin: 0 }}>{cfg.name}</p>
                   </div>
                 </div>
                 <button onClick={() => setDrawer(false)} style={{ border: "none", background: "#F1F5F9", borderRadius: 7, padding: 7, cursor: "pointer", color: C.textSub, display: "flex" }}>

@@ -5,7 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import {
   LayoutDashboard, Wifi, Users, LogOut,
-  MessageSquare, ImageIcon, Menu, X, QrCode, Settings, ClipboardList, Globe, CalendarDays, History, ShieldCheck, Tent,
+  MessageSquare, ImageIcon, Menu, X, QrCode, Settings, ClipboardList, Globe, CalendarDays, History, ShieldCheck, Tent, BadgeCheck,
 } from "lucide-react";
 import { ToastProvider } from "./toast";
 import { C } from "./ui";
@@ -44,9 +44,10 @@ const NAV_GROUPS: Array<{ label: string; items: NavItem[] }> = [
     ],
   },
   {
-    label: "Medical Camp",
+    label: "Modules",
     items: [
       { label: "Medical Camp →", href: "/camp", icon: Tent, resource: "camp" },
+      { label: "Volunteers →",   href: "/volunteer", icon: BadgeCheck, resource: "volunteer" },
     ],
   },
   {

@@ -300,3 +300,28 @@ model CampDoctor {
 
   @@index([departmentId])
 }
+
+model VolDepartment {
+  id         Int         @id @default(autoincrement())
+  code       String      @unique  // "SEC"
+  name       String               // "Security"
+  isActive   Boolean     @default(true)
+  order      Int         @default(0)
+  cardBg     String?              // ID card background for this department (falls back to vol_card_bg)
+  cardText   String?              // ID card text colour (falls back to vol_card_text)
+  volunteers Volunteer[]
+}
+
+model Volunteer {
+  id           Int           @id @default(autoincrement())
+  code         String        @unique  // "SEC-001"
+  name         String
+  mobile       String
+  address      String?
+  departmentId Int
+  department   VolDepartment @relation(fields: [departmentId], references: [id])
+  responseId   Int?          @unique  // linked DynamicFormResponse it was imported from
+  createdAt    DateTime      @default(now())
+
+  @@index([departmentId])
+}

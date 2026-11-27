@@ -67,3 +67,12 @@ export function getIp(req: NextRequest): string {
     ?? req.headers.get("x-real-ip")
     ?? "unknown";
 }
+
+/** Session + permission check for API routes: returns `{ user }` or `{ err }` (401/403 response). */
+export async function requirePerm(req: NextRequest, resource: string, action: "view" | "edit"):
+  Promise<{ user: SessionUser; err?: undefined } | { user?: undefined; err: Response }> {
+  const user = await getSessionUser(req);
+  if (!user) return { err: Response.json({ error: "Unauthorised" }, { status: 401 }) };
+  if (!can(user, resource, action)) return { err: Response.json({ error: "Forbidden" }, { status: 403 }) };
+  return { user };
+}
