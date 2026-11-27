@@ -54,6 +54,7 @@ export default function VolunteerListPage() {
   const [formName, setFormName] = useState<string | null>(null);
   const [showImport, setShowImport] = useState(false);
   const [impQ, setImpQ] = useState("");
+  const [impSel, setImpSel] = useState<Set<number>>(new Set());
   const [busyResp, setBusyResp] = useState<number | null>(null);
 
   async function load() {
@@ -123,8 +124,8 @@ export default function VolunteerListPage() {
     load(); loadPending();
   }
 
-  async function importOne(p: Pending) {
-    if (!p.departmentId) { toast("Pick a department first", "error"); return; }
+  async function importOne(p: Pending, quiet = false) {
+    if (!p.departmentId) { toast("Pick a department first", "error"); return false; }
     setBusyResp(p.responseId);
     const res = await fetch("/api/volunteer", {
       method: "POST", headers: { "Content-Type": "application/json" },
@@ -132,14 +133,27 @@ export default function VolunteerListPage() {
     });
     const data = await res.json();
     setBusyResp(null);
-    if (!res.ok) { toast(data.error ?? "Failed", "error"); return; }
+    if (!res.ok) { toast(`${p.name || "Entry"}: ${data.error ?? "Failed"}`, "error"); return false; }
     setPending(list => list?.filter(x => x.responseId !== p.responseId) ?? null);
-    toast(`${data.name} · ${data.code}`, "success");
-    load();
+    setImpSel(s => { const n = new Set(s); n.delete(p.responseId); return n; });
+    if (!quiet) { toast(`${data.name} · ${data.code}`, "success"); load(); }
+    return true;
   }
 
-  async function importAllMatched() {
-    for (const p of pending?.filter(x => x.departmentId && x.name && x.mobile) ?? []) await importOne(p);
+  const shownPending = (pending ?? []).filter(p => !impQ.trim() ||
+    [p.name, p.mobile, p.address, p.department].join(" ").toLowerCase().includes(impQ.trim().toLowerCase()));
+
+  // Bulk: set one department on all ticked entries, or register all ticked entries
+  function setDeptForSelected(departmentId: number | null) {
+    setPending(list => list?.map(x => impSel.has(x.responseId) ? { ...x, departmentId } : x) ?? null);
+  }
+  async function registerSelected() {
+    const ready = pending?.filter(x => impSel.has(x.responseId) && x.departmentId && x.name && x.mobile) ?? [];
+    let ok = 0;
+    for (const p of ready) if (await importOne(p, true)) ok++;
+    const skipped = impSel.size - ready.length;
+    toast(`Registered ${ok}${skipped ? ` · ${skipped} skipped (missing department, name or mobile)` : ""}`, ok ? "success" : "error");
+    load();
   }
 
   const selected = filtered.filter(v => sel.has(v.id));
@@ -240,20 +254,39 @@ export default function VolunteerListPage() {
       )}
 
       {showImport && (
-        <Modal wide title={`Import from “${formName ?? "linked form"}”`} onClose={() => setShowImport(false)}>
+        <Modal wide title={`Import from “${formName ?? "linked form"}”`} onClose={() => { setShowImport(false); setImpSel(new Set()); }}>
           {!formName ? (
             <p style={{ fontSize: 13, color: C.textMuted, margin: 0 }}>No form linked. Link one in Settings.</p>
           ) : !pending?.length ? (
             <p style={{ fontSize: 13, color: C.textMuted, margin: 0 }}>All form entries are registered.</p>
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-                <p style={{ fontSize: 12, color: C.textMuted, margin: 0 }}>{pending.length} waiting · pick a department where it wasn&apos;t matched</p>
-                <Button size="sm" onClick={importAllMatched} disabled={busyResp !== null || !pending.some(p => p.departmentId && p.name && p.mobile)}>Register all with department</Button>
-              </div>
+              <p style={{ fontSize: 12, color: C.textMuted, margin: 0 }}>{pending.length} waiting · tick entries to set a department and register them together</p>
               <Search placeholder="Search name, mobile, address, department…" value={impQ} onChange={e => setImpQ(e.target.value)} />
-              {pending.filter(p => !impQ.trim() || [p.name, p.mobile, p.address, p.department].join(" ").toLowerCase().includes(impQ.trim().toLowerCase())).map(p => (
-                <div key={p.responseId} style={{ display: "grid", gridTemplateColumns: desktop ? "1fr 180px auto" : "1fr", gap: 8, alignItems: "center", padding: "10px 12px", border: `1px solid ${C.border}`, borderRadius: 10 }}>
+              {(() => {
+                const allOn = shownPending.length > 0 && shownPending.every(p => impSel.has(p.responseId));
+                return (
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", padding: "8px 12px", background: C.goldBg, border: `1px solid ${C.goldBorder}`, borderRadius: 10 }}>
+                    <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: C.textSub, cursor: "pointer" }}>
+                      <input type="checkbox" checked={allOn} onChange={() => setImpSel(s => {
+                        const n = new Set(s); shownPending.forEach(p => allOn ? n.delete(p.responseId) : n.add(p.responseId)); return n;
+                      })} />
+                      {impSel.size ? `${impSel.size} selected` : "Select all"}
+                    </label>
+                    {impSel.size > 0 && <>
+                      <select value="" style={{ ...field, width: "auto", flex: "1 1 160px" }} onChange={e => e.target.value && setDeptForSelected(Number(e.target.value))}>
+                        <option value="">Set department for selected…</option>
+                        {activeDepts.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+                      </select>
+                      <Button size="sm" onClick={registerSelected} disabled={busyResp !== null}>Register {impSel.size} selected</Button>
+                    </>}
+                  </div>
+                );
+              })()}
+              {shownPending.map(p => (
+                <div key={p.responseId} style={{ display: "grid", gridTemplateColumns: desktop ? "auto 1fr 180px auto" : "auto 1fr", gap: 8, alignItems: "center", padding: "10px 12px", border: `1px solid ${impSel.has(p.responseId) ? C.gold : C.border}`, borderRadius: 10 }}>
+                  <input type="checkbox" checked={impSel.has(p.responseId)} aria-label={`Select ${p.name}`}
+                    onChange={() => setImpSel(s => { const n = new Set(s); n.has(p.responseId) ? n.delete(p.responseId) : n.add(p.responseId); return n; })} />
                   <div style={{ minWidth: 0 }}>
                     <p style={{ fontSize: 13, fontWeight: 600, color: C.text, margin: 0 }}>{p.name || <em style={{ color: C.red }}>no name</em>}</p>
                     <p style={{ fontSize: 11, color: C.textMuted, margin: "2px 0 0", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
