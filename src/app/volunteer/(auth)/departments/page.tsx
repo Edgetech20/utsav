@@ -15,7 +15,7 @@ function CardDesign({ form, setForm, titles }: { form: DeptFormState; setForm: (
 
   async function upload(file: File) {
     setUploading(true);
-    const fd = new FormData(); fd.append("file", file);
+    const fd = new FormData(); fd.append("file", file); fd.append("folder", "id-card");
     const res = await fetch("/api/form-upload", { method: "POST", body: fd });
     const data = await res.json();
     setUploading(false);

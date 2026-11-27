@@ -19,10 +19,11 @@ export async function POST(req: NextRequest) {
   if (!ext) return NextResponse.json({ error: "File type not allowed" }, { status: 415 });
   if (file.size > MAX_BYTES) return NextResponse.json({ error: "Max file size is 10 MB" }, { status: 413 });
 
+  const folder = form.get("folder") === "id-card" ? "id-card" : "form-uploads"; // whitelisted: never trust a client path
   const filename = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
-  const dir = join(process.cwd(), "public", "form-uploads");
+  const dir = join(process.cwd(), "public", folder);
   await mkdir(dir, { recursive: true });
   await writeFile(join(dir, filename), Buffer.from(await file.arrayBuffer()));
 
-  return NextResponse.json({ url: `/form-uploads/${filename}`, name: file.name });
+  return NextResponse.json({ url: `/${folder}/${filename}`, name: file.name });
 }
