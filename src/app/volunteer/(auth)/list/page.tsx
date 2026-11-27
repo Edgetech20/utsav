@@ -5,7 +5,7 @@ import { UserPlus, Pencil, Trash2, Printer, Inbox, X, Save, Users } from "lucide
 import { C, Button, Search, PageHeader, Table, Thead, Th, Tbody, Td, Tr, Card, Empty, Spinner, Pagination, useDesktop } from "@/app/admin/dashboard/ui";
 import { useToast } from "@/app/admin/dashboard/toast";
 import { useCampUser } from "@/app/camp/(auth)/CampNav";
-import { volCanEdit } from "../VolNav";
+import { volCanEdit, volCanDelete } from "../VolNav";
 import { printCards, type CardOpts } from "../card";
 
 type Dept = { id: number; code: string; name: string; isActive: boolean };
@@ -33,6 +33,7 @@ function Modal({ title, onClose, children, wide }: { title: string; onClose: () 
 export default function VolunteerListPage() {
   const user = useCampUser();
   const edit = volCanEdit(user);
+  const canDel = volCanDelete(user);
   const desktop = useDesktop();
   const { toast } = useToast();
 
@@ -195,7 +196,7 @@ export default function VolunteerListPage() {
                   <div style={{ display: "flex", gap: 4, justifyContent: "flex-end" }}>
                     <Button variant="ghost" size="sm" icon={<Printer size={12} />} style={{ padding: "5px 8px" }} onClick={() => print([v])} title="Print ID card" />
                     {edit && <Button variant="ghost" size="sm" icon={<Pencil size={12} />} style={{ padding: "5px 8px" }} onClick={() => openEdit(v)} title="Edit" />}
-                    {edit && <Button variant="ghost" size="sm" icon={<Trash2 size={12} />} style={{ padding: "5px 8px", color: C.red }} onClick={() => setDelId(v.id)} title="Delete" />}
+                    {canDel && <Button variant="ghost" size="sm" icon={<Trash2 size={12} />} style={{ padding: "5px 8px", color: C.red }} onClick={() => setDelId(v.id)} title="Delete" />}
                   </div>
                 </Td>
               </Tr>

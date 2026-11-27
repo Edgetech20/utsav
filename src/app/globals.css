@@ -152,6 +152,14 @@ body::-webkit-scrollbar {
 .admin-table tbody tr { transition: background 0.08s; }
 .admin-table tbody tr:hover { background: #F8FAFC; }
 
+/* Keep the last column (row actions) on screen when a wide table scrolls sideways on small screens */
+.admin-table th:last-child, .admin-table td:last-child:not([colspan]) {
+  position: sticky; right: 0; z-index: 1;
+  background: #fff; box-shadow: -8px 0 8px -8px rgba(15, 23, 42, 0.12);
+}
+.admin-table thead th:last-child { background: #FAFBFC; }
+.admin-table tbody tr:hover td:last-child:not([colspan]) { background: #F8FAFC; }
+
 /* Admin mobile drawer */
 @keyframes drawer-slide-in {
   from { transform: translateX(-100%); }

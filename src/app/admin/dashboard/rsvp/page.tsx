@@ -1,11 +1,33 @@
 "use client";
 
-import { useEffect, useState, Fragment } from "react";
-import { Trash2, RefreshCw, CheckCircle, Clock, Users, SlidersHorizontal, Save, X, Plus, Pencil, MessageSquare, Download } from "lucide-react";
-import { C, Badge, Button, Search, PageHeader, Table, Thead, Th, Tbody, Td, Tr, Skeleton, Empty, Avatar, Pagination, Card, useDesktop } from "../ui";
+import { useEffect, useState, useSyncExternalStore, Fragment } from "react";
+import { Trash2, RefreshCw, CheckCircle, Clock, Users, SlidersHorizontal, Save, X, Plus, Pencil, MessageSquare, Download, Shuffle, PhoneCall, Phone } from "lucide-react";
+import { C, Badge, Button, Search, PageHeader, Table, Thead, Th, Tbody, Td, Tr, Skeleton, Empty, Avatar, Pagination, Card } from "../ui";
 import { useToast } from "../toast";
+import { callCount } from "@/lib/permissions";
 
-type Entry = { id: number; name: string; whatsapp: string; address: string; village: string | null; postOffice: string | null; district: string | null; pinCode: string | null; totalAttending: number | null; extraData: string | null; notes: string | null; location: string | null; submittedAt: string; waSent: boolean };
+type Entry = { id: number; name: string; whatsapp: string; address: string; village: string | null; postOffice: string | null; district: string | null; pinCode: string | null; totalAttending: number | null; extraData: string | null; notes: string | null; location: string | null; submittedAt: string; waSent: boolean; assignedTo: string | null; assignee: { email: string; name: string | null } | null };
+type CallerStat = { email: string; name: string | null; total: number; calls: [number, number, number, number] };
+
+const CALL_STYLE: Array<[string, string, string]> = [ // [label, fg, bg] for 0, 1, 2, 3+ calls
+  ["Not called",  "#64748B", "#F1F5F9"],
+  ["1 call done", "#2563EB", "#DBEAFE"],
+  ["2 calls done", "#7C3AED", "#EDE9FE"],
+  ["3+ calls done", "#047857", "#D1FAE5"],
+];
+function CallBadge({ n }: { n: number }) {
+  const [label, fg, bg] = CALL_STYLE[Math.min(n, 3)];
+  return (
+    <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 11, fontWeight: 600, padding: "2px 8px", borderRadius: 20, color: fg, background: bg, whiteSpace: "nowrap" }}>
+      {n > 0 && <PhoneCall size={10} />}{n > 3 ? `${n} calls done` : label}
+    </span>
+  );
+}
+const callerLabel = (c: { email: string; name: string | null }) => c.name || c.email.split("@")[0];
+
+const TABLE_MIN = "(min-width: 1180px)";
+const subscribeTable = (cb: () => void) => { const m = window.matchMedia(TABLE_MIN); m.addEventListener("change", cb); return () => m.removeEventListener("change", cb); };
+const useTableLayout = () => useSyncExternalStore(subscribeTable, () => window.matchMedia(TABLE_MIN).matches, () => false);
 
 function SkeletonRows() {
   return (
@@ -49,15 +71,26 @@ export default function RsvpPage() {
   const [toConfirm, setToConfirm] = useState<number | null>(null);
   const [page, setPage] = useState(1);
   const PER_PAGE = 20;
-  const desktop = useDesktop();
+  const desktop = useTableLayout(); // cards below 1180px: phones, tablets, small laptops
 
   const [showEditor, setShowEditor] = useState(false);
   const [fieldConfig, setFieldConfig] = useState<FieldConfig[]>(DEFAULT_FIELDS); // for table display
   const [fields, setFields] = useState<FieldConfig[]>(DEFAULT_FIELDS);           // for editor
   const [saving, setSaving] = useState(false);
   const [expanded, setExpanded] = useState<number | null>(null);
-  const [me, setMe] = useState<{ role: string; permissions: { resource: string; action: string }[] } | null>(null);
-  const canDelete = me?.role === "super";
+  const [me, setMe] = useState<{ email: string; role: string; permissions: { resource: string; action: string }[] } | null>(null);
+  const hasRsvp   = (a: string) => me?.role === "super" || !!me?.permissions.some(p => p.resource === "rsvp" && p.action === a);
+  const canEdit   = hasRsvp("edit");
+  const canDelete = hasRsvp("delete");
+  const canAssign = hasRsvp("assign");
+  const canEditForm = me?.role === "super" || !!me?.permissions.some(p => p.resource === "settings" && p.action === "edit");
+  const [scoped, setScoped]         = useState(false);
+  const [callFilter, setCallFilter] = useState("all");     // all | 0 | 1 | 2 | 3
+  const [callerFilter, setCallerFilter] = useState("");    // "" all | email | "__none"
+  const [selected, setSelected]     = useState<Set<number>>(new Set());
+  const [summary, setSummary]       = useState<{ callers: CallerStat[]; unassigned: number } | null>(null);
+  const [rebalancing, setRebalancing] = useState(false);
+  const [editingNote, setEditingNote] = useState<{ index: number; text: string } | null>(null);
   const [editEntry, setEditEntry] = useState<Entry | null>(null);
   const [editForm, setEditForm] = useState<Record<string, string>>({});
   const [savingEdit, setSavingEdit] = useState(false);
@@ -69,7 +102,36 @@ export default function RsvpPage() {
   async function load() {
     const res = await fetch("/api/rsvp").then(r => r.json()).catch(() => ({}));
     setEntries(res?.entries ?? []);
+    setScoped(!!res?.scoped);
     setLoading(false);
+  }
+
+  async function loadSummary() {
+    const r = await fetch("/api/rsvp/assign");
+    if (r.ok) setSummary(await r.json());
+  }
+
+  async function assign(ids: number[], email: string | null) {
+    const r = await fetch("/api/rsvp/assign", {
+      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ids, email }),
+    });
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) { toast(data.error ?? "Could not assign", "error"); return; }
+    toast(`${data.updated} RSVP${data.updated === 1 ? "" : "s"} ${email ? "assigned" : "unassigned"}`, "success");
+    setSelected(new Set());
+    await Promise.all([load(), loadSummary()]);
+  }
+
+  async function runRebalance() {
+    setRebalancing(true);
+    const r = await fetch("/api/rsvp/assign", {
+      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "rebalance" }),
+    });
+    const data = await r.json().catch(() => ({}));
+    setRebalancing(false);
+    if (!r.ok) { toast(data.error ?? "Rebalance failed", "error"); return; }
+    toast(data.pool ? `${data.moved} RSVP${data.moved === 1 ? "" : "s"} moved across ${data.pool} caller${data.pool === 1 ? "" : "s"}` : "No callers — add a role with the Caller permission", data.pool ? "success" : "info");
+    await Promise.all([load(), loadSummary()]);
   }
 
   function parseConfig(raw: string): FieldConfig[] {
@@ -155,6 +217,28 @@ export default function RsvpPage() {
     await load();
   }
 
+  async function refreshNotes() {
+    const res = await fetch("/api/rsvp").then(r => r.json()).catch(() => ({}));
+    const refreshed: Entry[] = res?.entries ?? [];
+    setEntries(refreshed);
+    const updated = refreshed.find(e => e.id === noteEntry?.id);
+    if (updated) setNoteEntry(updated);
+  }
+
+  async function saveNoteEdit() {
+    if (!noteEntry || !editingNote?.text.trim()) return;
+    setSavingNote(true);
+    const r = await fetch("/api/rsvp", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: noteEntry.id, noteEdit: editingNote }),
+    });
+    setSavingNote(false);
+    if (!r.ok) { toast((await r.json().catch(() => ({}))).error ?? "Could not save note", "error"); return; }
+    setEditingNote(null);
+    await refreshNotes();
+  }
+
   async function addNote(type: string) {
     if (!noteEntry || !noteText.trim()) return;
     setSavingNote(true);
@@ -166,12 +250,7 @@ export default function RsvpPage() {
     setNoteText("");
     setNoteType(null);
     setSavingNote(false);
-    // Refresh entries and keep modal open with updated notes
-    const res = await fetch("/api/rsvp").then(r => r.json()).catch(() => ({}));
-    const refreshed: Entry[] = res?.entries ?? [];
-    setEntries(refreshed);
-    const updated = refreshed.find(e => e.id === noteEntry!.id);
-    if (updated) setNoteEntry(updated);
+    await refreshNotes(); // keep modal open with updated notes
   }
 
   useEffect(() => {
@@ -179,6 +258,10 @@ export default function RsvpPage() {
     loadConfig();
     fetch("/api/admin/me").then(r => r.json()).then(setMe);
   }, []);
+
+  useEffect(() => {
+    if (canAssign) fetch("/api/rsvp/assign").then(r => r.ok ? r.json() : null).then(setSummary).catch(() => {});
+  }, [canAssign]);
 
   async function handleDelete(id: number) {
     setActing(id); setToConfirm(null);
@@ -209,9 +292,11 @@ export default function RsvpPage() {
           return f.type === "tel" && v ? `="${v}"` : esc(v);
         }),
         esc(new Date(e.submittedAt).toLocaleString("en-IN")),
+        esc(CALL_STYLE[Math.min(callCount(e.notes), 3)][0]),
+        ...(canAssign ? [esc(e.assignee ? callerLabel(e.assignee) : "Unassigned")] : []),
       ].join(",");
     });
-    const header = [...cols.map(f => f.label), "Registered"].map(esc).join(",");
+    const header = [...cols.map(f => f.label), "Registered", "Calls", ...(canAssign ? ["Assigned to"] : [])].map(esc).join(",");
     const a = document.createElement("a");
     a.href = URL.createObjectURL(new Blob(["﻿" + [header, ...rows].join("\r\n")], { type: "text/csv;charset=utf-8" }));
     a.download = `rsvp${suffix}-${new Date().toISOString().slice(0, 10)}.csv`;
@@ -224,7 +309,10 @@ export default function RsvpPage() {
     if (!key.startsWith("custom_")) return String((e as unknown as Record<string, unknown>)[key] ?? "");
     try { return String(JSON.parse(e.extraData ?? "{}")[key] ?? ""); } catch { return ""; }
   };
-  const filtered = entries.filter(e => !fq || fieldVal(e, filterKey).toLowerCase().includes(fq)).filter(e =>
+  const filtered = entries
+    .filter(e => callFilter === "all" || Math.min(callCount(e.notes), 3) === +callFilter)
+    .filter(e => !callerFilter || (callerFilter === "__none" ? !e.assignedTo : e.assignedTo === callerFilter))
+    .filter(e => !fq || fieldVal(e, filterKey).toLowerCase().includes(fq)).filter(e =>
     e.name.toLowerCase().includes(q) ||
     e.whatsapp.includes(q) ||
     e.address.toLowerCase().includes(q) ||
@@ -236,12 +324,29 @@ export default function RsvpPage() {
   const paginated = filtered.slice((page - 1) * PER_PAGE, page * PER_PAGE);
   const sent    = entries.filter(e => e.waSent).length;
   const pending = entries.length - sent;
+  const notCalled = entries.filter(e => callCount(e.notes) === 0).length;
+  const pageIds = paginated.map(e => e.id);
+  const allPageSelected = pageIds.length > 0 && pageIds.every(id => selected.has(id));
+  const toggleSel = (id: number) => setSelected(prev => { const n = new Set(prev); if (n.has(id)) n.delete(id); else n.add(id); return n; });
+  const callers = summary?.callers ?? [];
+  const selectStyle: React.CSSProperties = { padding: "7px 10px", border: `1px solid ${C.border}`, borderRadius: 8, fontSize: 13, color: C.text, background: C.surface };
+  const assigneeSelect = (e: Entry) => (
+    <select value={e.assignedTo ?? ""} onClick={ev => ev.stopPropagation()} aria-label={`Assign ${e.name} to caller`}
+      onChange={ev => assign([e.id], ev.target.value || null)}
+      style={{ ...selectStyle, padding: "4px 6px", fontSize: 12, maxWidth: 150, color: e.assignedTo ? C.text : C.textMuted }}>
+      <option value="">Unassigned</option>
+      {callers.map(c => <option key={c.email} value={c.email}>{callerLabel(c)}</option>)}
+      {e.assignee && !callers.some(c => c.email === e.assignedTo) && <option value={e.assignee.email}>{callerLabel(e.assignee)}</option>}
+    </select>
+  );
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
       <PageHeader
         title="RSVP Registrations"
-        sub={`${entries.length} total · ${sent} messaged · ${pending} pending`}
+        sub={scoped
+          ? `${entries.length} assigned to you · ${notCalled} not called yet`
+          : `${entries.length} total · ${sent} messaged · ${pending} pending · ${notCalled} not called`}
         actions={
           <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
             <Search placeholder="Search name, phone, address…" value={search} onChange={e => setSearch(e.target.value)} />
@@ -252,8 +357,19 @@ export default function RsvpPage() {
             <input value={filterVal} onChange={e => { setFilterVal(e.target.value); setPage(1); }} placeholder="Filter value (e.g. Bhatar)"
               style={{ padding: "7px 10px", border: `1px solid ${C.border}`, borderRadius: 8, fontSize: 13, color: C.text, background: C.surface, outline: "none", width: 170 }} />
             {filterVal && <Button variant="ghost" size="sm" icon={<X size={12} />} onClick={() => setFilterVal("")} title="Clear filter">{filtered.length}</Button>}
+            <select value={callFilter} onChange={e => { setCallFilter(e.target.value); setPage(1); }} aria-label="Filter by call status" style={selectStyle}>
+              <option value="all">All call status</option>
+              {CALL_STYLE.map(([label], i) => <option key={i} value={i}>{label}</option>)}
+            </select>
+            {canAssign && (
+              <select value={callerFilter} onChange={e => { setCallerFilter(e.target.value); setPage(1); }} aria-label="Filter by caller" style={selectStyle}>
+                <option value="">All callers</option>
+                <option value="__none">Unassigned</option>
+                {callers.map(c => <option key={c.email} value={c.email}>{callerLabel(c)}</option>)}
+              </select>
+            )}
             <Button variant="ghost" icon={<Download size={14} />} onClick={() => filtered.length !== entries.length ? setExportChoice(true) : exportExcel(entries)} disabled={!entries.length}>Export Excel</Button>
-            <Button variant="ghost" icon={<SlidersHorizontal size={14} />} onClick={openEditor}>Edit Form</Button>
+            {canEditForm && <Button variant="ghost" icon={<SlidersHorizontal size={14} />} onClick={openEditor}>Edit Form</Button>}
           </div>
         }
       />
@@ -358,7 +474,7 @@ export default function RsvpPage() {
 
       {/* Note Modal */}
       {noteEntry && (() => {
-        let log: { text: string; type: string; author: string; authorName?: string | null; createdAt: string }[] = [];
+        let log: { text: string; type: string; author: string; authorName?: string | null; createdAt: string; editedAt?: string }[] = [];
         try { log = JSON.parse(noteEntry.notes ?? "[]"); } catch {}
         const TYPE_LABEL: Record<string, string> = { note: "Note", call1: "Call 1", call2: "Call 2", call3: "Call 3" };
         const TYPE_COLOR: Record<string, [string, string]> = {
@@ -390,9 +506,30 @@ export default function RsvpPage() {
                           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6, flexWrap: "wrap" }}>
                             <span style={{ fontSize: 10, fontWeight: 700, padding: "2px 8px", borderRadius: 20, background: bg, color: fg }}>{TYPE_LABEL[n.type] ?? n.type}</span>
                             <span style={{ fontSize: 11, color: C.textMuted }}>{new Date(n.createdAt).toLocaleString("en-IN", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}</span>
-                            {me?.role === "super" && <span style={{ fontSize: 11, color: C.textMuted, marginLeft: "auto" }}>{n.authorName || n.author.split("@")[0]}</span>}
+                            {n.editedAt && <span style={{ fontSize: 11, color: C.textMuted }}>· edited</span>}
+                            <span style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 8 }}>
+                              {me?.role === "super" && <span style={{ fontSize: 11, color: C.textMuted }}>{n.authorName || n.author.split("@")[0]}</span>}
+                              {canEdit && (me?.role === "super" || n.author === me?.email) && editingNote?.index !== i && (
+                                <button onClick={() => setEditingNote({ index: i, text: n.text })} title="Edit note" aria-label="Edit note"
+                                  style={{ border: "none", background: "none", cursor: "pointer", color: C.textMuted, display: "flex", padding: 2 }}>
+                                  <Pencil size={12} />
+                                </button>
+                              )}
+                            </span>
                           </div>
-                          <p style={{ fontSize: 13, color: C.text, margin: 0, lineHeight: 1.5, whiteSpace: "pre-wrap" }}>{n.text}</p>
+                          {editingNote?.index === i ? (
+                            <>
+                              <textarea autoFocus rows={3} value={editingNote.text}
+                                onChange={e => setEditingNote({ index: i, text: e.target.value })}
+                                style={{ width: "100%", padding: "8px 10px", border: `1px solid ${C.border}`, borderRadius: 8, fontSize: 13, color: C.text, background: C.surface, outline: "none", resize: "vertical", fontFamily: "inherit", boxSizing: "border-box" }} />
+                              <div style={{ display: "flex", gap: 6, marginTop: 6, justifyContent: "flex-end" }}>
+                                <Button size="sm" variant="ghost" onClick={() => setEditingNote(null)}>Cancel</Button>
+                                <Button size="sm" loading={savingNote} disabled={!editingNote.text.trim()} onClick={saveNoteEdit}>Save</Button>
+                              </div>
+                            </>
+                          ) : (
+                            <p style={{ fontSize: 13, color: C.text, margin: 0, lineHeight: 1.5, whiteSpace: "pre-wrap" }}>{n.text}</p>
+                          )}
                         </div>
                       );
                     })
@@ -401,7 +538,11 @@ export default function RsvpPage() {
 
               {/* Input */}
               <div style={{ padding: "12px 24px", borderTop: `1px solid ${C.border}`, flexShrink: 0 }}>
-                {noteType === null ? (
+                {!canEdit ? (
+                  <div style={{ display: "flex", justifyContent: "flex-end" }}>
+                    <Button size="sm" variant="ghost" onClick={() => setNoteEntry(null)}>Close</Button>
+                  </div>
+                ) : noteType === null ? (
                   // Step 1 — pick type
                   <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
                     <span style={{ fontSize: 12, color: C.textMuted, marginRight: 4 }}>Add:</span>
@@ -443,18 +584,80 @@ export default function RsvpPage() {
       })()}
 
 
+      {canAssign && summary && (
+        <Card padding={0}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 16px", borderBottom: `1px solid ${C.border}`, flexWrap: "wrap" }}>
+            <div style={{ flex: 1, minWidth: 200 }}>
+              <p style={{ fontSize: 14, fontWeight: 700, color: C.text, margin: 0 }}>Caller assignments</p>
+              <p style={{ fontSize: 12, color: C.textSub, margin: "2px 0 0" }}>
+                {callers.length
+                  ? "New RSVPs go to the caller with the fewest. Click a caller to filter the list."
+                  : "No callers yet. Give a user a role that includes \"Caller\" to start auto-assigning."}
+              </p>
+            </div>
+            <Button variant="secondary" size="sm" icon={<Shuffle size={13} />} loading={rebalancing} onClick={runRebalance}
+              title="Even out not-yet-called RSVPs across callers">Rebalance now</Button>
+          </div>
+          {callers.length > 0 && (
+            <div style={{ overflowX: "auto" }}>
+              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, minWidth: 560 }}>
+                <thead>
+                  <tr>{["Caller", "Assigned", ...CALL_STYLE.map(c => c[0])].map((h, i) => (
+                    <th key={h} style={{ padding: "8px 16px", textAlign: i ? "right" : "left", fontSize: 11, fontWeight: 600, color: C.textMuted, textTransform: "uppercase", letterSpacing: "0.05em", borderBottom: `1px solid ${C.borderLight}` }}>{h}</th>
+                  ))}</tr>
+                </thead>
+                <tbody>
+                  {[...callers.map(c => ({ key: c.email, label: callerLabel(c), total: c.total, calls: c.calls as number[] | null })),
+                    ...(summary.unassigned ? [{ key: "__none", label: "Unassigned", total: summary.unassigned, calls: null }] : [])].map(row => {
+                    const on = callerFilter === row.key;
+                    return (
+                      <tr key={row.key} onClick={() => { setCallerFilter(on ? "" : row.key); setPage(1); }}
+                        style={{ cursor: "pointer", background: on ? C.goldBg : undefined }}>
+                        <td style={{ padding: "8px 16px", fontWeight: 600, color: row.calls ? C.text : C.orange }}>{row.label}</td>
+                        <td style={{ padding: "8px 16px", textAlign: "right", fontVariantNumeric: "tabular-nums", fontWeight: 600 }}>{row.total}</td>
+                        {CALL_STYLE.map((_, i) => (
+                          <td key={i} style={{ padding: "8px 16px", textAlign: "right", fontVariantNumeric: "tabular-nums", color: C.textSub }}>{row.calls ? row.calls[i] : "—"}</td>
+                        ))}
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </Card>
+      )}
+
+      {canAssign && selected.size > 0 && (
+        <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", padding: "10px 14px", borderRadius: 10, background: C.text, color: "#fff", position: "sticky", top: 8, zIndex: 5 }}>
+          <span style={{ fontSize: 13, fontWeight: 600, flex: 1 }}>{selected.size} selected</span>
+          <select defaultValue="" aria-label="Assign selected RSVPs to"
+            onChange={e => { const v = e.target.value; e.target.value = ""; if (v) assign([...selected], v === "__none" ? null : v); }}
+            style={{ ...selectStyle, padding: "6px 8px" }}>
+            <option value="" disabled>Assign selected to…</option>
+            {callers.map(c => <option key={c.email} value={c.email}>{callerLabel(c)}</option>)}
+            <option value="__none">Unassign</option>
+          </select>
+          <Button size="sm" variant="ghost" onClick={() => setSelected(new Set())} style={{ color: "#E2E8F0", borderColor: "rgba(255,255,255,0.25)" }}>Clear</Button>
+        </div>
+      )}
+
       {/* Table (desktop) / Cards (mobile) */}
       {desktop ? (
         <Table>
           <Thead>
             <Tr>
-              <Th>Name</Th><Th>Phone</Th><Th>Address</Th><Th>Location</Th><Th>Attending</Th><Th>Status</Th><Th>Registered</Th>
+              {canAssign && <Th style={{ width: 36 }}>
+                <input type="checkbox" checked={allPageSelected} aria-label="Select all on this page"
+                  onChange={() => setSelected(prev => { const n = new Set(prev); pageIds.forEach(id => allPageSelected ? n.delete(id) : n.add(id)); return n; })} />
+              </Th>}
+              <Th>Name</Th><Th>Phone</Th><Th>Address</Th><Th>Location</Th><Th>Attending</Th><Th>Calls</Th>{canAssign && <Th>Assigned to</Th>}<Th>Status</Th><Th>Registered</Th>
               <Th style={{ textAlign: "right" }}>Actions</Th>
             </Tr>
           </Thead>
           <tbody>
             {loading ? <SkeletonRows /> : filtered.length === 0 ? (
-              <Tr><Td style={{ padding: 0, border: "none" }} colSpan={8}>
+              <Tr><Td style={{ padding: 0, border: "none" }} colSpan={canAssign ? 11 : 9}>
                 <Empty icon={<Users size={40} />} title={search ? "No results" : "No registrations yet"} sub={search ? "Try a different search term" : "Registrations will appear here"} />
               </Td></Tr>
             ) : paginated.map(e => {
@@ -466,7 +669,10 @@ export default function RsvpPage() {
               const isExpanded = expanded === e.id;
               return (
                 <Fragment key={e.id}>
-                  <Tr style={{ opacity: busy ? 0.5 : 1, cursor: hasExtra ? "pointer" : "default" }} onClick={() => hasExtra && setExpanded(isExpanded ? null : e.id)}>
+                  <Tr style={{ opacity: busy ? 0.5 : 1, cursor: hasExtra ? "pointer" : "default", background: selected.has(e.id) ? C.goldBg : undefined }} onClick={() => hasExtra && setExpanded(isExpanded ? null : e.id)}>
+                    {canAssign && <Td onClick={ev => ev.stopPropagation()}>
+                      <input type="checkbox" checked={selected.has(e.id)} onChange={() => toggleSel(e.id)} aria-label={`Select ${e.name}`} />
+                    </Td>}
                     <Td><div style={{ display: "flex", alignItems: "center", gap: 10 }}><Avatar name={e.name} size={32} /><span style={{ fontWeight: 600, whiteSpace: "nowrap" }}>{e.name}</span></div></Td>
                     <Td><span style={{ fontFamily: "monospace", fontSize: 12, color: C.textSub }}>{e.whatsapp}</span></Td>
                     <Td style={{ maxWidth: 200 }}>
@@ -479,14 +685,16 @@ export default function RsvpPage() {
                       }
                     </Td>
                     <Td style={{ textAlign: "center", fontWeight: 600, fontSize: 13 }}>{e.totalAttending ?? "—"}</Td>
+                    <Td><CallBadge n={callCount(e.notes)} /></Td>
+                    {canAssign && <Td>{assigneeSelect(e)}</Td>}
                     <Td>{e.waSent ? <Badge variant="green" icon={<CheckCircle size={10} />}>Sent</Badge> : <Badge variant="orange" icon={<Clock size={10} />}>Pending</Badge>}</Td>
                     <Td style={{ color: C.textMuted, fontSize: 12, whiteSpace: "nowrap" }}>{new Date(e.submittedAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}</Td>
                     <Td><div style={{ display: "flex", gap: 4, justifyContent: "flex-end" }} onClick={ev => ev.stopPropagation()}>
                       {confirm && canDelete
                         ? (<><Button variant="danger" size="sm" loading={busy} onClick={() => handleDelete(e.id)}>Confirm</Button><Button variant="secondary" size="sm" onClick={() => setToConfirm(null)}>Cancel</Button></>)
                         : (<>
-                            <Button variant="ghost" size="sm" icon={<Pencil size={12} />} style={{ padding: "5px 8px" }} onClick={() => openEdit(e)} title="Edit" />
-                            <Button variant="ghost" size="sm" icon={<MessageSquare size={12} />} style={{ padding: "5px 8px", color: e.notes ? C.gold : undefined }} onClick={() => { setNoteEntry(e); setNoteText(""); setNoteType(null); }} title={e.notes ? "Edit note" : "Add note"} />
+                            {canEdit && <Button variant="ghost" size="sm" icon={<Pencil size={12} />} style={{ padding: "5px 8px" }} onClick={() => openEdit(e)} title="Edit" />}
+                            <Button variant="ghost" size="sm" icon={<MessageSquare size={12} />} style={{ padding: "5px 8px", color: e.notes ? C.gold : undefined }} onClick={() => { setNoteEntry(e); setNoteText(""); setNoteType(null); setEditingNote(null); }} title={e.notes ? "Notes" : "Add note"} />
                             {me?.role === "super" && <Button variant="ghost" size="sm" icon={<RefreshCw size={12} />} style={{ padding: "5px 8px" }} loading={busy} onClick={() => handleResend(e.id)} title="Resend WhatsApp" />}
                             {canDelete && <Button variant="ghost" size="sm" icon={<Trash2 size={12} />} style={{ padding: "5px 8px", color: C.red }} onClick={() => setToConfirm(e.id)} title="Delete" />}
                           </>)
@@ -495,7 +703,7 @@ export default function RsvpPage() {
                   </Tr>
                   {isExpanded && hasExtra && (
                     <Tr>
-                      <Td colSpan={8} style={{ background: C.bg, padding: "10px 20px 14px" }}>
+                      <Td colSpan={canAssign ? 11 : 9} style={{ background: C.bg, padding: "10px 20px 14px" }}>
                         <div style={{ display: "flex", flexWrap: "wrap", gap: 20 }}>
                           {customFields.map(f => (
                             <div key={f.key}>
@@ -524,12 +732,17 @@ export default function RsvpPage() {
             return (
               <Card key={e.id} padding={14} style={{ opacity: busy ? 0.5 : 1 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
+                  {canAssign && <input type="checkbox" checked={selected.has(e.id)} onChange={() => toggleSel(e.id)} aria-label={`Select ${e.name}`} />}
                   <Avatar name={e.name} size={36} />
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <p style={{ fontWeight: 700, fontSize: 14, color: C.text, margin: 0 }}>{e.name}</p>
-                    <p style={{ fontSize: 12, color: C.textMuted, margin: "2px 0 0", fontFamily: "monospace" }}>{e.whatsapp}</p>
+                    <a href={`tel:${e.whatsapp.replace(/[^\d+]/g, "")}`} style={{ display: "inline-block", fontSize: 13, color: C.textSub, margin: "2px 0 0", fontVariantNumeric: "tabular-nums", textDecoration: "none" }}>{e.whatsapp}</a>
                   </div>
                   {e.waSent ? <Badge variant="green" icon={<CheckCircle size={10} />}>Sent</Badge> : <Badge variant="orange" icon={<Clock size={10} />}>Pending</Badge>}
+                </div>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", margin: "0 0 8px" }}>
+                  <CallBadge n={callCount(e.notes)} />
+                  {canAssign && assigneeSelect(e)}
                 </div>
                 <p style={{ fontSize: 12, color: C.textSub, margin: "0 0 6px", lineHeight: 1.5 }}>{[e.village, e.postOffice, e.district, e.pinCode].filter(Boolean).join(", ") || e.address}</p>
                 {e.totalAttending && <p style={{ fontSize: 11, color: C.textMuted, margin: "0 0 6px" }}>Attending: <strong>{e.totalAttending}</strong></p>}
@@ -550,19 +763,28 @@ export default function RsvpPage() {
                     ) : null)}
                   </div>
                 )}
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                  <span style={{ fontSize: 11, color: C.textMuted }}>{new Date(e.submittedAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}</span>
-                  <div style={{ display: "flex", gap: 4 }}>
-                    {confirm
-                      ? (<><Button variant="danger" size="sm" loading={busy} onClick={() => handleDelete(e.id)}>Confirm</Button><Button variant="secondary" size="sm" onClick={() => setToConfirm(null)}>Cancel</Button></>)
-                      : (<>
-                          <Button variant="ghost" size="sm" icon={<Pencil size={12} />} style={{ padding: "5px 8px" }} onClick={() => openEdit(e)} title="Edit" />
-                          <Button variant="ghost" size="sm" icon={<RefreshCw size={12} />} style={{ padding: "5px 8px" }} loading={busy} onClick={() => handleResend(e.id)} title="Resend WhatsApp" />
-                          <Button variant="ghost" size="sm" icon={<Trash2 size={12} />} style={{ padding: "5px 8px", color: C.red }} onClick={() => setToConfirm(e.id)} title="Delete" />
-                        </>)
-                    }
+                <p style={{ fontSize: 11, color: C.textMuted, margin: "0 0 10px" }}>Registered {new Date(e.submittedAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}</p>
+                {confirm && canDelete ? (
+                  <div style={{ display: "flex", gap: 8, paddingTop: 10, borderTop: `1px solid ${C.border}` }}>
+                    <span style={{ flex: 1, fontSize: 13, color: C.red, alignSelf: "center" }}>Delete this RSVP?</span>
+                    <Button variant="secondary" onClick={() => setToConfirm(null)}>Cancel</Button>
+                    <Button variant="danger" loading={busy} onClick={() => handleDelete(e.id)}>Delete</Button>
                   </div>
-                </div>
+                ) : (
+                  <div style={{ display: "flex", gap: 8, paddingTop: 10, borderTop: `1px solid ${C.border}`, flexWrap: "wrap" }}>
+                    <a href={`tel:${e.whatsapp.replace(/[^\d+]/g, "")}`} style={{
+                      flex: 1, minWidth: 96, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6,
+                      padding: "9px 12px", borderRadius: 8, background: C.primary, color: "#fff", fontSize: 13, fontWeight: 600, textDecoration: "none",
+                    }}><Phone size={14} /> Call</a>
+                    <Button variant="secondary" icon={<MessageSquare size={14} />} style={{ flex: 1, minWidth: 96, color: e.notes ? "#9A7B45" : undefined }}
+                      onClick={() => { setNoteEntry(e); setNoteText(""); setNoteType(null); setEditingNote(null); }}>
+                      {e.notes ? "Notes" : "Add note"}
+                    </Button>
+                    {canEdit && <Button variant="ghost" icon={<Pencil size={14} />} onClick={() => openEdit(e)} aria-label="Edit" title="Edit" style={{ padding: "9px 12px" }} />}
+                    {me?.role === "super" && <Button variant="ghost" icon={<RefreshCw size={14} />} loading={busy} onClick={() => handleResend(e.id)} aria-label="Resend WhatsApp" title="Resend WhatsApp" style={{ padding: "9px 12px" }} />}
+                    {canDelete && <Button variant="ghost" icon={<Trash2 size={14} />} onClick={() => setToConfirm(e.id)} aria-label="Delete" title="Delete" style={{ padding: "9px 12px", color: C.red }} />}
+                  </div>
+                )}
               </Card>
             );
           })}

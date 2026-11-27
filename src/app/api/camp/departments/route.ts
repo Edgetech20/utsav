@@ -3,7 +3,10 @@ import { db } from "@/lib/db";
 import { getSessionUser, can, getIp } from "@/lib/auth";
 import { logChange } from "@/lib/changelog";
 
-export async function GET() {
+export async function GET(req: NextRequest) {
+  const user = await getSessionUser(req);
+  if (!user) return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
+  if (!can(user, "camp", "view")) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   const rows = await db.campDepartment.findMany({ orderBy: { order: "asc" } });
   return NextResponse.json(rows);
 }
@@ -11,7 +14,7 @@ export async function GET() {
 export async function POST(req: NextRequest) {
   const user = await getSessionUser(req);
   if (!user) return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
-  if (!can(user, "camp", "edit")) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  if (!can(user, "camp", "manage")) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const { code, name } = await req.json();
   if (!code?.trim()) return NextResponse.json({ error: "code required" }, { status: 400 });
@@ -28,7 +31,7 @@ export async function POST(req: NextRequest) {
 export async function PUT(req: NextRequest) {
   const user = await getSessionUser(req);
   if (!user) return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
-  if (!can(user, "camp", "edit")) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  if (!can(user, "camp", "manage")) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const { id, code, name, isActive, order } = await req.json();
   const row = await db.campDepartment.update({
@@ -47,7 +50,7 @@ export async function PUT(req: NextRequest) {
 export async function DELETE(req: NextRequest) {
   const user = await getSessionUser(req);
   if (!user) return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
-  if (!can(user, "camp", "edit")) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  if (!can(user, "camp", "manage")) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const { id } = await req.json();
   const count = await db.campPatient.count({ where: { departmentId: id } });

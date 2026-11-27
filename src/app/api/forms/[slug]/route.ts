@@ -71,7 +71,7 @@ export async function DELETE(req: NextRequest, { params }: Ctx) {
   const { slug } = await params;
   const user = await getSessionUser(req);
   if (!user) return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
-  if (!canForm(user, slug, "edit")) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  if (!canForm(user, slug, "delete")) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const form = await db.dynamicForm.findUnique({ where: { slug } });
   if (!form) return NextResponse.json({ error: "not found" }, { status: 404 });

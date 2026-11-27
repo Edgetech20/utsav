@@ -3,7 +3,7 @@ import { db } from "@/lib/db";
 import { requirePerm, getIp } from "@/lib/auth";
 import { logChange } from "@/lib/changelog";
 
-const guard = (req: NextRequest, a: "view" | "edit") => requirePerm(req, "volunteer", a);
+const guard = (req: NextRequest, a: "view" | "edit" | "delete") => requirePerm(req, "volunteer", a);
 
 // Next free "SEC-007" for a department (max existing + 1, so deletes never cause reuse collisions)
 async function nextCode(deptCode: string) {
@@ -67,7 +67,7 @@ export async function PUT(req: NextRequest) {
 }
 
 export async function DELETE(req: NextRequest) {
-  const { user, err } = await guard(req, "edit");
+  const { user, err } = await guard(req, "delete");
   if (err) return err;
   const { id } = await req.json();
   const row = await db.volunteer.delete({ where: { id } }).catch(() => null);

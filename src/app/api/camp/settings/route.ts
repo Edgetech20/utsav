@@ -17,7 +17,7 @@ export async function GET(req: NextRequest) {
 export async function PUT(req: NextRequest) {
   const user = await getSessionUser(req);
   if (!user) return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
-  if (!can(user, "camp", "edit")) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  if (!can(user, "camp", "manage")) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const body: Record<string, string> = await req.json();
 

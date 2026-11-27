@@ -17,7 +17,6 @@ export async function getUserByToken(token: string | undefined): Promise<Session
   const session = await db.adminSession.findUnique({
     where: { token },
     include: { user: { include: {
-      permissions: true,
       roles: { include: { role: { include: { permissions: true } } } },
     } } },
   });
@@ -30,11 +29,7 @@ export async function getUserByToken(token: string | undefined): Promise<Session
   }
 
   const { user } = session;
-  // ponytail: legacy AdminPermission rows still merged in until Phase 2 moves the users UI to roles
-  const keys = new Set([
-    ...user.permissions.map(p => `${p.resource}:${p.action}`),
-    ...user.roles.flatMap(ur => ur.role.permissions.map(rp => rp.perm)),
-  ]);
+  const keys = new Set(user.roles.flatMap(ur => ur.role.permissions.map(rp => rp.perm)));
 
   return {
     email: user.email,
@@ -53,27 +48,18 @@ export function getSessionUser(req: NextRequest): Promise<SessionUser | null> {
 /**
  * Returns true if the user can perform the given action on the resource.
  * - Super role always returns true.
- * - "edit" permission implies "view".
- * - For the "camp" resource, sub-roles (doctor/pharmacist/medical) imply both view and edit
- *   so they can call camp APIs; page-level access is restricted by CampNav visibility.
+ * - "view" is granted by any permission on the resource (you can't act on what you can't see).
+ * - Every other action must be granted exactly — "edit" does NOT imply "delete".
  */
-export function can(user: SessionUser, resource: string, action: "view" | "edit"): boolean {
+export function can(user: SessionUser, resource: string, action: string): boolean {
   if (user.role === "super") return true;
-  if (resource === "camp") {
-    const campPerms = user.permissions.filter(p => p.resource === "camp").map(p => p.action);
-    if (action === "view") return campPerms.length > 0;
-    // edit: granted by edit, doctor, pharmacist, or medical (view-only cannot edit)
-    return campPerms.some(a => a !== "view");
-  }
-  return user.permissions.some(
-    p => p.resource === resource && (p.action === action || (action === "view" && p.action === "edit"))
-  );
+  return user.permissions.some(p => p.resource === resource && (action === "view" || p.action === action));
 }
 
 /**
  * Form-specific permission check: checks form:[slug] first, falls back to global "forms".
  */
-export function canForm(user: SessionUser, slug: string, action: "view" | "edit"): boolean {
+export function canForm(user: SessionUser, slug: string, action: string): boolean {
   if (user.role === "super") return true;
   return can(user, `form:${slug}`, action) || can(user, "forms", action);
 }
@@ -86,7 +72,7 @@ export function getIp(req: NextRequest): string {
 }
 
 /** Session + permission check for API routes: returns `{ user }` or `{ err }` (401/403 response). */
-export async function requirePerm(req: NextRequest, resource: string, action: "view" | "edit"):
+export async function requirePerm(req: NextRequest, resource: string, action: string):
   Promise<{ user: SessionUser; err?: undefined } | { user?: undefined; err: Response }> {
   const user = await getSessionUser(req);
   if (!user) return { err: Response.json({ error: "Unauthorised" }, { status: 401 }) };

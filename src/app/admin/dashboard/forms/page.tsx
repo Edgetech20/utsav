@@ -729,7 +729,7 @@ function ResponsesModal({ form, onClose }: { form: Form; onClose: () => void }) 
       method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id }),
     });
     setDeleting(null);
-    if (!res.ok) { toast("Delete failed — please try again", "error"); return; }
+    if (!res.ok) { toast(res.status === 403 ? "You don't have permission to delete responses" : "Delete failed — please try again", "error"); return; }
     setResponses(prev => prev.filter(r => r.id !== id));
     toast("Response deleted", "success");
   }
@@ -997,7 +997,12 @@ export default function FormsPage() {
 
   async function del(form: Form) {
     setDeleting(form.id); setToConfirm(null);
-    await fetch(`/api/forms/${form.slug}`, { method: "DELETE" });
+    const res = await fetch(`/api/forms/${form.slug}`, { method: "DELETE" });
+    if (!res.ok) {
+      toast(res.status === 403 ? "You don't have permission to delete this form" : "Delete failed", "error");
+      setDeleting(null);
+      return;
+    }
     toast("Form deleted", "success");
     await load();
     setDeleting(null);

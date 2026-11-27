@@ -26,7 +26,7 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   const user = await getSessionUser(req);
   if (!user) return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
-  if (!can(user, "camp", "edit")) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  if (!can(user, "camp", "manage")) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const body = await req.json();
   const ip = getIp(req);
@@ -57,7 +57,7 @@ export async function POST(req: NextRequest) {
 export async function PUT(req: NextRequest) {
   const user = await getSessionUser(req);
   if (!user) return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
-  if (!can(user, "camp", "edit")) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  if (!can(user, "camp", "manage")) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const { id, name, unit, stock, isActive } = await req.json();
   if (!id) return NextResponse.json({ error: "id required" }, { status: 400 });
@@ -78,7 +78,7 @@ export async function PUT(req: NextRequest) {
 export async function DELETE(req: NextRequest) {
   const user = await getSessionUser(req);
   if (!user) return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
-  if (!can(user, "camp", "edit")) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  if (!can(user, "camp", "manage")) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const id = parseInt(new URL(req.url).searchParams.get("id") ?? "");
   if (!id) return NextResponse.json({ error: "id required" }, { status: 400 });

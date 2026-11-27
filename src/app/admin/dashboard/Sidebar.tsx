@@ -4,12 +4,13 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import {
-  LayoutDashboard, Wifi, Users, LogOut,
-  MessageSquare, ImageIcon, Menu, X, QrCode, Settings, ClipboardList, Globe, CalendarDays, History, ShieldCheck, Tent, BadgeCheck,
+  LayoutDashboard, Wifi, Users, LogOut, LayoutGrid,
+  MessageSquare, ImageIcon, Menu, X, QrCode, Settings, ClipboardList, Globe, CalendarDays, History, ShieldCheck, Tent, BadgeCheck, KeyRound,
 } from "lucide-react";
 import { ToastProvider } from "./toast";
 import { C } from "./ui";
 import type { SessionUser } from "@/lib/auth";
+import { isScopedCaller } from "@/lib/permissions";
 
 type NavItem = { label: string; sub?: string; href: string; icon: React.ElementType; resource: string | null };
 
@@ -54,6 +55,7 @@ const NAV_GROUPS: Array<{ label: string; items: NavItem[] }> = [
     label: "Admin",
     items: [
       { label: "Users",      href: "/admin/dashboard/users",     icon: ShieldCheck, resource: "users" },
+      { label: "Roles",      href: "/admin/dashboard/roles",     icon: KeyRound,    resource: "users" }, // super-only via "users"
       { label: "Change Log", href: "/admin/dashboard/changelog", icon: History,     resource: "changelog" },
       { label: "Settings",   href: "/admin/dashboard/settings",  icon: Settings,    resource: "settings" },
     ],
@@ -62,14 +64,15 @@ const NAV_GROUPS: Array<{ label: string; items: NavItem[] }> = [
 
 const ALL_NAV = NAV_GROUPS.flatMap(g => g.items);
 
+// Overview pages (resource null) show everyone's RSVP data — callers only get their own list
+const CALLER_HOME = "/admin/dashboard/rsvp";
+
 function userCan(user: SessionUser, resource: string | null): boolean {
-  if (resource === null) return true;
+  if (resource === null) return !isScopedCaller(user);
   if (user.role === "super") return true;
   if (resource === "users") return false; // always super-only
-  return user.permissions.some(
-    p => (p.resource === resource || (resource === "forms" && p.resource.startsWith("form:"))) &&
-         (p.action === "view" || p.action === "edit")
-  );
+  // any permission on a module shows its link (view is implied by every action)
+  return user.permissions.some(p => p.resource === resource || (resource === "forms" && p.resource.startsWith("form:")));
 }
 
 export default function Sidebar({ children, eventTitle, user }: {
@@ -92,9 +95,15 @@ export default function Sidebar({ children, eventTitle, user }: {
 
   useEffect(() => { setDrawer(false); }, [pathname]);
 
+  // Callers landing on an overview page (e.g. right after login) go to their RSVP list
+  useEffect(() => {
+    const page = ALL_NAV.find(i => i.href === pathname);
+    if (page?.resource === null && isScopedCaller(user)) router.replace(CALLER_HOME);
+  }, [pathname, user, router]);
+
   async function logout() {
     await fetch("/api/admin-login", { method: "DELETE" });
-    router.push("/admin");
+    window.location.assign("/login");
   }
 
   const currentNav   = ALL_NAV.find(n => n.href === pathname);
@@ -184,10 +193,14 @@ export default function Sidebar({ children, eventTitle, user }: {
           <div>
             <p style={{ fontSize: 12, fontWeight: 600, color: C.text, margin: 0, lineHeight: 1.2 }}>{displayName}</p>
             <p style={{ fontSize: 10, color: C.textMuted, margin: 0 }}>
-              {user.role === "super" ? "Super Admin" : "Member"}
+              {user.role === "super" ? "Super Admin" : user.roles.join(" · ") || "Member"}
             </p>
           </div>
         </div>
+        <a href="/login" title="Switch module" aria-label="Switch module"
+          style={{ padding: 6, borderRadius: 6, color: C.textMuted, display: "flex", alignItems: "center" }}>
+          <LayoutGrid size={15} />
+        </a>
         <button
           onClick={logout}
           title="Sign out"

@@ -6,7 +6,7 @@ import CampNav from "./CampNav";
 
 export default async function CampAuthLayout({ children }: { children: React.ReactNode }) {
   const user = await getUserByToken((await cookies()).get("admin_session")?.value);
-  if (!user) redirect("/login?next=/camp");
+  if (!user) redirect("/login");
 
   // Camp must be enabled — super admin bypasses
   if (user.role !== "super") {

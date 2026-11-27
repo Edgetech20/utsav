@@ -48,7 +48,7 @@ export async function POST(req: NextRequest) {
     await db.otpStore.upsert({
       where: { email },
       create: { email, otp, expiresAt: new Date(Date.now() + 5 * 60 * 1000) },
-      update: { otp, expiresAt: new Date(Date.now() + 5 * 60 * 1000) },
+      update: { otp, attempts: 0, expiresAt: new Date(Date.now() + 5 * 60 * 1000) },
     });
 
     try {
@@ -64,10 +64,20 @@ export async function POST(req: NextRequest) {
     const record = await db.otpStore.findUnique({ where: { email } });
 
     if (!record || Date.now() > record.expiresAt.getTime())
-      return NextResponse.json({ error: "OTP expired. Request a new one." }, { status: 401 });
+      return NextResponse.json({ error: "This code has expired. Request a new one." }, { status: 401 });
 
-    if (body.otp.trim() !== record.otp)
-      return NextResponse.json({ error: "Incorrect OTP" }, { status: 401 });
+    if (String(body.otp).trim() !== record.otp) {
+      // 6 digits = 1M combinations; without a cap they could be brute-forced inside the 5-minute window
+      const MAX_TRIES = 5;
+      const tries = record.attempts + 1;
+      if (tries >= MAX_TRIES) {
+        await db.otpStore.delete({ where: { email } });
+        return NextResponse.json({ error: "Too many wrong codes. Request a new one." }, { status: 429 });
+      }
+      await db.otpStore.update({ where: { email }, data: { attempts: tries } });
+      const left = MAX_TRIES - tries;
+      return NextResponse.json({ error: `Incorrect code — ${left} ${left === 1 ? "try" : "tries"} left` }, { status: 401 });
+    }
 
     await db.otpStore.delete({ where: { email } });
 

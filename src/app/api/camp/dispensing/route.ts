@@ -43,7 +43,7 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   const user = await getSessionUser(req);
   if (!user) return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
-  if (!can(user, "camp", "edit")) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  if (!can(user, "camp", "dispense")) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const { patientId, items, noMedicine } = await req.json();
   if (!patientId) return NextResponse.json({ error: "patientId required" }, { status: 400 });

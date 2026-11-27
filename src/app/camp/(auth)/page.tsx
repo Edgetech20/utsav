@@ -63,7 +63,7 @@ export default function CampDashboard() {
   const [loading,   setLoading]   = useState(true);
   const [updatedAt, setUpdatedAt] = useState<Date | null>(null);
 
-  const hasEdit = user.role === "super" || user.permissions.some(p => p.resource === "camp" && p.action === "edit");
+  const hasEdit = user.role === "super" || user.permissions.some(p => p.resource === "camp" && p.action === "manage");
 
   const load = useCallback(async () => {
     const r = await fetch("/api/camp/stats");

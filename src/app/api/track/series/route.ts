@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { getSessionUser } from "@/lib/auth";
+import { getSessionUser, can } from "@/lib/auth";
+import { isScopedCaller } from "@/lib/permissions";
 
 export async function GET(req: NextRequest) {
   const user = await getSessionUser(req);
   if (!user) return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
+  if (!can(user, "rsvp", "view") || isScopedCaller(user)) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const since = new Date();
   since.setDate(since.getDate() - 13);

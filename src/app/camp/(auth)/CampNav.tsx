@@ -2,10 +2,10 @@
 
 import { createContext, useContext, useState, useEffect, Fragment } from "react";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import {
   UserPlus, Stethoscope, Users, BarChart2, Pill, Package, FileText,
-  LogOut, Menu, X, Tent, Building2,
+  LogOut, LayoutGrid, Menu, X, Tent, Building2,
   ChevronLeft, ChevronRight,
 } from "lucide-react";
 import type { SessionUser } from "@/lib/auth";
@@ -50,7 +50,6 @@ export default function CampNav({
   module?: ModuleCfg; // other modules (e.g. volunteer) reuse this shell; defaults to Medical Camp
 }) {
   const pathname  = usePathname();
-  const router    = useRouter();
   const [desktop,   setDesktop]   = useState(false);
   const [drawer,    setDrawer]    = useState(false);
   const [collapsed, setCollapsed] = useState(false);
@@ -81,24 +80,19 @@ export default function CampNav({
 
   async function logout() {
     await fetch("/api/admin-login", { method: "DELETE" });
-    router.push(cfg.login);
+    window.location.assign(cfg.login);
   }
 
   const campPerms    = user.permissions.filter(p => p.resource === "camp").map(p => p.action);
   const isSuper      = user.role === "super";
-  const hasEdit      = isSuper || campPerms.includes("edit");
+  const has          = (a: string) => isSuper || campPerms.includes(a);
+  const hasEdit      = has("manage");
   const hasAny       = isSuper || campPerms.length > 0;
-  const isDoctor     = hasEdit || campPerms.includes("doctor");
-  const isPharmacist = hasEdit || campPerms.includes("pharmacist");
-  const isMedical    = hasEdit || campPerms.includes("medical");
+  const isDoctor     = has("consult");
+  const isPharmacist = has("dispense");
+  const isMedical    = has("register");
 
-  const roleLabel = isSuper                        ? "Super Admin"
-    : campPerms.includes("edit")                   ? "Camp Admin"
-    : campPerms.includes("doctor")                 ? "Doctor"
-    : campPerms.includes("pharmacist")             ? "Pharmacist"
-    : campPerms.includes("medical")                ? "Medical User"
-    : campPerms.includes("view")                   ? "Camp Viewer"
-    : "Member";
+  const roleLabel = isSuper ? "Super Admin" : user.roles.join(" · ") || "Member";
 
   const MANAGE: NavLink[] = [
     { label: "Departments", href: "/camp/manage/departments", icon: Building2,   visible: hasEdit },
@@ -257,6 +251,7 @@ export default function CampNav({
                   <div title={displayName} style={{ width: 30, height: 30, borderRadius: "50%", background: "linear-gradient(135deg,#1a1a2e,#16213e)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 700, color: C.gold, cursor: "default" }}>
                     {initials}
                   </div>
+                  <a href="/login" title="Switch module" aria-label="Switch module" style={{ padding: 5, borderRadius: 6, color: C.textMuted, display: "flex" }}><LayoutGrid size={14} /></a>
                   <button onClick={logout} title="Sign out" style={{ border: "none", background: "transparent", cursor: "pointer", padding: 5, borderRadius: 6, color: C.textMuted, display: "flex" }}>
                     <LogOut size={14} />
                   </button>
@@ -278,6 +273,7 @@ export default function CampNav({
                     </div>
                   </div>
                   <div style={{ display: "flex", alignItems: "center", gap: 4, flexShrink: 0 }}>
+                    <a href="/login" title="Switch module" aria-label="Switch module" style={{ padding: 5, borderRadius: 6, color: C.textMuted, display: "flex" }}><LayoutGrid size={14} /></a>
                     <button onClick={logout} title="Sign out" style={{ border: "none", background: "transparent", cursor: "pointer", padding: 5, borderRadius: 6, color: C.textMuted, display: "flex" }}>
                       <LogOut size={14} />
                     </button>
@@ -314,6 +310,7 @@ export default function CampNav({
               <div style={{ width: 28, height: 28, borderRadius: "50%", background: "linear-gradient(135deg,#1a1a2e,#16213e)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 700, color: C.gold }}>
                 {initials}
               </div>
+              <a href="/login" title="Switch module" aria-label="Switch module" style={{ padding: 5, borderRadius: 6, color: C.textMuted, display: "flex" }}><LayoutGrid size={14} /></a>
               <button onClick={logout} title="Sign out" style={{ border: "none", background: "transparent", cursor: "pointer", padding: 5, borderRadius: 6, color: C.textMuted, display: "flex" }}>
                 <LogOut size={15} />
               </button>

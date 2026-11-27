@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { writeFile } from "fs/promises";
 import { join } from "path";
-import { getSessionUser, getIp } from "@/lib/auth";
+import { getSessionUser, getIp, can } from "@/lib/auth";
 import { logChange } from "@/lib/changelog";
 
 export async function POST(req: NextRequest) {
   const user = await getSessionUser(req);
   if (!user) return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
-  if (user.role !== "super") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  if (!can(user, "settings", "edit")) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const form = await req.formData();
   const file = form.get("file") as File | null;

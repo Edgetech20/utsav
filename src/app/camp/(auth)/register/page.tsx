@@ -598,7 +598,7 @@ export default function PatientPage() {
   const desktop    = useDesktop();
   const { toast }  = useToast();
   const campUser   = useCampUser();
-  const hasEdit    = campUser.role === "super" || campUser.permissions.some(p => p.resource === "camp" && p.action === "edit");
+  const hasEdit    = campUser.role === "super" || campUser.permissions.some(p => p.resource === "camp" && p.action === "manage");
   const [patients, setPatients] = useState<Patient[]>([]);
   const [depts,    setDepts]    = useState<Dept[]>([]);
   const [loading,  setLoading]  = useState(true);

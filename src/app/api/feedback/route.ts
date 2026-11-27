@@ -40,7 +40,7 @@ export async function GET(req: NextRequest) {
 export async function DELETE(req: NextRequest) {
   const user = await getSessionUser(req);
   if (!user) return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
-  if (!can(user, "feedback", "edit")) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  if (!can(user, "feedback", "delete")) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const { id } = await req.json();
   await db.feedbackResponse.delete({ where: { id } });

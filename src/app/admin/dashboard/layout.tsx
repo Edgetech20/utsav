@@ -9,7 +9,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
   const token = jar.get("admin_session")?.value;
 
   const user = await getUserByToken(token);
-  if (!user) redirect("/admin/login?from=/admin/dashboard");
+  if (!user) redirect("/login");
 
   const rows = await db.setting.findMany({ where: { key: { in: ["event_title", "event_title_sub"] } } });
   const s = Object.fromEntries(rows.map(r => [r.key, r.value]));

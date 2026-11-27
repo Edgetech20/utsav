@@ -1,10 +1,9 @@
 // One-time: convert per-user AdminPermission rows into roles. Safe to re-run.
 // Run once per client DB after `npx prisma db push`:   npx jiti scripts/migrate-roles.ts
 // AdminPermission rows are left untouched (dropped in a later release).
-import { PrismaClient } from "@prisma/client";
+import { db } from "../src/lib/db";
 import { PERMISSIONS, STARTER_ROLES } from "../src/lib/permissions";
-
-const db = new PrismaClient();
+import { rebalance } from "../src/lib/rsvpAssign";
 const ACTIONS = new Set(PERMISSIONS.flatMap(g => g.perms.map(p => p.key.split(":").pop()!)));
 
 const CAMP_ROLE: Record<string, string> = {
@@ -38,7 +37,12 @@ async function main() {
 
     const rest = u.permissions
       .filter(p => p.resource !== "camp")
-      .flatMap(p => p.resource === "volunteer" ? VOL[p.action] ?? [] : [`${p.resource}:${p.action}`]);
+      .flatMap(p =>
+        p.resource === "volunteer" ? VOL[p.action] ?? []
+        // form edit used to include deleting responses; keep that ability now that delete is separate
+        : (p.resource === "forms" || p.resource.startsWith("form:")) && p.action === "edit"
+          ? [`${p.resource}:edit`, `${p.resource}:delete`]
+        : [`${p.resource}:${p.action}`]);
     // drops malformed legacy rows, e.g. { resource: "form", action: "<slug>" } from an old split bug
     const key = [...new Set(rest)].filter(k => ACTIONS.has(k.slice(k.lastIndexOf(":") + 1))).sort().join(",");
     if (key) groups.set(key, [...(groups.get(key) ?? []), u.email]);
@@ -53,6 +57,9 @@ async function main() {
     await db.userRole.createMany({ data: emails.map(email => ({ email, roleId: role.id })), skipDuplicates: true });
     console.log(`role "${name}" → ${emails.length} user(s)`);
   }
+
+  // Share RSVPs out across whoever is in the caller pool now
+  console.log("rsvp assignment:", await rebalance());
 }
 
 main().finally(() => db.$disconnect());

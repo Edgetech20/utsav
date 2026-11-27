@@ -9,7 +9,10 @@ export const PERMISSIONS: PermGroup[] = [
     { key: "rsvp:view",     label: "View RSVPs" },
     { key: "rsvp:edit",     label: "Edit RSVPs" },
     { key: "rsvp:delete",   label: "Delete RSVPs" },
-    { key: "feedback:view", label: "View feedback" },
+    { key: "rsvp:caller",   label: "Caller — gets auto-assigned RSVPs, sees only those" },
+    { key: "rsvp:assign",   label: "See & manage caller assignments" },
+    { key: "feedback:view",   label: "View feedback" },
+    { key: "feedback:delete", label: "Delete feedback" },
   ]},
   { label: "Content", perms: [
     { key: "attractions:view", label: "View attractions" },
@@ -20,7 +23,7 @@ export const PERMISSIONS: PermGroup[] = [
   { label: "Operations", perms: [
     { key: "forms:view",     label: "View all forms" },
     { key: "forms:edit",     label: "Edit all forms" },
-    { key: "forms:delete",   label: "Delete form responses (all forms)" },
+    { key: "forms:delete",   label: "Delete forms & responses (all forms)" },
     { key: "qr:view",        label: "View QR codes" },
     { key: "qr:edit",        label: "Edit QR codes" },
     { key: "whatsapp:view",  label: "View WhatsApp" },
@@ -75,4 +78,25 @@ export const STARTER_ROLES: Array<{ name: string; description: string; perms: st
   { name: "Registration Desk", description: "Patient registration",              perms: ["camp:view", "camp:register"] },
   { name: "Camp Viewer",       description: "Camp reports, read-only",           perms: ["camp:view"] },
   { name: "Volunteer Admin",   description: "Full volunteer module access",      perms: all("volunteer") },
+  { name: "BPO Caller",        description: "Calls their auto-assigned RSVP guests: edit details, add and edit own call notes; no delete", perms: ["rsvp:view", "rsvp:edit", "rsvp:caller"] },
 ];
+
+type PermUser = { role: string; permissions: Array<{ resource: string; action: string }> };
+const hasPerm = (u: PermUser, resource: string, action: string) =>
+  u.permissions.some(p => p.resource === resource && p.action === action);
+
+/** Callers see only RSVPs assigned to them — unless they also manage assignments (or are super). */
+export function isScopedCaller(u: PermUser): boolean {
+  return u.role !== "super" && hasPerm(u, "rsvp", "caller") && !hasPerm(u, "rsvp", "assign");
+}
+
+/** Calls made so far, from the RSVP note log: highest "callN" entry (0 = not called yet). */
+export function callCount(notes: string | null): number {
+  if (!notes) return 0;
+  try {
+    return (JSON.parse(notes) as Array<{ type?: string }>).reduce((max, n) => {
+      const m = /^call(\d+)$/.exec(n.type ?? "");
+      return m ? Math.max(max, +m[1]) : max;
+    }, 0);
+  } catch { return 0; }
+}

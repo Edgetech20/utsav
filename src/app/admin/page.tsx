@@ -86,7 +86,7 @@ export default function AdminPage() {
         </p>
       </div>
 
-      <a href="/admin/login?from=/admin/dashboard" style={{ marginTop: 16, fontSize: 12, color: "#94A3B8", textDecoration: "none" }}>
+      <a href="/login" style={{ marginTop: 16, fontSize: 12, color: "#94A3B8", textDecoration: "none" }}>
         Admin Login →
       </a>
     </div>

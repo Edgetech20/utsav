@@ -1,288 +1,14 @@
 "use client";
 
-import { useEffect, useState, useCallback, Fragment } from "react";
-import { UserPlus, Users, Trash2, ChevronDown, ChevronUp, ShieldCheck, User, Save } from "lucide-react";
+import { useEffect, useRef, useState, useCallback } from "react";
+import Link from "next/link";
+import { UserPlus, Users, Trash2, Pencil, ShieldCheck, Save, X } from "lucide-react";
 import { C, Button, PageHeader, Table, Thead, Th, Tbody, Td, Tr, Skeleton, Empty, Avatar, Search } from "../ui";
 import { useToast } from "../toast";
+import type { Role } from "../roles/RolesManager";
 
-type Perm = { resource: string; action: string };
-type AdminUser = { email: string; name: string | null; role: string; createdAt: string; permissions: Perm[] };
-type Form = { slug: string; name: string };
-
-const CAMP_ROLES: { value: string; label: string; desc: string }[] = [
-  { value: "none",       label: "No Access",    desc: "Cannot access the camp module" },
-  { value: "view",       label: "View Only",    desc: "Reports and stats, read-only" },
-  { value: "medical",    label: "Medical User", desc: "Patient registration desk" },
-  { value: "doctor",     label: "Doctor",       desc: "Doctor console — call and consult patients" },
-  { value: "pharmacist", label: "Pharmacist",   desc: "Pharmacy queue — dispense medicines" },
-  { value: "edit",       label: "Camp Admin",   desc: "Full access including management" },
-];
-
-// ── Resource definitions ───────────────────────────────────────────────────────
-const RESOURCE_GROUPS = [
-  {
-    label: "Registrations",
-    items: [
-      { key: "rsvp",     label: "RSVP",     actions: ["view", "edit"] },
-      { key: "feedback", label: "Feedback",  actions: ["view"] },
-    ],
-  },
-  {
-    label: "Content",
-    items: [
-      { key: "attractions", label: "Attractions", actions: ["view", "edit"] },
-      { key: "programme",   label: "Programme",   actions: ["view", "edit"] },
-    ],
-  },
-  {
-    label: "Operations",
-    items: [
-      { key: "forms",     label: "Forms (all)", actions: ["view", "edit"] },
-      { key: "qr",        label: "QR Codes",    actions: ["view", "edit"] },
-      { key: "whatsapp",  label: "WhatsApp",    actions: ["view", "edit"] },
-      { key: "templates", label: "Templates",   actions: ["view", "edit"] },
-      { key: "volunteer", label: "Volunteers",  actions: ["view", "edit"] },
-    ],
-  },
-  {
-    label: "Admin",
-    items: [
-      { key: "settings",  label: "Settings",   actions: ["edit"] },
-      { key: "changelog", label: "Change Log", actions: ["view"] },
-    ],
-  },
-];
-
-// ── Permission editor ─────────────────────────────────────────────────────────
-function PermissionEditor({ target, onClose, onSaved }: {
-  target: AdminUser;
-  onClose: () => void;
-  onSaved: (u: AdminUser) => void;
-}) {
-  const { toast } = useToast();
-  const [name, setName]       = useState(target.name ?? "");
-  const [role, setRole]       = useState(target.role);
-  // camp permissions are managed separately via campRole
-  const [perms, setPerms]     = useState<Set<string>>(
-    () => new Set(target.permissions.filter(p => p.resource !== "camp").map(p => `${p.resource}:${p.action}`))
-  );
-  const [campRole, setCampRole] = useState<string>(
-    () => target.permissions.find(p => p.resource === "camp")?.action ?? "none"
-  );
-  const [forms, setForms]     = useState<Form[]>([]);
-  const [saving, setSaving]   = useState(false);
-
-  useEffect(() => {
-    fetch("/api/forms").then(r => r.ok ? r.json() : []).then((data: Form[]) => setForms(data)).catch(() => {});
-  }, []);
-
-  function toggle(resource: string, action: string) {
-    const key = `${resource}:${action}`;
-    const editKey = `${resource}:edit`;
-    const viewKey = `${resource}:view`;
-    setPerms(prev => {
-      const next = new Set(prev);
-      if (action === "edit") {
-        if (next.has(key)) { next.delete(key); }
-        else { next.add(key); next.add(viewKey); } // edit implies view
-      } else {
-        // view toggle — only if edit is not set
-        if (next.has(editKey)) return next; // locked by edit
-        if (next.has(key)) next.delete(key);
-        else next.add(key);
-      }
-      return next;
-    });
-  }
-
-  async function save() {
-    setSaving(true);
-    // Update name + role
-    const ur = await fetch("/api/admin/users", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email: target.email, name: name || null, role }),
-    });
-    if (!ur.ok) { toast("Failed to update user", "error"); setSaving(false); return; }
-
-    // Update permissions (only for members)
-    const campPerm: Perm[] = campRole !== "none" ? [{ resource: "camp", action: campRole }] : [];
-    const permissions: Perm[] = role === "super" ? [] : [
-      ...Array.from(perms).map(k => {
-        const idx = k.lastIndexOf(":");
-        return { resource: k.slice(0, idx), action: k.slice(idx + 1) };
-      }),
-      ...campPerm,
-    ];
-
-    const pr = await fetch(`/api/admin/users/${encodeURIComponent(target.email)}/permissions`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ permissions }),
-    });
-    if (!pr.ok) { toast("Failed to save permissions", "error"); setSaving(false); return; }
-
-    const updated: AdminUser = { ...target, name: name || null, role, permissions: [...permissions] };
-    toast("Saved", "success");
-    onSaved(updated);
-    setSaving(false);
-  }
-
-  const isSuper = role === "super";
-
-  return (
-    <div style={{
-      background: C.bg, border: `1px solid ${C.border}`, borderRadius: 10,
-      padding: 20, display: "flex", flexDirection: "column", gap: 16,
-    }}>
-      {/* Name + Role */}
-      <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-        <div style={{ flex: 1, minWidth: 200 }}>
-          <label style={{ fontSize: 11, fontWeight: 600, color: C.textSub, textTransform: "uppercase", letterSpacing: "0.06em", display: "block", marginBottom: 6 }}>Display Name</label>
-          <input
-            value={name}
-            onChange={e => setName(e.target.value)}
-            placeholder={target.email.split("@")[0]}
-            style={{ width: "100%", padding: "8px 11px", border: `1px solid ${C.border}`, borderRadius: 7, fontSize: 13, color: C.text, background: C.surface, outline: "none", boxSizing: "border-box" }}
-          />
-        </div>
-        <div style={{ minWidth: 160 }}>
-          <label style={{ fontSize: 11, fontWeight: 600, color: C.textSub, textTransform: "uppercase", letterSpacing: "0.06em", display: "block", marginBottom: 6 }}>Role</label>
-          <select
-            value={role}
-            onChange={e => setRole(e.target.value)}
-            style={{ width: "100%", padding: "8px 11px", border: `1px solid ${C.border}`, borderRadius: 7, fontSize: 13, color: C.text, background: C.surface, outline: "none" }}
-          >
-            <option value="member">Member</option>
-            <option value="super">Super Admin</option>
-          </select>
-        </div>
-      </div>
-
-      {isSuper ? (
-        <div style={{ padding: "12px 16px", background: C.goldBg, border: `1px solid ${C.goldBorder}`, borderRadius: 8, fontSize: 13, color: C.gold, fontWeight: 500 }}>
-          Super Admin has full access to everything — no per-section permissions needed.
-        </div>
-      ) : (
-        <div>
-          <p style={{ fontSize: 11, fontWeight: 700, color: C.textMuted, textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 10 }}>Permissions</p>
-
-          {/* Header row */}
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 56px 56px", gap: 0, marginBottom: 4 }}>
-            <span style={{ fontSize: 11, color: C.textMuted }} />
-            <span style={{ fontSize: 10, fontWeight: 700, color: C.textMuted, textAlign: "center", textTransform: "uppercase" }}>View</span>
-            <span style={{ fontSize: 10, fontWeight: 700, color: C.textMuted, textAlign: "center", textTransform: "uppercase" }}>Edit</span>
-          </div>
-
-          {/* Medical Camp — role picker */}
-          <div style={{ marginBottom: 8 }}>
-            <p style={{ fontSize: 10, fontWeight: 700, color: C.textMuted, letterSpacing: "0.08em", textTransform: "uppercase", margin: "8px 0 6px", paddingLeft: 4 }}>Medical Camp</p>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 6, paddingLeft: 4 }}>
-              {CAMP_ROLES.map(opt => (
-                <button
-                  key={opt.value}
-                  type="button"
-                  title={opt.desc}
-                  onClick={() => setCampRole(opt.value)}
-                  style={{
-                    padding: "5px 13px", borderRadius: 20, cursor: "pointer",
-                    border: `1px solid ${campRole === opt.value ? C.gold : C.border}`,
-                    background: campRole === opt.value ? C.goldBg : C.surface,
-                    color: campRole === opt.value ? C.gold : C.textSub,
-                    fontSize: 12, fontWeight: campRole === opt.value ? 700 : 400,
-                  }}
-                >
-                  {opt.label}
-                </button>
-              ))}
-            </div>
-            {campRole !== "none" && (
-              <p style={{ fontSize: 11, color: C.textMuted, margin: "5px 0 0 4px" }}>
-                {CAMP_ROLES.find(o => o.value === campRole)?.desc}
-              </p>
-            )}
-          </div>
-
-          {RESOURCE_GROUPS.map((group, gi) => (
-            <div key={group.label} style={{ marginBottom: 8 }}>
-              <p style={{ fontSize: 10, fontWeight: 700, color: C.textMuted, letterSpacing: "0.08em", textTransform: "uppercase", margin: "8px 0 4px", paddingLeft: 4 }}>{group.label}</p>
-              {group.items.map(item => {
-                const hasEdit   = perms.has(`${item.key}:edit`);
-                const hasView   = perms.has(`${item.key}:view`) || hasEdit;
-                const viewLocked = hasEdit; // edit implies view
-                return (
-                  <div key={item.key} style={{
-                    display: "grid", gridTemplateColumns: "1fr 56px 56px",
-                    alignItems: "center", padding: "7px 8px",
-                    borderRadius: 6, background: (hasView || hasEdit) ? C.goldBg : "transparent",
-                    marginBottom: 2,
-                  }}>
-                    <span style={{ fontSize: 13, color: C.text }}>{item.label}</span>
-                    {/* View */}
-                    <div style={{ textAlign: "center" }}>
-                      {item.actions.includes("view") && (
-                        <input
-                          type="checkbox"
-                          checked={hasView}
-                          disabled={viewLocked}
-                          onChange={() => toggle(item.key, "view")}
-                          style={{ cursor: viewLocked ? "default" : "pointer", accentColor: C.gold }}
-                        />
-                      )}
-                    </div>
-                    {/* Edit */}
-                    <div style={{ textAlign: "center" }}>
-                      {item.actions.includes("edit") && (
-                        <input
-                          type="checkbox"
-                          checked={hasEdit}
-                          onChange={() => toggle(item.key, "edit")}
-                          style={{ cursor: "pointer", accentColor: C.gold }}
-                        />
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-              {/* Per-form permissions after the global "forms" row */}
-              {gi === RESOURCE_GROUPS.findIndex(g => g.items.some(i => i.key === "forms")) && forms.length > 0 && (
-                <div style={{ marginLeft: 16, marginTop: 2 }}>
-                  <p style={{ fontSize: 10, color: C.textMuted, margin: "4px 0 2px", fontStyle: "italic" }}>Per-form access</p>
-                  {forms.map(f => {
-                    const rk = `form:${f.slug}`;
-                    const fEdit = perms.has(`${rk}:edit`);
-                    const fView = perms.has(`${rk}:view`) || fEdit;
-                    return (
-                      <div key={f.slug} style={{
-                        display: "grid", gridTemplateColumns: "1fr 56px 56px",
-                        alignItems: "center", padding: "5px 8px",
-                        borderRadius: 6, background: (fView || fEdit) ? C.goldBg : "transparent",
-                        marginBottom: 2,
-                      }}>
-                        <span style={{ fontSize: 12, color: C.textSub }}>↳ {f.name}</span>
-                        <div style={{ textAlign: "center" }}>
-                          <input type="checkbox" checked={fView} disabled={fEdit} onChange={() => toggle(rk, "view")} style={{ cursor: fEdit ? "default" : "pointer", accentColor: C.gold }} />
-                        </div>
-                        <div style={{ textAlign: "center" }}>
-                          <input type="checkbox" checked={fEdit} onChange={() => toggle(rk, "edit")} style={{ cursor: "pointer", accentColor: C.gold }} />
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
-      )}
-
-      <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
-        <Button variant="ghost" onClick={onClose}>Cancel</Button>
-        <Button icon={<Save size={14} />} onClick={save} loading={saving}>Save Changes</Button>
-      </div>
-    </div>
-  );
-}
+type RoleRef = { id: number; name: string };
+type AdminUser = { email: string; name: string | null; role: string; createdAt: string; roles: RoleRef[] };
 
 // ── Skeleton ──────────────────────────────────────────────────────────────────
 function SkeletonRows() {
@@ -298,18 +24,182 @@ function SkeletonRows() {
   );
 }
 
+// ── Add / edit user dialog ────────────────────────────────────────────────────
+const DIALOG_CSS = `
+.user-dialog { margin: auto; inset: 0; padding: 0; border: none; border-radius: 14px; width: min(560px, calc(100vw - 32px));
+  max-height: calc(100vh - 48px); box-shadow: 0 24px 64px rgba(15,23,42,0.24); color: ${C.text}; }
+.user-dialog::backdrop { background: rgba(15,23,42,0.45); }
+.user-input { width: 100%; box-sizing: border-box; padding: 9px 12px; border: 1px solid ${C.border}; border-radius: 8px;
+  font: inherit; font-size: 13.5px; color: ${C.text}; background: ${C.surface}; transition: border-color .15s, box-shadow .15s; }
+.user-input::placeholder { color: ${C.textMuted}; }
+.user-input:focus { outline: none; border-color: ${C.gold}; box-shadow: 0 0 0 3px ${C.goldBg}; }
+.user-input:read-only { background: ${C.bg}; color: ${C.textSub}; }
+.user-role:hover { background: ${C.bg}; }
+`;
+
+/** Mounted = open. `target` null → add a new user; otherwise edit that user. */
+function UserDialog({ target, roles, onClose, onSaved }: {
+  target: AdminUser | null;
+  roles: Role[];
+  onClose: () => void;
+  onSaved: (u: AdminUser, isNew: boolean) => void;
+}) {
+  const { toast } = useToast();
+  const ref = useRef<HTMLDialogElement>(null);
+  const isNew = target === null;
+  const [name, setName]     = useState(target?.name ?? "");
+  const [email, setEmail]   = useState(target?.email ?? "");
+  const [access, setAccess] = useState<"member" | "super">(target?.role === "super" ? "super" : "member");
+  const [picked, setPicked] = useState<Set<number>>(() => new Set(target?.roles.map(r => r.id) ?? []));
+  const [saving, setSaving] = useState(false);
+  const [error, setError]   = useState("");
+
+  // Native <dialog>: centred, focus-trapped, Esc closes
+  useEffect(() => { ref.current?.showModal(); }, []);
+
+  function toggle(id: number) {
+    setPicked(prev => { const n = new Set(prev); if (n.has(id)) n.delete(id); else n.add(id); return n; });
+    setError("");
+  }
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!name.trim()) { setError("Name is required"); return; }
+    if (!email.trim()) { setError("Email is required"); return; }
+    if (access === "member" && picked.size === 0) { setError("Pick at least one role, or make them Super Admin"); return; }
+    setSaving(true); setError("");
+    const roleIds = access === "member" ? [...picked] : [];
+    const json = { "Content-Type": "application/json" };
+
+    if (isNew) {
+      const r = await fetch("/api/admin/users", {
+        method: "POST", headers: json,
+        body: JSON.stringify({ email, name: name.trim(), role: access, roleIds }),
+      });
+      const data = await r.json().catch(() => ({}));
+      setSaving(false);
+      if (!r.ok) { setError(data.error ?? "Could not add user"); return; }
+      toast("User added — a welcome email is on its way", "success");
+      onSaved(data, true);
+      return;
+    }
+
+    const ur = await fetch("/api/admin/users", {
+      method: "PUT", headers: json,
+      body: JSON.stringify({ email: target.email, name: name.trim(), role: access }),
+    });
+    if (!ur.ok) { setSaving(false); setError((await ur.json().catch(() => ({}))).error ?? "Could not update user"); return; }
+    const rr = await fetch(`/api/admin/users/${encodeURIComponent(target.email)}/roles`, {
+      method: "PUT", headers: json, body: JSON.stringify({ roleIds }),
+    });
+    setSaving(false);
+    if (!rr.ok) { setError((await rr.json().catch(() => ({}))).error ?? "Could not save roles"); return; }
+    toast("User updated", "success");
+    onSaved({ ...target, name: name.trim(), role: access, roles: await rr.json() }, false);
+  }
+
+  return (
+    <dialog ref={ref} className="user-dialog" onClose={onClose} aria-labelledby="user-dialog-title">
+      <style>{DIALOG_CSS}</style>
+      <form onSubmit={submit} style={{ display: "flex", flexDirection: "column", maxHeight: "calc(100vh - 48px)" }}>
+        <div style={{ padding: "18px 24px", borderBottom: `1px solid ${C.border}`, display: "flex", alignItems: "flex-start", gap: 12 }}>
+          <div style={{ flex: 1 }}>
+            <h2 id="user-dialog-title" style={{ fontSize: 16, fontWeight: 700, margin: 0 }}>{isNew ? "Add user" : "Edit user"}</h2>
+            <p style={{ fontSize: 13, color: C.textSub, margin: "4px 0 0" }}>
+              {isNew
+                ? "We'll email them a sign-in link. They log in with a one-time code — no password."
+                : "Changes apply on their next page load."}
+            </p>
+          </div>
+          <button type="button" onClick={onClose} aria-label="Close"
+            style={{ border: "none", background: "none", cursor: "pointer", color: C.textMuted, display: "flex", padding: 4 }}>
+            <X size={18} />
+          </button>
+        </div>
+
+        <div style={{ padding: 24, overflowY: "auto", display: "flex", flexDirection: "column", gap: 18 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 14 }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+              <label htmlFor="ud-name" style={{ fontSize: 13, fontWeight: 600 }}>Full name</label>
+              <input id="ud-name" className="user-input" autoFocus required value={name} autoComplete="off"
+                onChange={e => { setName(e.target.value); setError(""); }} placeholder="Shown in notes and logs" />
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+              <label htmlFor="ud-email" style={{ fontSize: 13, fontWeight: 600 }}>Email</label>
+              <input id="ud-email" className="user-input" type="email" required value={email} autoComplete="off"
+                readOnly={!isNew} aria-describedby={isNew ? undefined : "ud-email-help"}
+                onChange={e => { setEmail(e.target.value); setError(""); }} placeholder="name@example.com" />
+              {!isNew && <p id="ud-email-help" style={{ fontSize: 12, color: C.textMuted, margin: 0 }}>Email is their login and can&apos;t be changed.</p>}
+            </div>
+          </div>
+
+          <fieldset style={{ border: "none", margin: 0, padding: 0, display: "flex", flexDirection: "column", gap: 8 }}>
+            <legend style={{ fontSize: 13, fontWeight: 600, marginBottom: 8, padding: 0 }}>Access</legend>
+            {([["member", "Member", "Can do only what their roles allow"], ["super", "Super Admin", "Full access to everything, including users and roles"]] as const).map(([v, label, desc]) => (
+              <label key={v} className="user-role" style={{
+                display: "flex", gap: 10, alignItems: "flex-start", padding: "10px 12px", borderRadius: 8, cursor: "pointer",
+                border: `1px solid ${access === v ? C.gold : C.border}`, background: access === v ? C.goldBg : C.surface,
+              }}>
+                <input type="radio" name="ud-access" checked={access === v} onChange={() => { setAccess(v); setError(""); }} style={{ marginTop: 3, accentColor: C.gold }} />
+                <span>
+                  <span style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, fontWeight: 600 }}>
+                    {v === "super" && <ShieldCheck size={13} color={C.gold} />}{label}
+                  </span>
+                  <span style={{ display: "block", fontSize: 12, color: C.textSub, marginTop: 2 }}>{desc}</span>
+                </span>
+              </label>
+            ))}
+          </fieldset>
+
+          {access === "member" && (
+            <fieldset style={{ border: "none", margin: 0, padding: 0 }}>
+              <legend style={{ fontSize: 13, fontWeight: 600, marginBottom: 8, padding: 0, width: "100%", display: "flex", justifyContent: "space-between" }}>
+                Roles <span style={{ fontWeight: 400, fontSize: 12, color: C.textSub }}>{picked.size} selected</span>
+              </legend>
+              {roles.length === 0 ? (
+                <p style={{ fontSize: 13, color: C.textSub, margin: 0 }}>
+                  No roles yet. <Link href="/admin/dashboard/roles" style={{ color: C.gold, fontWeight: 600 }}>Create a role</Link> first.
+                </p>
+              ) : (
+                <div style={{ border: `1px solid ${C.border}`, borderRadius: 10, overflow: "hidden" }}>
+                  {roles.map((r, i) => (
+                    <label key={r.id} className="user-role" style={{
+                      display: "flex", gap: 10, alignItems: "flex-start", padding: "10px 12px", cursor: "pointer",
+                      borderTop: i ? `1px solid ${C.borderLight}` : "none", background: picked.has(r.id) ? C.goldBg : undefined,
+                    }}>
+                      <input type="checkbox" checked={picked.has(r.id)} onChange={() => toggle(r.id)} style={{ marginTop: 3, accentColor: C.gold }} />
+                      <span style={{ flex: 1, minWidth: 0 }}>
+                        <span style={{ display: "block", fontSize: 13, fontWeight: 600 }}>{r.name}</span>
+                        {r.description && <span style={{ display: "block", fontSize: 12, color: C.textSub, marginTop: 2 }}>{r.description}</span>}
+                      </span>
+                      <span style={{ fontSize: 11, color: C.textMuted, whiteSpace: "nowrap" }}>{r.perms.length} permission{r.perms.length === 1 ? "" : "s"}</span>
+                    </label>
+                  ))}
+                </div>
+              )}
+            </fieldset>
+          )}
+        </div>
+
+        <div style={{ padding: "14px 24px", borderTop: `1px solid ${C.border}`, display: "flex", alignItems: "center", gap: 8, background: "#FAFBFC" }}>
+          <p role="alert" style={{ flex: 1, margin: 0, fontSize: 13, color: C.red }}>{error}</p>
+          <Button type="button" variant="ghost" onClick={onClose}>Cancel</Button>
+          <Button type="submit" loading={saving} icon={isNew ? <UserPlus size={14} /> : <Save size={14} />}>{isNew ? "Add user" : "Save changes"}</Button>
+        </div>
+      </form>
+    </dialog>
+  );
+}
+
 // ── Main page ─────────────────────────────────────────────────────────────────
 export default function UsersPage() {
   const { toast } = useToast();
   const [users, setUsers]       = useState<AdminUser[]>([]);
   const [loading, setLoading]   = useState(true);
   const [search, setSearch]     = useState("");
-  const [email, setEmail]       = useState("");
-  const [newName, setNewName]   = useState("");
-  const [adding, setAdding]     = useState(false);
   const [deleting, setDeleting] = useState<string | null>(null);
-  const [showAdd, setShowAdd]   = useState(false);
-  const [editing, setEditing]   = useState<string | null>(null); // email of expanded editor
+  const [dialog, setDialog]     = useState<AdminUser | "new" | null>(null);
+  const [roles, setRoles]       = useState<Role[]>([]);
 
   const load = useCallback(async () => {
     const r = await fetch("/api/admin/users");
@@ -317,26 +207,12 @@ export default function UsersPage() {
     setLoading(false);
   }, []);
 
-  useEffect(() => { load(); }, [load]);
+  const loadRoles = useCallback(async () => {
+    const r = await fetch("/api/admin/roles");
+    if (r.ok) setRoles(await r.json());
+  }, []);
 
-  async function add() {
-    if (!email.trim()) return;
-    setAdding(true);
-    const r = await fetch("/api/admin/users", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, name: newName.trim() || null, role: "member" }),
-    });
-    const data = await r.json();
-    if (r.ok) {
-      toast("User added", "success");
-      setEmail(""); setNewName(""); setShowAdd(false);
-      setUsers(u => [...u, { ...data, permissions: [] }]);
-    } else {
-      toast(data.error ?? "Failed", "error");
-    }
-    setAdding(false);
-  }
+  useEffect(() => { load(); loadRoles(); }, [load, loadRoles]);
 
   async function remove(em: string) {
     setDeleting(em);
@@ -348,9 +224,8 @@ export default function UsersPage() {
     if (r.ok) {
       toast("User removed", "success");
       setUsers(u => u.filter(x => x.email !== em));
-      if (editing === em) setEditing(null);
     } else {
-      toast("Failed to remove", "error");
+      toast((await r.json().catch(() => ({}))).error ?? "Failed to remove", "error");
     }
     setDeleting(null);
   }
@@ -363,47 +238,33 @@ export default function UsersPage() {
       <PageHeader
         title="Admin Users"
         sub={`${users.length} user${users.length !== 1 ? "s" : ""} · super admin has full access`}
-        actions={
+        actions={(
           <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
             <Search placeholder="Search…" value={search} onChange={e => setSearch(e.target.value)} />
-            <Button icon={<UserPlus size={14} />} onClick={() => setShowAdd(v => !v)}>Add User</Button>
+            <Button icon={<UserPlus size={14} />} onClick={() => setDialog("new")}>Add User</Button>
           </div>
-        }
+        )}
       />
 
-      {showAdd && (
-        <div style={{
-          display: "flex", alignItems: "center", gap: 10,
-          background: C.surface, border: `1px solid ${C.border}`,
-          borderRadius: 10, padding: "12px 16px",
-        }}>
-          <Avatar name="+" size={32} style={{ background: C.goldBg, color: C.gold, fontSize: 16 }} />
-          <input
-            autoFocus
-            value={newName}
-            onChange={e => setNewName(e.target.value)}
-            placeholder="Full name (optional)"
-            type="text"
-            style={{ flex: 1, padding: "8px 11px", border: `1px solid ${C.border}`, borderRadius: 7, fontSize: 13, color: C.text, outline: "none", background: C.bg }}
-          />
-          <input
-            value={email}
-            onChange={e => setEmail(e.target.value)}
-            onKeyDown={e => e.key === "Enter" && add()}
-            placeholder="Email address"
-            type="email"
-            style={{ flex: 1, padding: "8px 11px", border: `1px solid ${C.border}`, borderRadius: 7, fontSize: 13, color: C.text, outline: "none", background: C.bg }}
-          />
-          <Button onClick={add} loading={adding} icon={<UserPlus size={14} />}>Add</Button>
-          <Button variant="ghost" onClick={() => { setShowAdd(false); setEmail(""); setNewName(""); }}>Cancel</Button>
-        </div>
+      {dialog && (
+        <UserDialog
+          key={dialog === "new" ? "new" : dialog.email}
+          target={dialog === "new" ? null : dialog}
+          roles={roles}
+          onClose={() => setDialog(null)}
+          onSaved={(u, isNew) => {
+            setUsers(prev => isNew ? [...prev, u] : prev.map(x => x.email === u.email ? u : x));
+            setDialog(null);
+            loadRoles(); // role "assigned to" counts changed
+          }}
+        />
       )}
 
       <Table>
         <Thead>
           <Tr>
             <Th>User</Th>
-            <Th>Role</Th>
+            <Th>Roles</Th>
             <Th>Added</Th>
             <Th style={{ width: 120 }} />
           </Tr>
@@ -412,67 +273,47 @@ export default function UsersPage() {
           {loading ? <SkeletonRows /> : filtered.length === 0 ? (
             <Tr><Td colSpan={4}><Empty icon={<Users size={40} />} title="No users found" sub={search ? "Try a different search" : "Add the first admin user above"} /></Td></Tr>
           ) : filtered.map(u => (
-            <Fragment key={u.email}>
-              <Tr style={{ cursor: "pointer" }} onClick={() => setEditing(editing === u.email ? null : u.email)}>
-                <Td>
-                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                    <Avatar name={u.name || u.email} size={32} />
-                    <div>
-                      <p style={{ fontWeight: 500, color: C.text, margin: 0, lineHeight: 1.3 }}>{u.name || u.email.split("@")[0]}</p>
-                      <p style={{ fontSize: 11, color: C.textMuted, margin: 0 }}>{u.email}</p>
-                    </div>
+            <Tr key={u.email} style={{ cursor: "pointer" }} onClick={() => setDialog(u)}>
+              <Td>
+                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <Avatar name={u.name || u.email} size={32} />
+                  <div>
+                    <p style={{ fontWeight: 500, color: C.text, margin: 0, lineHeight: 1.3 }}>{u.name || u.email.split("@")[0]}</p>
+                    <p style={{ fontSize: 11, color: C.textMuted, margin: 0 }}>{u.email}</p>
                   </div>
-                </Td>
-                <Td>
-                  <span style={{
-                    display: "inline-flex", alignItems: "center", gap: 4,
-                    padding: "3px 10px", borderRadius: 20, fontSize: 11, fontWeight: 600,
-                    background: u.role === "super" ? C.goldBg : C.bg,
-                    color: u.role === "super" ? C.gold : C.textSub,
-                    border: `1px solid ${u.role === "super" ? C.goldBorder : C.border}`,
-                  }}>
-                    {u.role === "super" ? <ShieldCheck size={11} /> : <User size={11} />}
-                    {u.role === "super" ? "Super" : "Member"}
-                  </span>
-                </Td>
-                <Td style={{ color: C.textMuted }}>
-                  {new Date(u.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
-                </Td>
-                <Td>
-                  <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-                    <Button
-                      variant="ghost" size="sm"
-                      icon={editing === u.email ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
-                      onClick={e => { e.stopPropagation(); setEditing(editing === u.email ? null : u.email); }}
-                    >
-                      {editing === u.email ? "Close" : "Edit"}
-                    </Button>
-                    <Button
-                      variant="danger" size="sm"
-                      icon={<Trash2 size={13} />}
-                      loading={deleting === u.email}
-                      onClick={e => { e.stopPropagation(); remove(u.email); }}
-                    >
-                      Remove
-                    </Button>
-                  </div>
-                </Td>
-              </Tr>
-              {editing === u.email && (
-                <Tr>
-                  <Td colSpan={4} style={{ padding: "0 16px 16px" }}>
-                    <PermissionEditor
-                      target={u}
-                      onClose={() => setEditing(null)}
-                      onSaved={updated => {
-                        setUsers(prev => prev.map(x => x.email === updated.email ? updated : x));
-                        setEditing(null);
-                      }}
-                    />
-                  </Td>
-                </Tr>
-              )}
-            </Fragment>
+                </div>
+              </Td>
+              <Td>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
+                  {u.role === "super" ? (
+                    <span style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "3px 10px", borderRadius: 20, fontSize: 11, fontWeight: 600, background: C.goldBg, color: C.gold, border: `1px solid ${C.goldBorder}` }}>
+                      <ShieldCheck size={11} /> Super
+                    </span>
+                  ) : u.roles.length === 0 ? (
+                    <span style={{ fontSize: 12, color: C.textMuted }}>No roles</span>
+                  ) : u.roles.map(r => (
+                    <span key={r.id} style={{ padding: "3px 10px", borderRadius: 20, fontSize: 11, fontWeight: 600, background: C.bg, color: C.textSub, border: `1px solid ${C.border}` }}>
+                      {r.name}
+                    </span>
+                  ))}
+                </div>
+              </Td>
+              <Td style={{ color: C.textMuted }}>
+                {new Date(u.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
+              </Td>
+              <Td>
+                <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                  <Button variant="ghost" size="sm" icon={<Pencil size={13} />}
+                    onClick={e => { e.stopPropagation(); setDialog(u); }}>
+                    Edit
+                  </Button>
+                  <Button variant="danger" size="sm" icon={<Trash2 size={13} />} loading={deleting === u.email}
+                    onClick={e => { e.stopPropagation(); remove(u.email); }}>
+                    Remove
+                  </Button>
+                </div>
+              </Td>
+            </Tr>
           ))}
         </Tbody>
       </Table>

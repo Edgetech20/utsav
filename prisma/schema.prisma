@@ -12,9 +12,10 @@ model AdminUser {
   name        String?
   role        String            @default("member")  // "super" | "member"
   createdAt   DateTime          @default(now())
-  permissions AdminPermission[]   // legacy — read alongside roles until the users UI moves to roles
+  permissions AdminPermission[]   // legacy — only read by scripts/migrate-roles.ts; drop once all sites migrated
   roles       UserRole[]
   sessions    AdminSession[]
+  assignedRsvps Rsvp[]            // RSVPs this caller must phone (see src/lib/rsvpAssign.ts)
 }
 
 model Role {
@@ -82,6 +83,7 @@ model OtpStore {
   email     String   @id
   otp       String
   expiresAt DateTime
+  attempts  Int      @default(0) // wrong guesses; code is burned at 5
 }
 
 model Rsvp {
@@ -99,6 +101,10 @@ model Rsvp {
   location       String?  @db.Text  // JSON: { lat, lng, accuracy, displayName }
   submittedAt    DateTime @default(now())
   waSent         Boolean  @default(false)
+  assignedTo     String?             // caller email; null = unassigned
+  assignee       AdminUser? @relation(fields: [assignedTo], references: [email], onDelete: SetNull)
+
+  @@index([assignedTo])
 }
 
 model ClickEvent {

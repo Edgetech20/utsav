@@ -55,7 +55,8 @@ export default function FeedbackPage() {
 
   async function del(id: number) {
     setToConfirm(null);
-    await fetch("/api/feedback", { method: "DELETE", body: JSON.stringify({ id }), headers: { "Content-Type": "application/json" } });
+    const res = await fetch("/api/feedback", { method: "DELETE", body: JSON.stringify({ id }), headers: { "Content-Type": "application/json" } });
+    if (!res.ok) { toast(res.status === 403 ? "You don't have permission to delete feedback" : "Delete failed", "error"); return; }
     setEntries(e => e.filter(x => x.id !== id));
     if (expanded === id) setExpanded(null);
     toast("Response deleted", "success");

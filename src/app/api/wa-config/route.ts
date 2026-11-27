@@ -15,6 +15,7 @@ const KEYS = Object.keys(WA_CONFIG_DEFAULTS);
 export async function GET(req: NextRequest) {
   const user = await getSessionUser(req);
   if (!user) return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
+  if (!can(user, "whatsapp", "view")) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const rows = await db.setting.findMany({ where: { key: { in: KEYS } } });
   const map  = Object.fromEntries(rows.map(r => [r.key, r.value]));

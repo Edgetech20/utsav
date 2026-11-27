@@ -1,8 +1,6 @@
-"use client";
+import { redirect } from "next/navigation";
 
-import { BadgeCheck } from "lucide-react";
-import ModuleLogin from "@/app/login/ModuleLogin";
-
-export default function VolunteerLoginPage() {
-  return <ModuleLogin title="Volunteers" icon={BadgeCheck} home="/volunteer" />;
+// Old volunteer login — kept so links still work. Everything signs in at /login.
+export default function VolunteerLoginRedirect() {
+  redirect("/login");
 }

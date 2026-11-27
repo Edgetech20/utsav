@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { getSessionUser } from "@/lib/auth";
+import { getSessionUser, can } from "@/lib/auth";
 
 export async function GET(req: NextRequest) {
   const user = await getSessionUser(req);
   if (!user) return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
+  if (!can(user, "changelog", "view")) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const url   = new URL(req.url);
   const take  = Math.min(100, parseInt(url.searchParams.get("take") ?? "50", 10));

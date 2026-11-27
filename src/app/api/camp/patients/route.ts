@@ -34,7 +34,7 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   const user = await getSessionUser(req);
   if (!user) return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
-  if (!can(user, "camp", "edit")) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  if (!can(user, "camp", "register")) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const { name, age, gender, mobile, address, problem, departmentId, doctorName } = await req.json();
   if (!name?.trim())   return NextResponse.json({ error: "name required" },         { status: 400 });
@@ -76,7 +76,7 @@ export async function POST(req: NextRequest) {
 export async function PUT(req: NextRequest) {
   const user = await getSessionUser(req);
   if (!user) return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
-  if (!can(user, "camp", "edit")) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  if (!can(user, "camp", "register")) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const { id, name, age, gender, mobile, address, problem, departmentId, doctorName } = await req.json();
   if (!id) return NextResponse.json({ error: "id required" }, { status: 400 });
@@ -102,7 +102,7 @@ export async function PUT(req: NextRequest) {
 export async function DELETE(req: NextRequest) {
   const user = await getSessionUser(req);
   if (!user) return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
-  if (!can(user, "camp", "edit")) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  if (!can(user, "camp", "delete")) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const id = parseInt(new URL(req.url).searchParams.get("id") ?? "");
   if (!id) return NextResponse.json({ error: "id required" }, { status: 400 });
@@ -118,11 +118,14 @@ export async function DELETE(req: NextRequest) {
 export async function PATCH(req: NextRequest) {
   const user = await getSessionUser(req);
   if (!user) return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
-  if (!can(user, "camp", "edit")) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-
   const { id, status } = await req.json();
   if (!id)     return NextResponse.json({ error: "id required" },     { status: 400 });
   if (!status) return NextResponse.json({ error: "status required" }, { status: 400 });
+
+  // Doctor calls and finishes a consultation; pharmacy completes. Nothing else is a valid transition.
+  const NEEDS: Record<string, string> = { called: "consult", doctor_done: "consult", completed: "dispense" };
+  if (!NEEDS[status]) return NextResponse.json({ error: "Invalid status" }, { status: 400 });
+  if (!can(user, "camp", NEEDS[status])) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const patient = await db.campPatient.findUnique({ where: { id } });
   if (!patient) return NextResponse.json({ error: "Not found" }, { status: 404 });

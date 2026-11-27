@@ -4,8 +4,7 @@ export function proxy(req: NextRequest) {
   const token = req.cookies.get("admin_session")?.value;
 
   if (!token) {
-    const login = new URL("/admin/login", req.url);
-    login.searchParams.set("from", req.nextUrl.pathname);
+    const login = new URL("/login", req.url);
     return NextResponse.redirect(login);
   }
 
