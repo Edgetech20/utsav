@@ -1,5 +1,7 @@
-// One-time: convert per-user AdminPermission rows into roles. Safe to re-run.
-// Run once per client DB after `npx prisma db push`:   npx jiti scripts/migrate-roles.ts
+// One-time: convert per-user AdminPermission rows into roles.
+// Runs from deploy.sh after `prisma db push`; records itself in Settings ("rbac_migrated") and skips
+// afterwards, so roles/permissions admins edit later are never re-granted by a deploy.
+// Force a re-run:  npx jiti scripts/migrate-roles.ts --force
 // AdminPermission rows are left untouched (dropped in a later release).
 import { db } from "../src/lib/db";
 import { PERMISSIONS, STARTER_ROLES } from "../src/lib/permissions";
@@ -22,7 +24,15 @@ async function upsertRole(name: string, description: string, perms: string[]) {
   return role;
 }
 
+const DONE_KEY = "rbac_migrated";
+
 async function main() {
+  const done = await db.setting.findUnique({ where: { key: DONE_KEY } });
+  if (done && !process.argv.includes("--force")) {
+    console.log(`roles migration already ran on ${done.value} — skipping (use --force to re-run)`);
+    return;
+  }
+
   const starters = new Map<string, number>();
   for (const r of STARTER_ROLES) starters.set(r.name, (await upsertRole(r.name, r.description, r.perms)).id);
 
@@ -60,6 +70,10 @@ async function main() {
 
   // Share RSVPs out across whoever is in the caller pool now
   console.log("rsvp assignment:", await rebalance());
+
+  const stamp = new Date().toISOString();
+  await db.setting.upsert({ where: { key: DONE_KEY }, create: { key: DONE_KEY, value: stamp }, update: { value: stamp } });
+  console.log("roles migration complete");
 }
 
 main().finally(() => db.$disconnect());

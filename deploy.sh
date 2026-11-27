@@ -43,6 +43,12 @@ node node_modules/prisma/build/index.js generate
 echo "==> Syncing DB schema..."
 node node_modules/prisma/build/index.js db push --accept-data-loss
 
+# ── One-time data migrations ────────────────────────────────
+# Roles & permissions (v3): converts old per-user permissions to roles and shares RSVPs
+# among callers. Records itself in Settings and is a no-op on later deploys.
+echo "==> Running roles migration (one-time)..."
+npx --no-install jiti scripts/migrate-roles.ts
+
 # ── Build ───────────────────────────────────────────────────
 echo "==> Building..."
 npm run build
